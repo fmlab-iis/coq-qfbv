@@ -625,9 +625,38 @@ Qed.
 Lemma newer_than_var_trans :
   forall x y z, newer_than_var x y -> newer_than_var y z -> newer_than_var x z.
 Proof.
-  move=> x y z Hxy Hyz. apply: (proj2 (Pos.ltb_lt _ _)).
-  move: (proj1 (Pos.ltb_lt _ _) Hxy) (proj1 (Pos.ltb_lt _ _) Hyz).
-  move=> {Hxy Hyz} Hxy Hyz. exact: (Pos.lt_trans _ _ _ Hyz Hxy).
+  move=> x y z Hxy Hyz. apply/pos_ltP. move/pos_ltP: Hxy=> Hxy.
+  move/pos_ltP: Hyz=> Hyz. exact: (Pos.lt_trans _ _ _ Hyz Hxy).
+Qed.
+
+Lemma newer_than_var_le_newer :
+  forall x y z, newer_than_var x y -> (x <=? z)%positive -> newer_than_var z y.
+Proof.
+  move=> x y z /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
+  exact: (Pos.lt_le_trans _ _ _ Hyx Hxz).
+Qed.
+
+Lemma newer_than_var_lt_newer :
+  forall x y z, newer_than_var x y -> (x <? z)%positive -> newer_than_var z y.
+Proof.
+  move=> x y z /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
+  exact: (Pos.lt_trans _ _ _ Hyx Hxz).
+Qed.
+
+Lemma newer_than_var_neq :
+  forall g l,
+    newer_than_var g l ->
+    g != l.
+Proof.
+  move=> g l Hg. apply/negP. rewrite /= => H. rewrite (eqP H) in Hg.
+  rewrite /newer_than_var in Hg. rewrite Pos.ltb_irrefl in Hg. by elim Hg.
+Qed.
+
+Lemma newer_than_var_add_diag_r :
+  forall x y z, newer_than_var x y -> newer_than_var (x + z) y.
+Proof.
+  rewrite /newer_than_var=> x y z Hnew. apply/pos_ltP.
+  move/pos_ltP: Hnew=> Hnew. exact: pos_lt_add_r.
 Qed.
 
 Lemma newer_than_lit_irrefl :
@@ -642,6 +671,44 @@ Lemma newer_than_lit_trans :
     newer_than_var (var_of_lit x) (var_of_lit z).
 Proof.
   move=> x y H Hxy Hyz. exact: (newer_than_var_trans Hxy Hyz).
+Qed.
+
+Lemma newer_than_lit_neq :
+  forall g l,
+    newer_than_lit g l ->
+    g != var_of_lit l.
+Proof.
+  move=> g l Hg. apply: newer_than_var_neq. exact: Hg.
+Qed.
+
+Lemma newer_than_lit_add_diag_r :
+  forall x y z, newer_than_lit x y -> newer_than_lit (x + z) y.
+Proof.
+  rewrite /newer_than_lit=> x y z Hnew. exact: newer_than_var_add_diag_r.
+Qed.
+
+Lemma newer_than_lit_le_newer :
+  forall x y z, newer_than_lit x y -> (x <=? z)%positive -> newer_than_lit z y.
+Proof.
+  move=> x y z /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
+  exact: (Pos.lt_le_trans _ _ _ Hyx Hxz).
+Qed.
+
+Lemma newer_than_lit_lt_newer :
+  forall x y z, newer_than_lit x y -> (x <? z)%positive -> newer_than_lit z y.
+Proof.
+  move=> x y z /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
+  exact: (Pos.lt_trans _ _ _ Hyx Hxz).
+Qed.
+
+Lemma newer_than_lit_enc_bit_env_upd :
+  forall E x v l b,
+    newer_than_lit x l ->
+    enc_bit (env_upd E x v) l b = enc_bit E l b.
+Proof.
+  move=> E x v l b Hnew. rewrite /enc_bit.
+  move: (newer_than_lit_neq Hnew) => Hneq.
+  rewrite (interp_literal_env_upd_neq _ _ Hneq). reflexivity.
 Qed.
 
 Lemma newer_than_lits_cons :
@@ -660,6 +727,63 @@ Proof.
   - move=> l ls1 IH ls2. rewrite /=. rewrite (IH ls2). rewrite andbA. reflexivity.
 Qed.
 
+Lemma newer_than_lits_neq :
+  forall g ls l,
+    l \in ls ->
+    newer_than_lits g ls ->
+     g != (var_of_lit l).
+Proof.
+  move=> g. elim.
+  - done.
+  - move=> hd tl IH l Hmem. rewrite newer_than_lits_cons.
+    move/andP=> [Hnew_hd Hnew_tl]. rewrite in_cons in Hmem. case/orP: Hmem.
+    + move=> /eqP ->. exact: (newer_than_lit_neq Hnew_hd).
+    + move=> Hmem. exact: (IH _ Hmem Hnew_tl).
+Qed.
+
+Lemma newer_than_lits_add_diag_r :
+  forall x ls y, newer_than_lits x ls -> newer_than_lits (x + y) ls.
+Proof.
+  move=> x ls. elim: ls x.
+  - done.
+  - move=> ls_hd ls_tl IH x y. rewrite 2!newer_than_lits_cons.
+    move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
+    exact: newer_than_lit_add_diag_r.
+Qed.
+
+Lemma newer_than_lits_le_newer :
+  forall x ls y, newer_than_lits x ls -> (x <=? y)%positive -> newer_than_lits y ls.
+Proof.
+  move=> x ls. elim: ls x.
+  - done.
+  - move=> hd tl IH x y. rewrite 2!newer_than_lits_cons.
+    move/andP=> [Hnew_hd Hnew_tl] Hle. rewrite (newer_than_lit_le_newer Hnew_hd Hle).
+    rewrite (IH _ _ Hnew_tl Hle). done.
+Qed.
+
+Lemma newer_than_lits_lt_newer :
+  forall x ls y, newer_than_lits x ls -> (x <? y)%positive -> newer_than_lits y ls.
+Proof.
+  move=> x ls. elim: ls x.
+  - done.
+  - move=> hd tl IH x y. rewrite 2!newer_than_lits_cons.
+    move/andP=> [Hnew_hd Hnew_tl] Hle. rewrite (newer_than_lit_lt_newer Hnew_hd Hle).
+    rewrite (IH _ _ Hnew_tl Hle). done.
+Qed.
+
+Lemma newer_than_lits_enc_bits_env_upd :
+  forall w E x b (ls : w.-tuple literal) bs,
+    newer_than_lits x ls ->
+    enc_bits (env_upd E x b) ls bs = enc_bits E ls bs.
+Proof.
+  elim.
+  - done.
+  - move=> w IH E x b. case/tupleP=> [ls_hd ls_tl]. case/tupleP=> [bs_hd bs_tl].
+    rewrite /= !theadE !beheadCons. move/andP=> [Hnew_hd Hnew_tl].
+    rewrite (newer_than_lit_enc_bit_env_upd _ _ _ Hnew_hd).
+    rewrite (IH _ _ _ _ _ Hnew_tl). reflexivity.
+Qed.
+
 Lemma newer_than_cnf_cons :
   forall g c cs,
     newer_than_cnf g (c::cs) = newer_than_lits g c && newer_than_cnf g cs.
@@ -676,21 +800,14 @@ Proof.
   - move=> c cs1 IH cs2. rewrite /=. rewrite (IH cs2). rewrite andbA. reflexivity.
 Qed.
 
-Lemma newer_than_var_neq :
-  forall g l,
-    newer_than_var g l ->
-    g != l.
+Lemma newer_than_cnf_add_diag_r :
+  forall x cs y, newer_than_cnf x cs -> newer_than_cnf (x + y) cs.
 Proof.
-  move=> g l Hg. apply/negP. rewrite /= => H. rewrite (eqP H) in Hg.
-  rewrite /newer_than_var in Hg. rewrite Pos.ltb_irrefl in Hg. by elim Hg.
-Qed.
-
-Lemma newer_than_lit_neq :
-  forall g l,
-    newer_than_lit g l ->
-    g != var_of_lit l.
-Proof.
-  move=> g l Hg. apply: newer_than_var_neq. exact: Hg.
+  move=> x cs. elim: cs x.
+  - done.
+  - move=> cs_hd cs_tl IH x y. rewrite 2!newer_than_cnf_cons.
+    move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
+    exact: newer_than_lits_add_diag_r.
 Qed.
 
 Lemma interp_literal_env_upd_newer :
@@ -808,4 +925,13 @@ Proof.
   move=> E x v y Hnew_xy l Hnew_yl. apply: env_upd_neq.
   move: (newer_than_var_trans Hnew_xy Hnew_yl) => Hnew.
   exact: (newer_than_var_neq Hnew).
+Qed.
+
+Lemma env_preserve_env_upd_succ :
+  forall E E' x v,
+    env_preserve (env_upd E x v) E' (x + 1) -> env_preserve E E' x.
+Proof.
+  move=> E E' x v H y Hnew. move: (H y (newer_than_var_add_diag_r 1 Hnew)).
+  move=> ->. rewrite env_upd_neq; first by reflexivity.
+  exact: newer_than_var_neq.
 Qed.
