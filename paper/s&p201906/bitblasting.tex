@@ -1,0 +1,21 @@
+% overview of the parts with certification holes. From formally defined SMT-LIB2
+% formed bitvectors to cnf format.
+% SMT solver with bitvector theory is utilized to transform
+% specifications of bitvector operations to cnf representations. Then, the
+% cnf is sent to SAT solvers to obtain sat or unsat results.
+% The uncertainty of the transformation remains a hole in the certified
+% process. The question is raised when experimenting the checker for the range
+% properties.
+
+% SMT-LIB2 is used in ? SMT solvers. 
+
+% define the 'env', mapping, encoding and etc.
+
+% design own library of bit blasting, to ensure two goals: proofs and execution.
+Coq library itself contents a library for bits representation -- Coq-bits.
+In its definition, the bit vector is in tuple of Boolean with least significant bit at head.
+
+% 
+
+% code extraction, extra efforts to make execution efficient
+

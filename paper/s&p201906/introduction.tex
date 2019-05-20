@@ -1,0 +1,40 @@
+
+% cryptographic program verification
+Cryptographic programs are ubiquitous. They are fundamental to
+computer security and deployed in numerous computer systems. It would
+be disastrous if unintended behaviors could be observed in such
+critical programs. In order to address this concern, several research
+projects have been working on verifying cryptographic programs in
+recent years~\cite{}.
+
+% cryptoline
+
+% overview of the parts with certification holes. 
+
+
+% importance of improving the trustworth, eliminate trusted bases
+% importance of keep the usability simultaneously
+
+% ways to improve cryptoline trustworth
+% smt bitvector, handy but...
+
+More specifically, only two types of queries are produced by
+\cryptoline. For range properties, over- and under-flow checking, the
+tool exploits the bit vector theory in SMT (Satisfiability Modulo
+Theories) solving. It invokes an SMT solver to resolve such
+queries. For algebraic properties, \cryptoline reduces the
+verification problem to the ideal membership problem. It then employs
+a computer algebra system to resolve these queries. Correctness of the
+verification tool heavily relies on correctness of the external
+solvers. If an external solver reports an incorrect query
+result, \cryptoline will give an unsound verification result on
+cryptographic programs. In this paper, we reduce the trust base
+of \cryptoline in order to improve the quality of verification
+results.
+
+% polynomial checker? short contents
+
+% contribution
+
+% related works
+
