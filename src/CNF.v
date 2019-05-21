@@ -810,6 +810,28 @@ Proof.
     exact: newer_than_lits_add_diag_r.
 Qed.
 
+Lemma newer_than_cnf_le_newer :
+  forall x cs y, newer_than_cnf x cs -> (x <=? y)%positive -> newer_than_cnf y cs.
+Proof.
+  move=> x cs. elim: cs x.
+  - done.
+  - move=> hd tl IH x y. rewrite 2!newer_than_cnf_cons.
+    move/andP=> [Hnew_hd Hnew_tl] Hle.
+    rewrite (newer_than_lits_le_newer Hnew_hd Hle).
+    rewrite (IH _ _ Hnew_tl Hle). done.
+Qed.
+
+Lemma newer_than_cnf_lt_newer :
+  forall x cs y, newer_than_cnf x cs -> (x <? y)%positive -> newer_than_cnf y cs.
+Proof.
+  move=> x cs. elim: cs x.
+  - done.
+  - move=> hd tl IH x y. rewrite 2!newer_than_cnf_cons.
+    move/andP=> [Hnew_hd Hnew_tl] Hle.
+    rewrite (newer_than_lits_lt_newer Hnew_hd Hle).
+    rewrite (IH _ _ Hnew_tl Hle). done.
+Qed.
+
 Lemma interp_literal_env_upd_newer :
   forall E x v y,
     newer_than_lit x y -> interp_literal (env_upd E x v) y = interp_literal E y.
@@ -934,4 +956,41 @@ Proof.
   move=> E E' x v H y Hnew. move: (H y (newer_than_var_add_diag_r 1 Hnew)).
   move=> ->. rewrite env_upd_neq; first by reflexivity.
   exact: newer_than_var_neq.
+Qed.
+
+Lemma env_preserve_enc_bit :
+  forall E E' g (b : bool) (l : literal),
+    env_preserve E E' g ->
+    newer_than_lit g l ->
+    enc_bit E l b ->
+    enc_bit E' l b.
+Proof.
+  move=> E E' g b l Hpre Hnew. rewrite /enc_bit. move=> Henc.
+  rewrite (env_preserve_literal Hpre Hnew). exact: Henc.
+Qed.
+
+Lemma env_preserve_enc_bits :
+  forall w E E' g (bs : BITS w) (ls : w.-tuple literal),
+    env_preserve E E' g ->
+    newer_than_lits g ls ->
+    enc_bits E ls bs ->
+    enc_bits E' ls bs.
+Proof.
+  elim.
+  - done.
+  - move=> w IH E E' g. case/tupleP=> [bs_hd bs_tl]. case/tupleP=> [ls_hd ls_tl].
+    move=> Hpre. rewrite /= !theadE !beheadCons.
+    move=> /andP [Hnew_hd Hnew_tl] /andP [Henc_hd Henc_tl].
+    rewrite (env_preserve_enc_bit Hpre Hnew_hd Henc_hd).
+    exact: (IH _ _ _ _ _ Hpre Hnew_tl Henc_tl).
+Qed.
+
+Lemma env_preserve_le :
+  forall E E' g g',
+    env_preserve E E' g ->
+    (g' <=? g)%positive ->
+    env_preserve E E' g'.
+Proof.
+  move=> E E' g g' Hpre Hle v Hnew.
+  exact: (Hpre v (newer_than_var_le_newer Hnew Hle)).
 Qed.
