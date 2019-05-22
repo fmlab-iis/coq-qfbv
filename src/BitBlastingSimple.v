@@ -1649,7 +1649,6 @@ Proof.
   case => _ <- <-. 
   rewrite add_prelude_cons add_prelude_append add_prelude_singleton.
   rewrite add_prelude_append add_prelude_cons.
-  Local Opaque interp_cnf.
   repeat rewrite add_prelude_singleton. 
   (*repeat rewrite interp_clause_cons. orbF ;simpl. *)
   rewrite interp_clause_cons orbF.
@@ -1705,21 +1704,23 @@ Proof.
   set r := Pos g.
   move => Hg <- <-.
   rewrite add_prelude_cons !add_prelude_singleton /=. 
-  rewrite 2!add_prelude_cons !add_prelude_singleton /=. 
   rewrite !interp_literal_neg_lit.
   move => Henc1 Henc2 Hcnf.
-  split_andb.
+  move/andP: Hcnf => [Htt Hcnf].
+  move/andP: Htt => [Htt Hcnf1].
+  move/andP : Hcnf => [_ Hcnf2].
+  move/andP : Hcnf2 => [Hcnfil1 Hcnfil2].
   case Heg: (E g).
-  - rewrite Heg in H5; simpl in H5.
+  - rewrite Heg in Hcnf1; simpl in Hcnf1.
     case Hl1 : (interp_literal E il1).
     + rewrite /enc_bit in Henc1; rewrite Hl1 in Henc1.
       move/eqP : Henc1 => Henc1; rewrite -Henc1; symmetry; apply orTb.
-    + rewrite Hl1 in H5; rewrite orFb in H5.
-      rewrite /enc_bit in Henc2; rewrite H5 in Henc2.
+    + rewrite Hl1 in Hcnf1; rewrite orFb in Hcnf1.
+      rewrite /enc_bit in Henc2; rewrite Hcnf1 in Henc2.
       move/eqP : Henc2 => Henc2; rewrite -Henc2; symmetry; apply orbT.
-  - rewrite Heg in H2, H4; simpl in H2, H4.
-    move/eqP : H4 => Hl1; move/eqP : Hl1 => Hl1; symmetry in Hl1; apply Bool.negb_sym in Hl1.
-    move/eqP : H2 => Hl2; move/eqP : Hl2 => Hl2; symmetry in Hl2; apply Bool.negb_sym in Hl2.
+  - rewrite Heg in Hcnfil1, Hcnfil2; simpl in Hcnfil1, Hcnfil2.
+    move/eqP : Hcnfil1 => Hl1; move/eqP : Hl1 => Hl1; symmetry in Hl1; apply Bool.negb_sym in Hl1.
+    move/eqP : Hcnfil2 => Hl2; move/eqP : Hl2 => Hl2; symmetry in Hl2; apply Bool.negb_sym in Hl2.
     rewrite /enc_bit in Henc1, Henc2; rewrite Hl1 in Henc1; rewrite Hl2 in Henc2.
     move/eqP : Henc1 => Henc1; rewrite -Henc1; symmetry; rewrite orFb.
     move/eqP : Henc2 => Henc2; done.
