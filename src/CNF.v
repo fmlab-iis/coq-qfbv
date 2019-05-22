@@ -431,6 +431,20 @@ Proof.
     exact: (IH _ _ _ _ Heq2 Henc1_tl).
 Qed.
 
+Lemma enc_bits_tval_eq :
+  forall w E (bv : BITS w) (ls1 ls2 : w.-tuple literal),
+    tval ls1 = tval ls2 ->
+    enc_bits E ls1 bv ->
+    enc_bits E ls2 bv.
+Proof.
+  elim.
+  - done.
+  - move=> w IH E. case/tupleP => [bv_hd bv_tl]. case/tupleP => [ls1_hd ls1_tl].
+    case/tupleP => [ls2_hd ls2_tl]. rewrite /= !theadE !beheadCons.
+    case => <- Htl /andP [Henc_hd Henc_tl]. rewrite Henc_hd (IH _ _ _ _ Htl Henc_tl).
+    done.
+Qed.
+
 Lemma enc_bits_thead :
   forall E w (ls : (w.+1).-tuple literal) (bv : BITS (w.+1)),
     enc_bits E ls bv ->

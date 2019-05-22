@@ -126,10 +126,6 @@ Fixpoint bit_blast_var' (g : generator) w : generator * w.-tuple literal :=
            (g'', cons_tuple hd tl)
   end.
 
-Definition bit_blast_var g (v : var) : generator * cnf * wordsize.-tuple literal :=
-  let (g', vs) := bit_blast_var' g wordsize in
-  (g', [], vs).
-
 Fixpoint mk_env_var' w E g : BITS w -> env * generator * w.-tuple literal :=
   if w is _.+1 then
     fun bv =>
@@ -141,6 +137,10 @@ Fixpoint mk_env_var' w E g : BITS w -> env * generator * w.-tuple literal :=
   else
     fun _ =>
       (E, g, [tuple]).
+
+Definition bit_blast_var g (v : var) : generator * cnf * wordsize.-tuple literal :=
+  let (g', vs) := bit_blast_var' g wordsize in
+  (g', [], vs).
 
 Definition mk_env_var E g (bv : BITS wordsize) (v : var) : env * generator * cnf * wordsize.-tuple literal :=
   let '(E', g', vs) := mk_env_var' E g bv in
@@ -181,7 +181,7 @@ Proof.
   case=> <- _ <- _. done.
 Qed.
 
-Lemma mk_env_var'_env_preserve :
+Lemma mk_env_var'_preserve :
   forall w E g (bs : BITS w) E' g' lrs,
     mk_env_var' E g bs = (E', g', lrs) ->
     env_preserve E E' g.
@@ -196,14 +196,14 @@ Proof.
     exact: (env_preserve_env_upd_succ Hpre).
 Qed.
 
-Lemma mk_env_var_env_preserve :
+Lemma mk_env_var_preserve :
   forall E g (bs : BITS wordsize) v E' g' cs lrs,
     mk_env_var E g bs v = (E', g', cs, lrs) ->
     env_preserve E E' g.
 Proof.
   move=> E g bs v E' g' cs lrs. rewrite /mk_env_var.
   case H: (mk_env_var' E g bs) => [[oE og] olrs].
-  case=> <- _ _ _. exact: (mk_env_var'_env_preserve H).
+  case=> <- _ _ _. exact: (mk_env_var'_preserve H).
 Qed.
 
 Lemma mk_env_var'_newer_gen :
@@ -263,6 +263,32 @@ Proof.
   move=> E g bs v E' g' cs lrs. rewrite /mk_env_var.
   case H: (mk_env_var' E g bs) => [[oE og] olrs]. case=> _ <- _ <-.
   exact: (mk_env_var'_newer_res H).
+Qed.
+
+Lemma mk_env_var'_enc :
+  forall w E g (bs : BITS w) E' g' lrs,
+    mk_env_var' E g bs = (E', g', lrs) ->
+    enc_bits E' lrs bs.
+Proof.
+  elim.
+  - done.
+  - move=> w IH E g. case/tupleP=> [bs_hd bs_tl]. move=> E' g'.
+    case/tupleP=> [ls_hd ls_tl]. rewrite /= !theadE !beheadCons.
+    case Henv: (mk_env_var' (env_upd E g bs_hd) (g + 1)%positive bs_tl)
+    => [[E'' g''] tl]. case=> <- _ <- Htl. move: (IH _ _ _ _ _ _ Henv) => Henc_tl.
+    rewrite (enc_bits_tval_eq Htl Henc_tl) andbT.
+    move: (mk_env_var'_preserve Henv) => Hpre. rewrite /enc_bit /=.
+    rewrite (Hpre g (pos_ltb_add_diag_r g 1)). rewrite env_upd_eq. exact: eqxx.
+Qed.
+
+Lemma mk_env_var_enc :
+  forall E g (bs : BITS wordsize) v E' g' cs lrs,
+    mk_env_var E g bs v = (E', g', cs, lrs) ->
+    enc_bits E' lrs bs.
+Proof.
+  move=> E g bs v E' g' cs lrs. rewrite /mk_env_var.
+  case Henv: (mk_env_var' E g bs)=> [[E_v g_v] lrs_v].
+  case=> <- _ _ <-. exact: (mk_env_var'_enc Henv).
 Qed.
 
 
@@ -2360,13 +2386,49 @@ Proof.
   - exact: mk_env_exp_newer_res_const.
 Qed.
 
+Lemma mk_env_exp_consistent_var :
+  forall (t : VarOrder.t) (m : vm) (s : QFBV64.State.t) (E : env)
+         (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : wordsize.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvVar t) = (m', E', g', cs, lrs) ->
+    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+  move=> v m s E g m' E' g' cs lrs /=. case Hfind: (VM.find v m).
+  - case=> <- <- _ _ _ Hnew_gm Hcon. assumption.
+  - case Henv: (mk_env_var E g (QFBV64.State.acc v s) v) => [[[E_v g_v] cs_v] lrs_v].
+    case=> <- <- _ _ _ Hnew_gm Hcon. move=> x. rewrite /consistent1.
+    case Hxv: (x == v).
+    + rewrite (VM.Lemmas.find_add_eq _ _ Hxv). rewrite (eqP Hxv).
+      exact: (mk_env_var_enc Henv).
+    + move/negP: Hxv => Hxv. rewrite (VM.Lemmas.find_add_neq _ _ Hxv).
+      move: (Hcon x). rewrite /consistent1.
+      case Hfind_xm: (VM.find x m).
+      * move=> Henc. move: (Hnew_gm x _ Hfind_xm) => Hnew.
+        exact: (env_preserve_enc_bits (mk_env_var_preserve Henv) Hnew Henc).
+      * done.
+Qed.
+
+Lemma mk_env_exp_consistent_const :
+  forall (w : nat) (b : BITS w) (m : vm) (s : QFBV64.State.t)
+         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvConst w b) = (m', E', g', cs, lrs) ->
+    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+  move=> w bs m s E g m' E' g' cs lrs /=. case=> <- <- _ _ _ Hnew_gm Hcon.
+  assumption.
+Qed.
+
 Lemma mk_env_exp_consistent :
   forall w m s E g (e : QFBV64.exp w) m' E' g' cs lrs,
     mk_env_exp m s E g e = (m', E', g', cs, lrs) ->
     newer_than_vm g m ->
     consistent m E s -> consistent m' E' s.
 Proof.
-Admitted.
+  move=> w m s E g e. elim: e m s E g.
+  - exact: mk_env_exp_consistent_var.
+  - exact: mk_env_exp_consistent_const.
+Qed.
 
 Lemma mk_env_exp_preserve :
   forall w m s E g (e : QFBV64.exp w) m' E' g' cs lrs,
