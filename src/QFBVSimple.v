@@ -1,5 +1,5 @@
 
-From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype.
+From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype tuple.
 From Bits Require Export bits.
 From ssrlib Require Import Var Store SsrOrdered.
 
@@ -38,12 +38,12 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvConst _ n => n
     end.
 
-  Fixpoint eval_bexp (e : bexp) (s : state) : Prop :=
+  Fixpoint eval_bexp (e : bexp) (s : state) : bool :=
     match e with
-    | bvFalse => False
-    | bvTrue => True
-    | bvEq _ e1 e2 => eval_exp e1 s = eval_exp e2 s
-    | bvConj e1 e2 => eval_bexp e1 s /\ eval_bexp e2 s
+    | bvFalse => false
+    | bvTrue => true
+    | bvEq _ e1 e2 => eval_exp e1 s == eval_exp e2 s
+    | bvConj e1 e2 => eval_bexp e1 s && eval_bexp e2 s
     end.
 
   Definition valid (e : bexp) : Prop :=
