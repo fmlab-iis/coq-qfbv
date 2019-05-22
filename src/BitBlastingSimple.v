@@ -2430,19 +2430,69 @@ Proof.
   - exact: mk_env_exp_consistent_const.
 Qed.
 
+Lemma mk_env_exp_preserve_var :
+  forall (t : VarOrder.t) (m : vm) (s : QFBV64.State.t) (E : env)
+         (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : wordsize.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvVar t) = (m', E', g', cs, lrs) -> env_preserve E E' g.
+Proof.
+  move=> v m s E g m' E' g' cs lrs /=. case Hfind: (VM.find v m).
+  - case=> _ <- _ _ _. exact: env_preserve_refl.
+  - case Henv: (mk_env_var E g (QFBV64.State.acc v s) v) => [[[E_v g_v] cs_v] lrs_v].
+    case=> _ <- _ _ _. exact: (mk_env_var_preserve Henv).
+Qed.
+
+Lemma mk_env_exp_preserve_const :
+  forall (w : nat) (b : BITS w) (m : vm) (s : QFBV64.State.t)
+         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvConst w b) = (m', E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  move=> w bs m s E g m' E' g' cs lrs /=. case=> _ <- _ _ _. exact: env_preserve_refl.
+Qed.
+
 Lemma mk_env_exp_preserve :
   forall w m s E g (e : QFBV64.exp w) m' E' g' cs lrs,
     mk_env_exp m s E g e = (m', E', g', cs, lrs) ->
     env_preserve E E' g.
 Proof.
-Admitted.
+  move=> w m s E g e. elim: e m s E g.
+  - exact: mk_env_exp_preserve_var.
+  - exact: mk_env_exp_preserve_const.
+Qed.
+
+Lemma mk_env_exp_sat_var :
+  forall (t : VarOrder.t) (m : vm) (s : QFBV64.State.t) (E : env)
+         (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : wordsize.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvVar t) = (m', E', g', cs, lrs) -> interp_cnf E' cs.
+Proof.
+  move=> v m s E g m' E' g' cs lrs /=. case Hfind: (VM.find v m).
+  - case=> _ <- _ <- _. done.
+  - case Henv: (mk_env_var E g (QFBV64.State.acc v s) v) => [[[E_v g_v] cs_v] lrs_v].
+    case=> _ <- _ <- _. exact: (mk_env_var_sat Henv).
+Qed.
+
+Lemma mk_env_exp_sat_const :
+  forall (w : nat) (b : BITS w) (m : vm) (s : QFBV64.State.t)
+         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvConst w b) = (m', E', g', cs, lrs) ->
+    interp_cnf E' cs.
+Proof.
+  move=> w bs m s E g m' E' g' cs lrs /=. case=> _ <- _ <- _. done.
+Qed.
 
 Lemma mk_env_exp_sat :
   forall w m s E g (e : QFBV64.exp w) m' E' g' cs lrs,
     mk_env_exp m s E g e = (m', E', g', cs, lrs) ->
     interp_cnf E' cs.
 Proof.
-Admitted.
+  move=> w m s E g e. elim: e m s E g.
+  - exact: mk_env_exp_sat_var.
+  - exact: mk_env_exp_sat_const.
+Qed.
 
 
 
@@ -3377,14 +3427,62 @@ Qed.
 
 (* ===== mk_state ===== *)
 
-Definition mk_state (E : env) (m : vm) : QFBV64.State.t.
+Fixpoint lits_as_bits w E : w.-tuple literal -> BITS w :=
+  if w is _.+1 then
+    fun ls =>
+      let (ls_tl, ls_hd) := eta_expand (splitlsb ls) in
+      joinlsb (lits_as_bits E ls_tl, interp_lit E ls_hd)
+  else
+    fun _ =>
+      nilB.
+
+Lemma enc_bits_lits_as_bits :
+  forall w E (ls : w.-tuple literal),
+    enc_bits E ls (lits_as_bits E ls).
 Proof.
-Admitted.
+  elim.
+  - done.
+  - move=> w IH E. case/tupleP=> [ls_hd ls_tl]. rewrite /= !theadE !beheadCons /=.
+    rewrite IH andbT. exact: eqxx.
+Qed.
+
+Definition init_state : QFBV64.State.t := fun _ => fromNat 0.
+
+Definition mk_state (E : env) (m : vm) : QFBV64.State.t :=
+  (VM.fold (fun v ls s => QFBV64.State.upd v (lits_as_bits E ls) s) m init_state).
+
+Lemma mk_state_find :
+  forall E m x ls,
+    VM.find x m = Some ls ->
+    QFBV64.State.acc x (mk_state E m) = lits_as_bits E ls.
+Proof.
+  move=> E m.
+  apply: (@VM.Lemmas.OP.P.fold_rec
+            (wordsize.-tuple literal) (QFBV64.State.t)
+            (fun m s =>
+               forall x ls,
+                 VM.find x m = Some ls ->
+                 QFBV64.State.acc x s = lits_as_bits E ls)
+            (fun v ls s => QFBV64.State.upd v (lits_as_bits E ls) s)
+            init_state
+            m).
+  - move=> m0 Hempty x ls Hfind. rewrite (VM.Lemmas.Empty_find _ Hempty) in Hfind.
+    discriminate.
+  - move=> x lsx s m' m'' Hmapsto_xm Hin_xm' Hadd IH. move=> y lsy Hfind_y.
+    case Hyx: (y == x).
+    + rewrite (QFBV64.State.acc_upd_eq _ _ Hyx). move: (Hadd y).
+      rewrite Hfind_y (VM.Lemmas.find_add_eq _ _ Hyx). case=> ->. reflexivity.
+    + move/idP/negP: Hyx => Hyx. rewrite (QFBV64.State.acc_upd_neq _ _ Hyx).
+      apply: IH. move: (Hadd y). rewrite Hfind_y. move/negP: Hyx => Hyx.
+      rewrite (VM.Lemmas.find_add_neq _ _ Hyx). by move=> ->; reflexivity.
+Qed.
 
 Lemma mk_state_consistent :
   forall E m, consistent m E (mk_state E m).
 Proof.
-Admitted.
+  move=> E m x. rewrite /consistent1. case Hfind: (VM.find x m); last by trivial.
+  rewrite (mk_state_find _ Hfind). exact: enc_bits_lits_as_bits.
+Qed.
 
 
 
