@@ -1326,8 +1326,27 @@ Qed.
 
 (* ===== bit_blast_ult ===== *)
 
-Parameter bit_blast_ult : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
+(*Parameter bit_blast_ult : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.*)
 
+Definition bit_blast_ult w (g: generator) (ls1 ls2: w.-tuple literal): generator * cnf * literal :=
+  let (g', r) := gen g in
+  let (g'', wahr) := gen g' in
+  let cs1 := [[wahr]] in
+  let '(g_not, cs2, r_nls2) := bit_blast_not g ls2 in
+  let '(g_fa, cs3, cout, r_fa) := bit_blast_full_adder g_not wahr ls1 r_nls2 in
+  let cs4 := [[r; cout]; [neg_lit r; neg_lit cout]] in
+  (g_fa, cs1++cs2++cs3++cs4, r).
+  
+Lemma adcB_ltB_leB :
+  forall n (ibs1 ibs2: BITS n),
+    if ~~(adcB true ibs1 (invB ibs2)).1 then ltB ibs1 ibs2 else leB ibs2 ibs1.
+Proof.
+  move => n ibs1 ibs2.
+  replace (~~ (adcB true ibs1 (invB ibs2)).1) with
+      (sbbB false ibs1 ibs2).1 by done.
+  apply sbbB_ltB_leB.
+Qed.
+    
 Lemma bit_blast_ult_correct :
   forall w g (bs1 bs2 : BITS w) E g' ls1 ls2 cs lr,
     bit_blast_ult g ls1 ls2 = (g', cs, lr) ->
@@ -1336,13 +1355,101 @@ Lemma bit_blast_ult_correct :
     interp_cnf E (add_prelude cs) ->
     interp_literal E lr = (ltB bs1 bs2).
 Proof.
-Admitted.
+  move => w ig ibs1 ibs2 E og ils1 ils2 cs olr.
+  rewrite /bit_blast_ult.
+  case Hnot : (bit_blast_not ig ils2) => [[g_not cs_not] r_not].
+  case Hg1 : (gen ig) => [g' r].
+  case Hg2 : (gen g') => [g'' wahr].
+  case Hfadd : (bit_blast_full_adder g_not wahr ils1 r_not) =>
+  [[[g_fadd cs_fadd] c_out] r_fadd].
+  case => _ <- <-. 
+  rewrite add_prelude_cons add_prelude_append add_prelude_singleton.
+  rewrite add_prelude_append add_prelude_cons.
+  Local Opaque interp_cnf.
+  repeat rewrite add_prelude_singleton. 
+  (*repeat rewrite interp_clause_cons. orbF ;simpl. *)
+  rewrite interp_clause_cons orbF.
+  repeat rewrite interp_clause_cons; repeat rewrite orbF. 
+  repeat rewrite interp_literal_neg_lit.
+  move => Henc_ls1 Henc_ls2 Hcnf.
+  split_andb.
+  move : (bit_blast_not_correct Hnot Henc_ls2 H0) => Henc_not. 
+  case Hwahr : (interp_literal E wahr);
+  move/eqP : H6 => Hwahrt; [|rewrite Hwahr in Hwahrt; discriminate].
+  -
+    assert (enc_bit E wahr true) by (rewrite /enc_bit Hwahr; done).
+    assert ((adcB true ibs1 (invB ibs2)) = (~~ ltB ibs1 ibs2, (snd (adcB true ibs1 (invB ibs2))))).
+    move : (adcB_ltB_leB ibs1 ibs2).
+    case Hadcb : (adcB true ibs1 (invB ibs2)).1. 
+    + simpl.
+      move => Hltb.
+      apply injective_projections. simpl.
+      rewrite Hadcb  -leBNlt Hltb; reflexivity.
+      reflexivity.
+    + simpl.
+      move => Hltb.
+      apply injective_projections; try reflexivity; simpl.
+      rewrite Hadcb Hltb; reflexivity.
+    move : (bit_blast_full_adder_correct Hfadd Henc_ls1 Henc_not H6 H1 H7) => Hfa.
+    move/andP : Hfa. move => Henc. split_andb.
+    rewrite /enc_bit in H9.
+    move/eqP :H9 => H9.
+    apply Bool.negb_sym in H9.
+    rewrite H9.
+    case Hr :( interp_literal E r).
+    +  rewrite Hr /= in H4; symmetry; apply H4.
+    + rewrite Hr /= in H5;  apply Bool.negb_sym; simpl; apply H5.
+Qed.
 
+(* ===== bit_blast_disj ===== *)
+Definition bit_blast_disj g (l1 l2: literal) : generator * cnf * literal :=
+  let (g', r) := gen g in
+  let cs := [[neg_lit r; l1; l2]; [r; neg_lit l1]; [r; neg_lit l2]]
+  in (g', cs, r).
 
-
+Lemma bit_blast_disj_correct :
+  forall g b1 b2 E g' l1 l2 cs lr,
+    bit_blast_disj g l1 l2 = (g', cs, lr) ->
+    enc_bit E l1 b1 ->
+    enc_bit E l2 b2 ->
+    interp_cnf E (add_prelude cs) ->
+    interp_literal E lr = (orb b1 b2).
+Proof.
+  move => g ib1 ib2 E g' il1 il2 cs olr.
+  rewrite /bit_blast_disj.
+  case.
+  set r := Pos g.
+  move => Hg <- <-.
+  rewrite add_prelude_cons !add_prelude_singleton /=. 
+  rewrite 2!add_prelude_cons !add_prelude_singleton /=. 
+  rewrite !interp_literal_neg_lit.
+  move => Henc1 Henc2 Hcnf.
+  split_andb.
+  case Heg: (E g).
+  - rewrite Heg in H5; simpl in H5.
+    case Hl1 : (interp_literal E il1).
+    + rewrite /enc_bit in Henc1; rewrite Hl1 in Henc1.
+      move/eqP : Henc1 => Henc1; rewrite -Henc1; symmetry; apply orTb.
+    + rewrite Hl1 in H5; rewrite orFb in H5.
+      rewrite /enc_bit in Henc2; rewrite H5 in Henc2.
+      move/eqP : Henc2 => Henc2; rewrite -Henc2; symmetry; apply orbT.
+  - rewrite Heg in H2, H4; simpl in H2, H4.
+    move/eqP : H4 => Hl1; move/eqP : Hl1 => Hl1; symmetry in Hl1; apply Bool.negb_sym in Hl1.
+    move/eqP : H2 => Hl2; move/eqP : Hl2 => Hl2; symmetry in Hl2; apply Bool.negb_sym in Hl2.
+    rewrite /enc_bit in Henc1, Henc2; rewrite Hl1 in Henc1; rewrite Hl2 in Henc2.
+    move/eqP : Henc1 => Henc1; rewrite -Henc1; symmetry; rewrite orFb.
+    move/eqP : Henc2 => Henc2; done.
+Qed.
+      
 (* ===== bit_blast_ule ===== *)
 
-Parameter bit_blast_ule : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
+(*Parameter bit_blast_ule : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_ule (w: nat) g (ls1 ls2: w.-tuple literal) : generator * cnf * literal :=
+  let '(g_eq, cs_eq, r_eq) := bit_blast_eq g ls1 ls2 in
+  let '(g_ult, cs_ult, r_ult) := bit_blast_ult g ls1 ls2 in
+  let '(g_disj, cs_disj, r_disj) := bit_blast_disj g_ult r_eq r_ult in
+  (g_disj, cs_eq++cs_ult++cs_disj, r_disj).
 
 Lemma bit_blast_ule_correct :
   forall w g (bs1 bs2 : BITS w) E g' ls1 ls2 cs lr,
@@ -1352,14 +1459,33 @@ Lemma bit_blast_ule_correct :
     interp_cnf E (add_prelude cs) ->
     interp_literal E lr = (leB bs1 bs2).
 Proof.
-Admitted.
-
-
+  move => w g ibs1 ibs2 E g' ils1 ils2 cs olr.
+  rewrite /bit_blast_ule.
+  case Heq : (bit_blast_eq g ils1 ils2) => [[g_eq cs_eq] r_eq].
+  case Hult : (bit_blast_ult g ils1 ils2) => [[g_ult cs_ult] r_ult].
+  case Hdisj : (bit_blast_disj g_ult r_eq r_ult) => [[g_disj cs_disj] r_disj].
+  case => _ <- <- Henc1 Henc2.
+  rewrite 2!add_prelude_append.
+  move => Hcnf.
+  move/andP : Hcnf => [Hcnf_eq Hcnf].
+  move/andP : Hcnf => [Hcnf_ult Hcnf_disj].
+  move : (bit_blast_eq_correct Heq Henc1 Henc2 Hcnf_eq) => Hreq.
+  move : (bit_blast_ult_correct Hult Henc1 Henc2 Hcnf_ult) => Hrult.
+  move/eqP : Hreq => Hreq.
+  assert (enc_bit E r_eq (ibs1 == ibs2)) by (rewrite /enc_bit; done).
+  assert (enc_bit E r_ult (ltB ibs1 ibs2)) by (rewrite /enc_bit Hrult; done).
+  move : (bit_blast_disj_correct Hdisj H H0 Hcnf_disj) => Hrdisj.
+  rewrite Hrdisj.
+  rewrite /leB. apply Bool.orb_comm.
+Qed.
 
 (* ===== bit_blast_ugt ===== *)
 
-Parameter bit_blast_ugt : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
-
+(*Parameter bit_blast_ugt : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_ugt w (g: generator) (ls1 ls2: w.-tuple literal) :generator * cnf * literal :=
+  bit_blast_ult g ls2 ls1.
+  
 Lemma bit_blast_ugt_correct :
   forall w g (bs1 bs2 : BITS w) E g' ls1 ls2 cs lr,
     bit_blast_ugt g ls1 ls2 = (g', cs, lr) ->
@@ -1368,14 +1494,20 @@ Lemma bit_blast_ugt_correct :
     interp_cnf E (add_prelude cs) ->
     interp_literal E lr = (ltB bs2 bs1).
 Proof.
-Admitted.
-
-
+  move => w g ibs1 ibs2 E g' ils1 ils2 cs olr.
+  rewrite /bit_blast_ugt.
+  move => Hult Henc1 Henc2 Hcnf.
+  move : (bit_blast_ult_correct Hult Henc2 Henc1 Hcnf) => Hrult.
+  symmetry; done.
+Qed.
 
 (* ===== bit_blast_uge ===== *)
 
-Parameter bit_blast_uge : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
-
+(*Parameter bit_blast_uge : forall w : nat, generator -> w.-tuple literal -> w.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_uge w (g: generator) (ls1 ls2: w.-tuple literal) :generator * cnf * literal :=
+  bit_blast_ule g ls2 ls1.
+  
 Lemma bit_blast_uge_correct :
   forall w g (bs1 bs2 : BITS w) E g' ls1 ls2 cs lr,
     bit_blast_uge g ls1 ls2 = (g', cs, lr) ->
@@ -1384,14 +1516,35 @@ Lemma bit_blast_uge_correct :
     interp_cnf E (add_prelude cs) ->
     interp_literal E lr = (leB bs2 bs1).
 Proof.
-Admitted.
-
-
+  move => w g ibs1 ibs2 E g' ils1 ils2 cs olr.
+  rewrite /bit_blast_uge.
+  move => Hule Henc1 Henc2 Hcnf.
+  move : (bit_blast_ule_correct Hule Henc2 Henc1 Hcnf) => Hrule.
+  done.
+Qed.
 
 (* ===== bit_blast_slt ===== *)
 
-Parameter bit_blast_slt : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
-
+(*Parameter bit_blast_slt : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_slt w g (ls1 ls2 : w.+1.-tuple literal) : generator * cnf * literal :=
+  let (g', r) := gen g in
+  let (g'', wahr) := gen g' in
+  let cs1 := [[wahr]] in
+  let (sign1, uls1) := eta_expand (splitmsb ls1) in
+  let (sign2, uls2) := eta_expand (splitmsb ls2) in
+  let '(g_not, cs_not, r_not) := bit_blast_not g ls2 in
+  let '(g_fadd, cs_fadd, cout, r_fadd) := bit_blast_full_adder g_not wahr ls1 r_not in
+  let cs4 := [[neg_lit r; cout; neg_lit sign1; sign2];
+                [neg_lit r; cout; sign1; neg_lit sign2];
+                [neg_lit r; neg_lit cout; sign1; sign2];
+                [neg_lit r; neg_lit cout; neg_lit sign1; neg_lit sign2];
+                [r; cout; sign1; sign2];
+                [r; cout; neg_lit sign1; neg_lit sign2];
+                [r; neg_lit cout; neg_lit sign1; sign2];
+                [r; neg_lit cout; sign1; neg_lit sign2]] in
+  (g_fadd, cs1++cs_not++cs_fadd++cs4, r).
+  
 Lemma bit_blast_slt_correct :
   forall w g (bs1 bs2 : BITS (w.+1)) E g' ls1 ls2 cs lr,
     bit_blast_slt g ls1 ls2 = (g', cs, lr) ->
@@ -1400,6 +1553,41 @@ Lemma bit_blast_slt_correct :
     interp_cnf E (add_prelude cs) ->
     interp_literal E lr <-> (toZ bs1 < toZ bs2)%Z.
 Proof.
+  move => w ig ibs1 ibs2 E g' ils1 ils2 cs olr.
+  rewrite /bit_blast_slt.
+  case Hnot : (bit_blast_not ig ils2) => [[g_not cs_not] r_not].
+  case Hg1 : (gen ig) => [ig' r].
+  case Hg2 : (gen ig') => [ig'' wahr].
+  case Hfadd : (bit_blast_full_adder g_not wahr ils1 r_not) =>
+  [[[g_fadd cs_fadd] c_out] r_fadd].
+  case => _ <- <-.
+  move => Henc1 Henc2.
+  rewrite 2!interp_cnf_cons 2!interp_cnf_append.
+  rewrite !interp_cnf_cons /=.
+  rewrite !interp_literal_neg_lit /=.
+  move => Hcnf.
+  move/andP : Hcnf => [Htt Hcnf].
+  move/andP : Hcnf => [Hwahr Hcnf].
+  move/andP : Hcnf => [Hcnf_not Hcnf].
+  move/andP : Hcnf => [Hcnf_fadd Hcnf].
+  move/andP : Hcnf => [Hcnf1 Hcnf]; move/andP : Hcnf => [Hcnf2 Hcnf]; move/andP : Hcnf => [Hcnf3 Hcnf]; move/andP : Hcnf => [Hcnf4 Hcnf]; move/andP : Hcnf => [Hcnf5 Hcnf]; move/andP : Hcnf => [Hcnf6 Hcnf]; move/andP : Hcnf => [Hcnf7 Hcnf]; move/andP : Hcnf => [Hcnf8 _].
+  assert (interp_literal E lit_tt) by done.
+  assert (interp_literal E lit_tt && interp_cnf E cs_not) by (rewrite H Hcnf_not; done).
+  rewrite -add_prelude_expand in H0.
+  move : (bit_blast_not_correct Hnot Henc2 H0) => Hrnot.
+  case Hcin : (interp_literal E wahr); [| rewrite Hcin in Hwahr; discriminate].
+  assert (adcB true ibs1 (invB ibs2) = eta_expand (adcB true ibs1 (invB ibs2)))
+    by apply surjective_pairing.
+  assert (enc_bit E wahr true) by (rewrite /enc_bit Hcin; done).
+  assert (interp_literal E lit_tt && interp_cnf E cs_fadd) by (rewrite H Hcnf_fadd; done).
+  rewrite -add_prelude_expand in H3.
+  move : (bit_blast_full_adder_correct Hfadd Henc1 Hrnot H2 H3 H1) => Henc_add.
+  move/andP : Henc_add => Henc_add.
+  move/andP : Henc_add => [Henc_radd Henc_cout].
+  case Hr : (interp_literal E r).
+  split.
+  
+  
 Admitted.
 
 
