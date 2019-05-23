@@ -139,6 +139,26 @@ Qed.
 
 
 
+(* interp_lits *)
+
+Lemma interp_lits_cons :
+  forall w E l (ls : w.-tuple literal),
+    interp_lits E (cons_tuple l ls) = cons_tuple (interp_lit E l) (interp_lits E ls).
+Proof.
+  move=> w E l ls. rewrite /interp_lits. rewrite mapCons. reflexivity.
+Qed.
+
+Lemma interp_lits_split :
+  forall w E (ls : (w.+1).-tuple literal),
+    interp_lits E ls = cons_tuple (interp_lit E (thead ls))
+                                  (interp_lits E (behead_tuple ls)).
+Proof.
+  move=> w E. case/tupleP=> [ls_hd ls_tl] /=. rewrite theadE beheadCons.
+  exact: interp_lits_cons.
+Qed.
+
+
+
 (* interp_clause *)
 
 Lemma interp_clause_cons :
@@ -670,6 +690,12 @@ Proof.
 Qed.
 
 Lemma newer_than_var_add_diag_r :
+  forall x y, newer_than_var (x + y) x.
+Proof.
+  rewrite /newer_than_var=> x y. exact: pos_ltb_add_diag_r.
+Qed.
+
+Lemma newer_than_var_add_r :
   forall x y z, newer_than_var x y -> newer_than_var (x + z) y.
 Proof.
   rewrite /newer_than_var=> x y z Hnew. apply/pos_ltP.
@@ -698,10 +724,23 @@ Proof.
   move=> g l Hg. apply: newer_than_var_neq. exact: Hg.
 Qed.
 
+Lemma newer_than_lit_neg :
+  forall g l,
+    newer_than_lit g (neg_lit l) = newer_than_lit g l.
+Proof.
+  move=> g l. case: l => l; reflexivity.
+Qed.
+
 Lemma newer_than_lit_add_diag_r :
+  forall x y, newer_than_lit (var_of_lit x + y) x.
+Proof.
+  rewrite /newer_than_lit /newer_than_var=> x y. exact: pos_ltb_add_diag_r.
+Qed.
+
+Lemma newer_than_lit_add_r :
   forall x y z, newer_than_lit x y -> newer_than_lit (x + z) y.
 Proof.
-  rewrite /newer_than_lit=> x y z Hnew. exact: newer_than_var_add_diag_r.
+  rewrite /newer_than_lit=> x y z Hnew. exact: newer_than_var_add_r.
 Qed.
 
 Lemma newer_than_lit_le_newer :
@@ -758,14 +797,14 @@ Proof.
     + move=> Hmem. exact: (IH _ Hmem Hnew_tl).
 Qed.
 
-Lemma newer_than_lits_add_diag_r :
+Lemma newer_than_lits_add_r :
   forall x ls y, newer_than_lits x ls -> newer_than_lits (x + y) ls.
 Proof.
   move=> x ls. elim: ls x.
   - done.
   - move=> ls_hd ls_tl IH x y. rewrite 2!newer_than_lits_cons.
     move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
-    exact: newer_than_lit_add_diag_r.
+    exact: newer_than_lit_add_r.
 Qed.
 
 Lemma newer_than_lits_le_newer :
@@ -817,14 +856,14 @@ Proof.
   - move=> c cs1 IH cs2. rewrite /=. rewrite (IH cs2). rewrite andbA. reflexivity.
 Qed.
 
-Lemma newer_than_cnf_add_diag_r :
+Lemma newer_than_cnf_add_r :
   forall x cs y, newer_than_cnf x cs -> newer_than_cnf (x + y) cs.
 Proof.
   move=> x cs. elim: cs x.
   - done.
   - move=> cs_hd cs_tl IH x y. rewrite 2!newer_than_cnf_cons.
     move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
-    exact: newer_than_lits_add_diag_r.
+    exact: newer_than_lits_add_r.
 Qed.
 
 Lemma newer_than_cnf_le_newer :
@@ -909,7 +948,7 @@ Proof.
   move=> E1 E2 E3 g H12 H23 l Hnew. rewrite (H23 _ Hnew) (H12 _ Hnew). reflexivity.
 Qed.
 
-Lemma env_preserve_literal :
+Lemma env_preserve_lit :
   forall E E' g l,
     env_preserve E E' g ->
     newer_than_lit g l ->
@@ -918,6 +957,20 @@ Proof.
   move=> E E' g l Hpre Hnew. rewrite /interp_lit. case: l Hnew.
   - move=> v Hnew. exact: (Hpre _ Hnew).
   - move=> v Hnew. rewrite (Hpre _ Hnew) /=. reflexivity.
+Qed.
+
+Lemma env_preserve_lits :
+  forall w E E' g (ls : w.-tuple literal),
+    env_preserve E E' g ->
+    newer_than_lits g ls ->
+    interp_lits E' ls = interp_lits E ls.
+Proof.
+  elim.
+  - move=> E E' g ls Hpre Hnew. rewrite tuple0. symmetry. rewrite tuple0. reflexivity.
+  - move=> w IH E E' g. case/tupleP=> [ls_hd ls_tl]. move=> Hpre /=.
+    move/andP=> [Hnew_hd Hnew_tl]. rewrite 2!interp_lits_cons.
+    rewrite (IH _ _ _ _ Hpre Hnew_tl). rewrite (env_preserve_lit Hpre Hnew_hd).
+    reflexivity.
 Qed.
 
 Lemma env_preserve_clause :
@@ -930,7 +983,7 @@ Proof.
   - done.
   - move=> l c IH Hpre Hnew. rewrite 2!interp_clause_cons.
     rewrite newer_than_lits_cons in Hnew. move/andP: Hnew => [Hnew_l Hnew_c].
-    rewrite (env_preserve_literal Hpre Hnew_l) (IH Hpre Hnew_c).
+    rewrite (env_preserve_lit Hpre Hnew_l) (IH Hpre Hnew_c).
     reflexivity.
 Qed.
 
@@ -970,7 +1023,7 @@ Lemma env_preserve_env_upd_succ :
   forall E E' x v,
     env_preserve (env_upd E x v) E' (x + 1) -> env_preserve E E' x.
 Proof.
-  move=> E E' x v H y Hnew. move: (H y (newer_than_var_add_diag_r 1 Hnew)).
+  move=> E E' x v H y Hnew. move: (H y (newer_than_var_add_r 1 Hnew)).
   move=> ->. rewrite env_upd_neq; first by reflexivity.
   exact: newer_than_var_neq.
 Qed.
@@ -983,7 +1036,7 @@ Lemma env_preserve_enc_bit :
     enc_bit E' l b.
 Proof.
   move=> E E' g b l Hpre Hnew. rewrite /enc_bit. move=> Henc.
-  rewrite (env_preserve_literal Hpre Hnew). exact: Henc.
+  rewrite (env_preserve_lit Hpre Hnew). exact: Henc.
 Qed.
 
 Lemma env_preserve_enc_bits :
