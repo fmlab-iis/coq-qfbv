@@ -1830,6 +1830,157 @@ Definition bit_blast_slt w g (ls1 ls2 : w.+1.-tuple literal) : generator * cnf *
                 [r; neg_lit cout; sign1; neg_lit sign2]] in
   (g_fadd, cs1++cs_not++cs_fadd++cs4, r).
   
+Lemma toNegZCons n b  (p:BITS n) : toNegZ (consB b p) = if b then Zdouble (toNegZ p) else Zsucc (Zdouble (toNegZ p)).
+Proof. done. Qed.
+
+Lemma toPosZCons n b  (p:BITS n) : toPosZ (consB b p) = if b then Zsucc (Zdouble (toPosZ p)) else Zdouble (toPosZ p).
+Proof. done. Qed.
+
+Lemma splitmsb_ones :
+  forall n, splitmsb (ones n.+1) = (true, ones n).
+Proof.
+  move => n.
+  apply injective_projections.
+  rewrite  splitmsb_msb msb_ones /=; reflexivity.
+  simpl.
+  induction n.
+  rewrite /ones /copy /= nseqCons beheadCons; reflexivity.
+  rewrite /ones /copy nseqCons tupleE/= beheadCons.
+  replace (splitmsb (nseq_tuple n.+1 true)) with (eta_expand (splitmsb (nseq_tuple n.+1 true))).
+  rewrite IHn /= theadE /= /joinlsb /=.
+  rewrite /ones /copy /= nseqCons tupleE; reflexivity.
+    by (symmetry; apply injective_projections).
+Qed.
+
+Lemma joinmsb_ones :
+  forall n, joinmsb (true, ones n) =  ones n.+1. 
+Proof.
+  move => n.
+  induction n.
+  simpl. replace (joinlsb (nilB, true)) with (singleBit true) by done.
+  rewrite /ones /copy nseqCons tuple0 tupleE; done.
+  rewrite /ones /copy /= nseqCons beheadCons theadE.
+  rewrite IHn.
+  rewrite /joinlsb /= nseqCons tupleE; done.
+Qed.
+  
+Lemma dropmsb_ones :
+  forall n , dropmsb (ones n.+1) = (ones n).
+Proof.
+  move => n.
+  rewrite /dropmsb.
+  rewrite splitmsb_ones /=; done.
+Qed.  
+  
+Lemma toZ_zero: forall n, toZ (zero n.+1) = 0%Z.
+Proof.
+  move => n.
+  induction n.
+  - rewrite /toZ /= /toPosZ /=; done.
+  - rewrite -fromNat0 in IHn. rewrite -fromNat0.
+    rewrite /toZ splitmsb_fromNat /= div.div0n /=.
+    rewrite /toZ splitmsb_fromNat /= div.div0n /= in IHn.
+    replace (# (0)) with (consB false (@fromNat n 0)) by done.
+    rewrite toPosZCons. rewrite IHn /=.
+    done.
+Qed.
+
+Lemma toZ_ones : forall n, toZ (ones n.+1) = (-1)%Z.
+Proof.
+  move => n.
+  induction n.
+  - rewrite /toZ.
+    replace (splitmsb (ones 1)) with (true, (splitmsb (ones 1)).2) by
+        (apply injective_projections; [rewrite splitmsb_msb; reflexivity|simpl; reflexivity]).
+    simpl; reflexivity.
+  - rewrite /toZ.
+    rewrite splitmsb_ones.
+    rewrite Z.opp_succ -Z.sub_1_r.
+    symmetry; apply Zplus_minus_eq; simpl.
+    rewrite /ones /copy nseqCons toNegZCons.
+    rewrite /toZ splitmsb_ones Z.opp_succ -Z.sub_1_r in IHn.
+    rewrite -Z.add_opp_r -Z.opp_add_distr in IHn.
+    apply Z.opp_inj_wd in IHn. rewrite Z.opp_involutive /= in IHn.
+    apply Z.add_move_r in IHn; simpl in IHn.
+    rewrite IHn.
+    done.
+Qed.
+
+Lemma toZ_fromZ n m : @toZ n (@fromZ n.+1 m) = Zmod m (Z.of_nat (2^(n))).
+Proof.
+Admitted.
+    
+Lemma fromZK n : cancel (@fromZ n.+1) (@toZ n).
+Proof.
+Admitted.
+
+
+Lemma toZ_inj n : injective (@toZ n).
+Proof.
+Admitted.
+
+Lemma ltB_toZ_Neg :
+  forall n (p1 p2 :BITS n.+1),
+    ~~((splitmsb p1).1 || (splitmsb p2).1) -> ltB p1 p2 = Z.ltb (toZ p1) (toZ p2)%Z.
+Proof.
+  move => n.
+  induction n. simpl.
+  -case/tupleP=> [p1_hd p1_tl].
+   case/tupleP=> [p2_hd p2_tl].
+   rewrite !tuple0 /= !theadE !beheadCons /=. assert (p2_tl = [tuple]) by (rewrite tuple0; reflexivity).
+   rewrite H.
+   move => Hmsb. 
+   move/eqP/eqP: Hmsb => Hmsb; apply  Bool.negb_true_iff in Hmsb.  
+   case H1 : p1_hd; rewrite H1 in Hmsb; try discriminate.
+   case H2 : p2_hd; rewrite H2 in Hmsb; try discriminate.
+   simpl. 
+   rewrite /toZ /= !beheadCons /=. rewrite /toPosZ /=. ring.
+  -
+    case/tupleP=> [p1_hd p1_tl].
+    case/tupleP=> [p2_hd p2_tl].
+    move => Hmsb.
+    (*
+    case Hh1: ((splitmsb [tuple of p1_hd :: p1_tl]).1);
+    rewrite Hh1 /= in Hmsb; try discriminate.
+    move/eqP/eqP: Hmsb => Hmsb; apply  Bool.negb_true_iff in Hmsb.
+    rewrite !beheadCons !theadE in Hmsb.*)
+    rewrite /toZ .
+    case Hh1: ((splitmsb [tuple of p1_hd :: p1_tl]).1).
+    rewrite Hh1 in Hmsb; try discriminate.
+    case Hh2: ((splitmsb [tuple of p2_hd :: p2_tl]).1).
+    rewrite Hh2 Hh1 in Hmsb; try discriminate.
+    replace (splitmsb [tuple of p1_hd :: p1_tl]) with (false, (splitmsb [tuple of p1_hd :: p1_tl]).2) by (rewrite -Hh1; symmetry; apply surjective_pairing).
+    replace (splitmsb [tuple of p2_hd :: p2_tl]) with (false, (splitmsb [tuple of p2_hd :: p2_tl]).2) by (rewrite -Hh2; symmetry; apply surjective_pairing).
+    rewrite /= !theadE !beheadCons /=.
+    case H12: (ltB (behead_tuple p1_tl) (behead_tuple p2_tl)).
+    rewrite /=. 
+    rewrite /joinlsb /=. move : (IHn p1_tl p2_tl) => Htl.
+    
+    
+  induction n.
+  case/tupleP=> [p1_hd p1_tl].
+  case/tupleP=> [p2_hd p2_tl].
+  Local Transparent ltB. rewrite /ltB /=.
+  rewrite !beheadCons !theadE /=.
+  rewrite (tuple0 p1_tl) (tuple0 p2_tl) /=.
+  move => Hhd.
+  case Hp1h: p1_hd; rewrite Hp1h /= in Hhd; try discriminate.
+  move/eqP/eqP: Hhd => Hhd; apply Bool.negb_true_iff in Hhd.
+  rewrite !Hhd !tupleE /toZ /= !beheadCons. 
+  ring.
+  
+  case/tupleP=> [p1_hd p1_tl].
+  case/tupleP=> [p2_hd p2_tl].
+  erewrite !splitmsb_msb. 
+  rewrite /msb /= /toZ -!msbNonNil /= -!splitmsb_msb !beheadCons !theadE /=.
+  move => Hmsb.
+  case Hhd1: (splitmsb p1_tl).1; rewrite Hhd1 /= in Hmsb; try discriminate. 
+  move/eqP/eqP: Hmsb => Hmsb; apply  Bool.negb_true_iff in Hmsb.
+  replace (splitmsb p1_tl) with ((splitmsb p1_tl).1, (splitmsb p1_tl).2) by (symmetry; apply surjective_pairing).
+  replace (splitmsb p2_tl) with ((splitmsb p2_tl).1, (splitmsb p2_tl).2) by (symmetry; apply surjective_pairing).
+  rewrite Hhd1 Hmsb /=.
+  rewrite /toPosZ /=.
+
 Lemma bit_blast_slt_correct :
   forall w g (bs1 bs2 : BITS (w.+1)) E g' ls1 ls2 cs lr,
     bit_blast_slt g ls1 ls2 = (g', cs, lr) ->
@@ -1856,23 +2007,57 @@ Proof.
   move/andP : Hcnf => [Hcnf_not Hcnf].
   move/andP : Hcnf => [Hcnf_fadd Hcnf].
   move/andP : Hcnf => [Hcnf1 Hcnf]; move/andP : Hcnf => [Hcnf2 Hcnf]; move/andP : Hcnf => [Hcnf3 Hcnf]; move/andP : Hcnf => [Hcnf4 Hcnf]; move/andP : Hcnf => [Hcnf5 Hcnf]; move/andP : Hcnf => [Hcnf6 Hcnf]; move/andP : Hcnf => [Hcnf7 Hcnf]; move/andP : Hcnf => [Hcnf8 _].
-  assert (interp_literal E lit_tt) by done.
-  assert (interp_literal E lit_tt && interp_cnf E cs_not) by (rewrite H Hcnf_not; done).
-  rewrite -add_prelude_expand in H0.
-  move : (bit_blast_not_correct Hnot Henc2 H0) => Hrnot.
+  assert (interp_literal E lit_tt) as Hintt by done.
+  assert (interp_literal E lit_tt && interp_cnf E cs_not) as Hcnf_addnot by (rewrite Hintt Hcnf_not; done).
+  rewrite -add_prelude_expand in Hcnf_addnot.
+  move : (bit_blast_not_correct Hnot Henc2 Hcnf_addnot) => Hrnot.
   case Hcin : (interp_literal E wahr); [| rewrite Hcin in Hwahr; discriminate].
-  assert (adcB true ibs1 (invB ibs2) = eta_expand (adcB true ibs1 (invB ibs2)))
+  assert (adcB true ibs1 (invB ibs2) = eta_expand (adcB true ibs1 (invB ibs2))) as Hadcb
     by apply surjective_pairing.
-  assert (enc_bit E wahr true) by (rewrite /enc_bit Hcin; done).
-  assert (interp_literal E lit_tt && interp_cnf E cs_fadd) by (rewrite H Hcnf_fadd; done).
-  rewrite -add_prelude_expand in H3.
-  move : (bit_blast_full_adder_correct Hfadd Henc1 Hrnot H2 H3 H1) => Henc_add.
+  assert (enc_bit E wahr true) as Henc_cin by (rewrite /enc_bit Hcin; done).
+  assert (interp_literal E lit_tt && interp_cnf E cs_fadd) as Hcnf_addadd by (rewrite Hintt Hcnf_fadd; done).
+  rewrite -add_prelude_expand in Hcnf_addadd.
+  move : (bit_blast_full_adder_correct Hfadd Henc1 Hrnot Henc_cin Hcnf_addadd Hadcb) => Henc_add.
   move/andP : Henc_add => Henc_add.
   move/andP : Henc_add => [Henc_radd Henc_cout].
   case Hr : (interp_literal E r).
-  split.
-  
-  
+  (*assert (sbbB false ibs1 ibs2 = ((~~(adcB true ibs1 (invB ibs2)).1, subB ibs1 ibs2))) as Hsbbb by done.*)
+  assert ((sbbB false ibs1 ibs2).1 = ~~(adcB true ibs1 (invB ibs2)).1) as Hsbbb1 by done.
+  - split; try done.
+    move => _.
+    rewrite Hr /= in Hcnf1 Hcnf2 Hcnf3 Hcnf4 Hcnf5 Hcnf6 Hcnf7 Hcnf8.
+    rewrite /enc_bit in Henc_cout. move/eqP :Henc_cout=> Henc_cout.
+    rewrite enc_bits_splitmsb in Henc1; rewrite enc_bits_splitmsb in Henc2.
+    move/andP: Henc1 => [Henc1msb Henc1]; move/andP: Henc2 => [Henc2msb Henc2].
+    rewrite /enc_bit in Henc1msb Henc2msb; move/eqP : Henc1msb => Henc1msb; move/eqP : Henc2msb => Henc2msb.
+    rewrite Henc1msb Henc2msb in Hcnf1 Hcnf2 Hcnf3 Hcnf4.
+    case Hs1 :((splitmsb ibs1).1).
+    + rewrite Hs1 /= in Hcnf1 Hcnf2 Hcnf3 Hcnf4. 
+      case Hs2:((splitmsb ibs2).1).
+      rewrite Hs2 /= in Hcnf1 Hcnf4.
+      rewrite orbF in Hcnf4.
+      rewrite Henc_cout /= in Hcnf4.
+      move/eqP/eqP: Hcnf4 => Hcnf4.
+      apply Bool.negb_true_iff in Hcnf4.
+      rewrite Hcnf4 in Hsbbb1.
+      move : (sbbB_ltB_leB ibs1 ibs2).
+      Local Opaque ltB leB.
+      rewrite Hsbbb1 /=.
+      move => Hltb.
+      Eval compute in (@toNegZ 4 (#2)).
+      rewrite -ltB_joinmsb0 in Hltb.
+      
+      
+
+      rewrite /toZ.
+      replace (splitmsb ibs1) with ((splitmsb ibs1).1, (splitmsb ibs1).2) by (symmetry; apply surjective_pairing).
+      replace (splitmsb ibs2) with ((splitmsb ibs2).1, (splitmsb ibs2).2) by (symmetry; apply surjective_pairing).
+      rewrite Hs1 Hs2 /=. rewrite 2!Z.opp_succ. apply -> Z.pred_lt_mono.
+      apply -> Z.opp_lt_mono.
+
+
+
+
 Admitted.
 
 
