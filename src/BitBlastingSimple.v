@@ -153,6 +153,67 @@ Qed.
 
 
 
+(* ===== Tactics ===== *)
+
+Ltac dcase t := move: (refl_equal t); generalize t at -1.
+
+Ltac auto_dcase_hyps :=
+  match goal with
+  | H : context f [let '_ := ?r in _] |- _ =>
+    move: H;
+    let H1 := fresh in
+    let H2 := fresh in
+    lazymatch type of r with
+    | prod (prod (prod vm generator) cnf) literal =>
+      let m := fresh "m" in
+      let g := fresh "g" in
+      let cs := fresh "cs" in
+      let l := fresh "l" in
+      dcase r; move=> [[[m g] cs] l] H1 H2; auto_dcase_hyps
+    | prod (prod (prod vm generator) cnf) (_.-tuple literal) =>
+      let m := fresh "m" in
+      let g := fresh "g" in
+      let cs := fresh "cs" in
+      let ls := fresh "ls" in
+      dcase r; move=> [[[m g] cs] ls] H1 H2; auto_dcase_hyps
+    | prod (prod generator cnf) literal =>
+      let g := fresh "g" in
+      let cs := fresh "cs" in
+      let l := fresh "l" in
+      dcase r; move=> [[g cs] l] H1 H2; auto_dcase_hyps
+    | prod (prod generator cnf) (_.-tuple literal) =>
+      let g := fresh "g" in
+      let cs := fresh "cs" in
+      let ls := fresh "ls" in
+      dcase r; move=> [[g cs] ls] H1 H2; auto_dcase_hyps
+    end
+  | H : (_, _, _, _, _) = (_, _, _, _, _) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    let H3 := fresh in
+    let H4 := fresh in
+    let H5 := fresh in
+    case: H => H1 H2 H3 H4 H5; auto_dcase_hyps
+  | H : (_, _, _, _) = (_, _, _, _) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    let H3 := fresh in
+    let H4 := fresh in
+    case: H => H1 H2 H3 H4; auto_dcase_hyps
+  | H : (_, _, _) = (_, _, _) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    let H3 := fresh in
+    case: H => H1 H2 H3; auto_dcase_hyps
+  | H : (_, _) = (_, _) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    case: H => H1 H2; auto_dcase_hyps
+  | |- _ => idtac
+  end.
+
+
+
 (* ===== bit_blast_var ===== *)
 
 Fixpoint bit_blast_var' (g : generator) w : generator * w.-tuple literal :=
@@ -2447,7 +2508,12 @@ Fixpoint bit_blast_exp w (m : vm) (g : generator) (e : QFBV64.exp w) : vm * gene
   | QFBV64.bvLow wh wl e => (m, g, [], copy wl lit_tt) (* TODO *)
   | QFBV64.bvZeroExtend w n e => (m, g, [], copy (w+n) lit_tt) (* TODO *)
   | QFBV64.bvSignExtend w n e => (m, g, [], copy (w.+1+n) lit_tt) (* TODO *)
-  | QFBV64.bvIte w b e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
+  | QFBV64.bvIte w c e1 e2 =>
+    let '(mc, gc, csc, lc) := bit_blast_bexp m g c in
+    let '(m1, g1, cs1, ls1) := bit_blast_exp mc gc e1 in
+    let '(m2, g2, cs2, ls2) := bit_blast_exp m1 g1 e2 in
+    let '(gr, csr, lsr) := bit_blast_ite g2 lc ls1 ls2 in
+    (m2, gr, csc++cs1++cs2++csr, lsr)
   end
 with
 bit_blast_bexp (m : vm) (g : generator) (e : QFBV64.bexp) : vm * generator * cnf * literal :=
@@ -2550,6 +2616,35 @@ mk_env_bexp (m : vm) (s : QFBV64.State.t) (E : env) (g : generator) (e : QFBV64.
 
 (* = bit_blast_exp_preserve and bit_blast_bexp_preserve = *)
 
+Ltac bb_exp_bexp_vm_preserve :=
+  lazymatch goal with
+  | |- vm_preserve ?m ?m => exact: vm_preserve_refl
+  | H1 : context f [bit_blast_exp _ _ ?e = (_, _, _, _) -> vm_preserve _ _],
+         H2 : bit_blast_exp ?m1 _ ?e = (?m2, _, _, _)
+    |- vm_preserve ?m1 ?m2 =>
+    eapply H1; exact: H2
+  | H1 : context f [bit_blast_bexp _ _ ?e = (_, _, _, _) -> vm_preserve _ _],
+         H2 : bit_blast_bexp ?m1 _ ?e = (?m2, _, _, _)
+    |- vm_preserve ?m1 ?m2 =>
+    eapply H1; exact: H2
+  | H1 : context f [bit_blast_exp _ _ ?e = (_, _, _, _) -> vm_preserve _ _],
+         H2 : bit_blast_exp ?m1 _ ?e = (?m2, _, _, _)
+    |- vm_preserve _ ?m2 =>
+    apply: (@vm_preserve_trans _ m1);
+    [bb_exp_bexp_vm_preserve | bb_exp_bexp_vm_preserve]
+  | H1 : context f [bit_blast_bexp _ _ ?e = (_, _, _, _) -> vm_preserve _ _],
+         H2 : bit_blast_bexp ?m1 _ ?e = (?m2, _, _, _)
+    |- vm_preserve _ ?m2 =>
+    apply: (@vm_preserve_trans _ m1);
+    [bb_exp_bexp_vm_preserve | bb_exp_bexp_vm_preserve]
+  | |- _ => idtac
+  end.
+
+(* Solve vm_preserve for those cases in bit_blast_exp and bit_blast_bexp
+   that does not update vm. *)
+Ltac auto_bit_blast_vm_preserve :=
+  simpl; intros; auto_dcase_hyps; subst; bb_exp_bexp_vm_preserve.
+
 Lemma bit_blast_exp_preserve_var :
   forall (t : VarOrder.t) (m : vm) (g : generator) (m' : vm)
          (g' : generator) (cs : cnf) (lrs : wordsize.-tuple literal),
@@ -2566,7 +2661,7 @@ Lemma bit_blast_exp_preserve_const :
          (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
     bit_blast_exp m g (QFBV64.bvConst w b) = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
-  move=> w b m g m' g' cs lrs /=. case=> <- _ _ _. exact: vm_preserve_refl.
+  auto_bit_blast_vm_preserve.
 Qed.
 
 Lemma bit_blast_exp_preserve_not :
@@ -2724,19 +2819,32 @@ Proof.
 Admitted.
 
 Lemma bit_blast_exp_preserve_ite :
-  forall (w0 : nat) (b : QFBV64.bexp) (e : QFBV64.exp w0) (e0 : QFBV64.exp w0)
-         (m : vm) (g : generator)
-         (m' : vm) (g' : generator) (cs : cnf) (lrs : w0.-tuple literal),
-    bit_blast_exp m g (QFBV64.bvIte w0 b e e0) = (m', g', cs, lrs) -> vm_preserve m m'.
+  forall (w : nat) (b : QFBV64.bexp),
+    (forall (m : vm) (g : generator)
+            (m' : vm) (g' : generator) (cs : cnf) (lr : literal),
+        bit_blast_bexp m g b = (m', g', cs, lr) -> vm_preserve m m') ->
+    forall (e : QFBV64.exp w),
+      (forall (m : vm) (g : generator)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g e = (m', g', cs, lrs) -> vm_preserve m m') ->
+      forall (e0 : QFBV64.exp w),
+        (forall (m : vm) (g : generator)
+                (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+            bit_blast_exp m g e0 = (m', g', cs, lrs) -> vm_preserve m m') ->
+        forall (m : vm) (g : generator)
+               (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g (QFBV64.bvIte w b e e0) = (m', g', cs, lrs) ->
+          vm_preserve m m'.
 Proof.
-Admitted.
+  auto_bit_blast_vm_preserve.
+Qed.
 
 Lemma bit_blast_bexp_preserve_false :
   forall (m : vm) (g : generator) (m' : vm) (g' : generator)
          (cs : cnf) (lrs : literal),
     bit_blast_bexp m g QFBV64.bvFalse = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
-  move=> m g m' g' cs lrs /=. case=> <- _ _ _. done.
+  auto_bit_blast_vm_preserve.
 Qed.
 
 Lemma bit_blast_bexp_preserve_true :
@@ -2744,7 +2852,7 @@ Lemma bit_blast_bexp_preserve_true :
          (cs : cnf) (lrs : literal),
     bit_blast_bexp m g QFBV64.bvTrue = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
-  move=> m g m' g' cs lrs /=. case=> <- _ _ _. done.
+  auto_bit_blast_vm_preserve.
 Qed.
 
 Lemma bit_blast_bexp_preserve_eq :
@@ -2762,12 +2870,7 @@ Lemma bit_blast_bexp_preserve_eq :
          (m' : vm) (g' : generator) (cs : cnf) (lrs : literal),
     bit_blast_bexp m g (QFBV64.bvEq w e1 e2) = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
-  move=> w e1 IH1 e2 IH2 m g m' g' cs lrs /=.
-  case He1: (bit_blast_exp m g e1) => [[[m1 g1] cs1] lrs1].
-  case He2: (bit_blast_exp m1 g1 e2) => [[[m2 g2] cs2] lrs2].
-  case Heq: (bit_blast_eq g2 lrs1 lrs2) => [[og ocs] olr].
-  case=> <- _ _ _. move: (IH1 _ _ _ _ _ _ He1) => Hmm1.
-  move: (IH2 _ _ _ _ _ _ He2) => Hm1m2. exact: (vm_preserve_trans Hmm1 Hm1m2).
+  auto_bit_blast_vm_preserve.
 Qed.
 
 Lemma bit_blast_bexp_preserve_ult :
@@ -2893,11 +2996,7 @@ Lemma bit_blast_bexp_preserve_conj :
     bit_blast_bexp m g (QFBV64.bvConj b b0) = (m', g', cs, lrs) ->
     vm_preserve m m'.
 Proof.
-  move=> e1 IH1 e2 IH2 m g m' g' cs lr /=.
-  case He1: (bit_blast_bexp m g e1) => [[[m1 g1] cs1] lr1].
-  case He2: (bit_blast_bexp m1 g1 e2) => [[[m2 g2] cs2] lr2].
-  case=> <- _ _ _. move: (IH1 _ _ _ _ _ _ He1) => Hmm1.
-  move: (IH2 _ _ _ _ _ _ He2) => Hm1m2. exact: (vm_preserve_trans Hmm1 Hm1m2).
+  auto_bit_blast_vm_preserve.
 Qed.
 
 Lemma bit_blast_bexp_preserve_disj :
@@ -2918,7 +3017,7 @@ Corollary bit_blast_exp_preserve :
         vm_preserve m m'.
 Proof.
   (* bit_blast_exp_preserve *)
-  move=> w [].
+  move=> w [] {w}.
   - exact: bit_blast_exp_preserve_var.
   - exact: bit_blast_exp_preserve_const.
   - exact: bit_blast_exp_preserve_not.
@@ -2942,7 +3041,10 @@ Proof.
   - exact: bit_blast_exp_preserve_low.
   - exact: bit_blast_exp_preserve_zeroextend.
   - exact: bit_blast_exp_preserve_signextend.
-  - exact: bit_blast_exp_preserve_ite.
+  - move=> w c e1 e2.
+    move: (bit_blast_bexp_preserve c) (bit_blast_exp_preserve _ e1)
+                                      (bit_blast_exp_preserve _ e2) => IHc IH1 IH2.
+    exact: (bit_blast_exp_preserve_ite IHc IH1 IH2).
   (* bit_blast_bexp_preserve *)
   move=> [].
   - exact: bit_blast_bexp_preserve_false.

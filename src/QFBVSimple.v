@@ -95,7 +95,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvLow wh wl e => fromNat 0 (* TODO *)
     | bvZeroExtend w n e => fromNat 0 (* TODO *)
     | bvSignExtend w n e => fromNat 0 (* TODO *)
-    | bvIte w b e1 e2 => fromNat 0 (* TODO *)
+    | bvIte w b e1 e2 => if eval_bexp b s then eval_exp e1 s else eval_exp e2 s
     end
     with
     eval_bexp (e : bexp) (s : state) : bool :=
@@ -121,10 +121,6 @@ Module Make (V : SsrOrderedType) (A : Arch).
       | bvConj e1 e2 => eval_bexp e1 s && eval_bexp e2 s
       | bvDisj e1 e2 => eval_bexp e1 s || eval_bexp e2 s
       end.
-
-  Scheme exp_ind' := Induction for exp Sort Prop
-    with bexp_ind' := Induction for bexp Sort Prop.
-  Combined Scheme exp_bexp_ind from exp_ind', bexp_ind'.
 
   Definition valid (e : bexp) : Prop :=
     forall s, eval_bexp e s.
