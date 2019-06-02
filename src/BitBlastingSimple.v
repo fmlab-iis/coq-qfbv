@@ -8478,7 +8478,7 @@ Proof.
     rewrite Hgoal andbT. exact: (add_prelude_tt H2).
 Qed.
 
-Lemma bit_blast_sound :
+Theorem bit_blast_sound :
   forall (e : QFBV64.bexp) m' g' cs lr,
     bit_blast_bexp init_vm init_gen e = (m', g', cs, lr) ->
     ~ (sat (add_prelude ([neg_lit lr]::cs))) ->
@@ -8495,7 +8495,7 @@ Proof.
   rewrite Hprelude /= in Hsat. exact: Hsat.
 Qed.
 
-Lemma bit_blast_complete :
+Theorem bit_blast_complete :
   forall (e : QFBV64.bexp) m' g' cs lr,
     bit_blast_bexp init_vm init_gen e = (m', g', cs, lr) ->
     QFBV64.valid e ->
