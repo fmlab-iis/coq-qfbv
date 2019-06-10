@@ -2515,17 +2515,6 @@ Proof.
     done.
 Qed.
 
-Lemma toPosZ_fromPosZ n m : @toPosZ n (fromPosZ m) = Zmod m (Z.of_nat (2^(n))).
-Proof.
-Admitted.
-    
-Lemma fromZK n : cancel (fromPosZ) (@toPosZ n).
-Proof.
-Admitted.
-
-Lemma toPosZ_inj n : injective (@toPosZ n).
-Proof.
-Admitted.
 
 Lemma toZ_joinmsb0 n: forall (p: BITS n),
     toZ (joinmsb (false, p)) = toPosZ p.
@@ -2654,6 +2643,71 @@ Proof.
       apply/ltP /toNatBounded. omega. apply/leP /Nats.expn2_gt0.
       apply lt_n_Sm_le. rewrite -addn1 subnK. apply/ltP /toNatBounded. apply Nats.expn2_gt0.
 Qed.
+
+Lemma fromPosZ_fromNat n:
+  forall z,
+    (z >= 0)%Z ->
+    @fromPosZ n z = @fromNat n (Z.to_nat z).
+Proof.
+(*  induction n.
+  - done.
+  - move => z Hge0.
+    rewrite /= (IHn (Z.div2 z)).
+    case Heven : (Z.even z);
+     apply toNat_inj; rewrite toNat_joinlsb/=.
+    + rewrite add0n 2!toNat_fromNat/= expnS -muln2.
+      apply Zeven_bool_iff in Heven.
+      move : (Zeven_div2 z Heven) => Hed2. 
+      symmetry; rewrite ->Hed2 at 1. 
+      rewrite Z2Nat.inj_mul; try omega.
+      replace (Z.to_nat 2) with 2%coq_nat by done. 
+      rewrite -Nats.muln_mul -div.muln_modr; [ring|auto].
+    + Search div.modn.
+      rewrite 2!toNat_fromNat/= expnS -muln2.
+      replace (Z.even z) with (negb (Z.odd z)) in Heven by
+          (symmetry; apply/negP; rewrite Zodd_even_bool Heven; done).
+      apply Bool.negb_false_iff in Heven. 
+      apply Zodd_bool_iff in Heven.
+      move: (Zodd_div2 z Heven) => Hod2.
+      symmetry; rewrite ->Hod2 at 1.
+      rewrite Z2Nat.inj_add; try omega;
+      rewrite Z2Nat.inj_mul; try omega.
+      replace (Z.to_nat 1) with 1 by done; replace (Z.to_nat 2) with 2 by done.
+      rewrite -Nats.muln_mul -Nats.addn_add. 
+      rewrite -div.modnDmr.
+      replace (div.modn 1 (2 * 2 ^ n)) with 1 by
+          (rewrite div.modn_small; [done|rewrite -expnS; apply Nats.expn2_gt1]). 
+      rewrite -div.modnDml. rewrite -div.muln_modr.
+
+      
+      apply <-Z.div2_nonneg.
+    Search Zeven.
+    rewrite -!Nats.addn_add/= addn0.
+    
+    
+    Search div.modn. Search Z.to_nat. 
+
+
+  -div.muln_modr.
+
+    
+    move : (Zdiv2_odd_eqn z) => Hdoe.
+    rewrite Zodd_even_bool Heven in Hdoe.*)
+Admitted.    
+    
+Lemma toPosZ_fromPosZ n m : @toPosZ n (fromPosZ m) = Zmod m (Z.of_nat (2^(n))).
+Proof.
+  
+  
+Admitted.
+    
+Lemma fromZK n : cancel (fromPosZ) (@toPosZ n).
+Proof.
+Admitted.
+
+Lemma toPosZ_inj n : injective (@toPosZ n).
+Proof.
+Admitted.
       
 Lemma toPosZ_lt n : forall (p1 p2: BITS n),
     ltB p1 p2 -> ((toPosZ p1)< (toPosZ p2))%Z.
@@ -2915,7 +2969,7 @@ Lemma bit_blast_sle_correct :
     interp_cnf E (add_prelude cs) ->
     interp_lit E lr <-> (toZ bs1 <= toZ bs2)%Z.
 Proof.
-  move => w g ibs1 ibs2 E og ils1 ils2 cs olr.
+(*  move => w g ibs1 ibs2 E og ils1 ils2 cs olr.
   rewrite /bit_blast_sle.
   case Heq: (bit_blast_eq g ils1 ils2) => [[g_eq cs_eq] r_eq].
   case Hslt : (bit_blast_slt g ils1 ils2) => [[g_slt cs_slt] r_slt].
@@ -2933,10 +2987,15 @@ Proof.
       by (rewrite /enc_bit; apply iffBool; rewrite Hrslt -Z.ltb_lt; done).
     move : (bit_blast_disj_correct Hdisj Hreq Henc_slt Hcnf_disj) => Hrdisj.
     rewrite /enc_bit in Hreq.
-    move/eqP: Hreq => Hreq. rewrite Hrdisj1 in Hrdisj.
-    Search Z.lt. 
-    rewrite -Hrdisj.
+    move/eqP: Hreq => Hreq. rewrite Hrdisj1 -Hreq in Hrdisj.
+    case Hr: (interp_lit E r_eq); rewrite Hr /=in Hreq. Search (_=_).
+    move/eqE : Hreq.
     
+    apply Zle_bool_imp_le. 
+    symmetry in Hrdisj.
+    
+    rewrite -Hrdisj.
+*)    
 
 Admitted.
 
