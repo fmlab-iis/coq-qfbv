@@ -2649,11 +2649,11 @@ Lemma fromPosZ_fromNat n:
     (z >= 0)%Z ->
     @fromPosZ n z = @fromNat n (Z.to_nat z).
 Proof.
-(*  induction n.
+  induction n.
   - done.
   - move => z Hge0.
     rewrite /= (IHn (Z.div2 z)).
-    case Heven : (Z.even z);
+    case Heven : (Z.even z).
      apply toNat_inj; rewrite toNat_joinlsb/=.
     + rewrite add0n 2!toNat_fromNat/= expnS -muln2.
       apply Zeven_bool_iff in Heven.
@@ -2662,38 +2662,26 @@ Proof.
       rewrite Z2Nat.inj_mul; try omega.
       replace (Z.to_nat 2) with 2%coq_nat by done. 
       rewrite -Nats.muln_mul -div.muln_modr; [ring|auto].
-    + Search div.modn.
-      rewrite 2!toNat_fromNat/= expnS -muln2.
-      replace (Z.even z) with (negb (Z.odd z)) in Heven by
-          (symmetry; apply/negP; rewrite Zodd_even_bool Heven; done).
-      apply Bool.negb_false_iff in Heven. 
+    + apply Bool.negb_true_iff in Heven.
+      rewrite Z.negb_even in Heven.
+      rewrite /fromNat /=.
+      assert (odd (Z.to_nat z) = true) as Hoddz.
+      rewrite Nats.ssrodd_odd. apply Nat.odd_spec. 
+      rewrite /Nat.Odd. exists (Z.to_nat (Z.div2 z)).
       apply Zodd_bool_iff in Heven.
-      move: (Zodd_div2 z Heven) => Hod2.
-      symmetry; rewrite ->Hod2 at 1.
-      rewrite Z2Nat.inj_add; try omega;
-      rewrite Z2Nat.inj_mul; try omega.
-      replace (Z.to_nat 1) with 1 by done; replace (Z.to_nat 2) with 2 by done.
-      rewrite -Nats.muln_mul -Nats.addn_add. 
-      rewrite -div.modnDmr.
-      replace (div.modn 1 (2 * 2 ^ n)) with 1 by
-          (rewrite div.modn_small; [done|rewrite -expnS; apply Nats.expn2_gt1]). 
-      rewrite -div.modnDml. rewrite -div.muln_modr.
-
-      
-      apply <-Z.div2_nonneg.
-    Search Zeven.
-    rewrite -!Nats.addn_add/= addn0.
-    
-    
-    Search div.modn. Search Z.to_nat. 
-
-
-  -div.muln_modr.
-
-    
-    move : (Zdiv2_odd_eqn z) => Hdoe.
-    rewrite Zodd_even_bool Heven in Hdoe.*)
-Admitted.    
+      move : (Zodd_div2 z Heven) => Hzodd.
+      rewrite ->Hzodd at 1.
+      rewrite Z2Nat.inj_add; try omega. rewrite  Z2Nat.inj_mul; try omega.
+      assert (Z.to_nat 2 = 2) as H2 by done; assert (Z.to_nat 1= 1) as H1 by done.
+      by rewrite H2 H1 Zdiv2_div -!Nats.addn_add -!Nats.muln_mul.
+      rewrite Hoddz.
+      assert ((Z.to_nat (Z.div2 z)) = Nat.div2 (Z.to_nat z)) as Htonat.
+      rewrite -!Z_N_nat -Nnat.N2Nat.inj_div2.
+      by rewrite Z2N.inj_div2.
+      by rewrite Htonat Nats.ssrdiv2_div2.
+      apply Z.le_ge; apply <-Z.div2_nonneg.
+      omega.
+Qed.
     
 Lemma toPosZ_fromPosZ n m : @toPosZ n (fromPosZ m) = Zmod m (Z.of_nat (2^(n))).
 Proof.
@@ -2961,6 +2949,85 @@ Definition bit_blast_sle (w: nat) g (ls1 ls2: w.+1.-tuple literal) : generator *
   let '(g_disj, cs_disj, r_disj) := bit_blast_disj g_slt r_eq r_slt in
   (g_disj, cs_eq++cs_slt++cs_disj, r_disj).
 
+Lemma toZK n : cancel (@toZ n) (@fromZ n.+1).
+Proof.
+  induction n.
+  - case/tupleP => b x. 
+    case b.
+    + by rewrite tuple0 /toZ !tupleE/= /joinlsb/=. 
+    + rewrite tuple0 /toZ !tupleE/=. by apply val_inj.
+  - case/tupleP => b x.
+    move : (IHn x) => Hx.
+    case b;
+      rewrite /toZ/= beheadCons theadCons/=;
+      case Hsplitx : (splitmsb x) => [c bs].
+      case Hc: c; rewrite Hc in Hsplitx.
+      * rewrite /joinlsb/= toNegZCons.  
+        rewrite -Hx /toZ/= Hsplitx/=.
+        rewrite Z.double_spec toNegZ_toNat.
+        assert (0<=(Z.of_nat (2 ^ n - 1 - toNat bs)))%Z as Hge0 by omega.
+        case Hofnat: (Z.of_nat (2 ^ n - 1 - toNat bs))=>[|p|p].
+        by apply val_inj. 
+        Local Opaque fromNegZ.
+        rewrite /fromZ 2!Z.opp_involutive -!Zpred_succ/=.
+        by apply val_inj.
+        rewrite Hofnat in Hge0. 
+        move: (Pos2Z.neg_is_neg p)=> Hneg ; omega.
+      * rewrite /joinlsb/= toPosZCons.
+        rewrite -Hx /toZ/= Hsplitx/=.
+        rewrite toPosZ_toNat.
+        assert (0<=(Z.of_nat (toNat bs)))%Z as Hge0 by omega.
+        case Hofnat: (Z.of_nat (toNat bs)) => [|p|p].
+        rewrite /=fromPosZ_fromNat/= /joinlsb/=.
+        rewrite fromNat0. by apply val_inj.
+        omega.
+        Local Opaque fromPosZ.
+        rewrite /fromZ/=. by apply val_inj.
+        rewrite Hofnat in Hge0. 
+        move: (Pos2Z.neg_is_neg p)=> Hneg ; omega.
+    + case Hc: c; rewrite Hc in Hsplitx.
+      * rewrite /joinlsb/=toNegZCons.
+        rewrite -Hx/toZ/=Hsplitx/=.
+        rewrite Z.double_spec toNegZ_toNat.
+        assert (0<=Z.of_nat (2 ^ n - 1 - toNat bs))%Z as Hge0 by omega.
+        case Hofnat: (Z.of_nat (2 ^ n - 1 - toNat bs))=>[|p|p].
+        by apply val_inj.
+        rewrite /fromZ 2!Z.opp_involutive -!Zpred_succ/=.
+        by apply val_inj.
+        rewrite Hofnat in Hge0. 
+        move: (Pos2Z.neg_is_neg p)=> Hneg ; omega.
+      * rewrite /joinlsb/= toPosZCons.
+        rewrite -Hx /toZ/= Hsplitx/=.
+        rewrite toPosZ_toNat.
+        assert (0<=(Z.of_nat (toNat bs)))%Z as Hge0 by omega.
+        case Hofnat: (Z.of_nat (toNat bs)) => [|p|p].
+        by apply val_inj. 
+        rewrite /fromZ/=. by apply val_inj.
+        rewrite Hofnat in Hge0. 
+        move: (Pos2Z.neg_is_neg p)=> Hneg ; omega.
+Qed.
+
+Definition toZ_inj n := can_inj (@toZK n).
+
+Lemma toZ_eq n : forall (x y : BITS n.+1), (x == y) = (toZ x == toZ y).
+Proof.
+  induction n.
+  - case/tupleP => [x1 bs1]; case/tupleP => [x2 bs2].
+    rewrite !tupleE. 
+    case E: (toZ (cons_tuple x1 bs1) == toZ (cons_tuple x2 bs2)).
+    rewrite (toZ_inj (eqP E)). by rewrite eq_refl.
+    apply (contraFF (b:=false)) => // => H.
+    rewrite (eqP H) (eq_refl) in E. done.
+  - case/tupleP => [x1 bs1]; case/tupleP => [x2 bs2].
+    case E: (toZ [tuple of x1 :: bs1] == toZ [tuple of x2 :: bs2]).
+    rewrite (toZ_inj (eqP E)). by rewrite eq_refl.
+    apply (contraFF (b:=false)) => // => H.
+    rewrite (eqP H) (eq_refl) in E. done.
+Qed.
+
+Corollary toZ_neq n (x y : BITS n.+1): (x != y) = (toZ x != toZ y).
+Proof. by rewrite toZ_eq. Qed.
+  
 Lemma bit_blast_sle_correct :
   forall w g (bs1 bs2 : BITS w.+1) E g' ls1 ls2 cs lr,
     bit_blast_sle g ls1 ls2 = (g', cs, lr) ->
@@ -2969,7 +3036,7 @@ Lemma bit_blast_sle_correct :
     interp_cnf E (add_prelude cs) ->
     interp_lit E lr <-> (toZ bs1 <= toZ bs2)%Z.
 Proof.
-(*  move => w g ibs1 ibs2 E og ils1 ils2 cs olr.
+  move => w g ibs1 ibs2 E og ils1 ils2 cs olr.
   rewrite /bit_blast_sle.
   case Heq: (bit_blast_eq g ils1 ils2) => [[g_eq cs_eq] r_eq].
   case Hslt : (bit_blast_slt g ils1 ils2) => [[g_slt cs_slt] r_slt].
@@ -2988,22 +3055,33 @@ Proof.
     move : (bit_blast_disj_correct Hdisj Hreq Henc_slt Hcnf_disj) => Hrdisj.
     rewrite /enc_bit in Hreq.
     move/eqP: Hreq => Hreq. rewrite Hrdisj1 -Hreq in Hrdisj.
-    case Hr: (interp_lit E r_eq); rewrite Hr /=in Hreq. Search (_=_).
-    move/eqE : Hreq.
-    
-    apply Zle_bool_imp_le. 
-    symmetry in Hrdisj.
-    
-    rewrite -Hrdisj.
-*)    
-
-Admitted.
-
-
+    case Hr: (interp_lit E r_eq); rewrite Hr /=in Hreq;
+      symmetry in Hreq; move/eqP : Hreq => Hreq.
+    + rewrite Hreq; omega.
+    + rewrite Hr orFb in Hrdisj.
+      symmetry in Hrdisj.
+      apply Z.lt_le_incl; by apply Z.ltb_lt.
+  - move => Hle.
+    assert (enc_bit E r_slt (Z.ltb (toZ ibs1) (toZ ibs2))) as Henc_slt
+        by (rewrite /enc_bit; apply iffBool; rewrite Hrslt -Z.ltb_lt; done).
+    move : (bit_blast_disj_correct Hdisj Hreq Henc_slt Hcnf_disj) => Hrdisj.
+    rewrite /enc_bit in Hreq; move/eqP: Hreq => Hreq.
+    rewrite Hrdisj; apply/orP.
+    case Hr: (interp_lit E r_eq); rewrite Hr /=in Hreq;
+      symmetry in Hreq; move/eqP : Hreq => Hreq.
+    left; by rewrite Hreq.
+    right. apply Z.ltb_lt.
+    apply Z.Private_Tac.le_neq_lt in Hle; try exact.
+    move/eqP : Hreq => Hreq.
+    apply/eqP. rewrite -toZ_neq. exact.
+Qed.
 
 (* ===== bit_blast_sgt ===== *)
 
-Parameter bit_blast_sgt : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
+(*Parameter bit_blast_sgt : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_sgt w (g: generator) (ls1 ls2 : w.+1.-tuple literal) : generator * cnf * literal :=
+  bit_blast_slt g ls2 ls1.
 
 Lemma bit_blast_sgt_correct :
   forall w g (bs1 bs2 : BITS w.+1) E g' ls1 ls2 cs lr,
@@ -3011,15 +3089,21 @@ Lemma bit_blast_sgt_correct :
     enc_bits E ls1 bs1 ->
     enc_bits E ls2 bs2 ->
     interp_cnf E (add_prelude cs) ->
-    interp_lit E lr <-> (toZ bs1 > toZ bs1)%Z.
+    interp_lit E lr <-> (toZ bs1 > toZ bs2)%Z.
 Proof.
-Admitted.
-
-
+  move => w g ibs1 ibs2 E g' ils1 ils2 cs olr.
+  rewrite /bit_blast_sgt.
+  move => Hslt Henc1 Henc2 Hcnf.
+  move : (bit_blast_slt_correct Hslt Henc2 Henc1 Hcnf) => Hrslt.
+  rewrite Hrslt; omega.
+Qed.
 
 (* ===== bit_blast_sge ===== *)
 
-Parameter bit_blast_sge : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
+(*Parameter bit_blast_sge : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
+ *)
+Definition bit_blast_sge w (g: generator) (ls1 ls2 : w.+1.-tuple literal) : generator * cnf * literal :=
+  bit_blast_sle g ls2 ls1.
 
 Lemma bit_blast_sge_correct :
   forall w g (bs1 bs2 : BITS w.+1) E g' ls1 ls2 cs lr,
@@ -3027,11 +3111,14 @@ Lemma bit_blast_sge_correct :
     enc_bits E ls1 bs1 ->
     enc_bits E ls2 bs2 ->
     interp_cnf E (add_prelude cs) ->
-    interp_lit E lr <-> (toZ bs1 >= toZ bs1)%Z.
+    interp_lit E lr <-> (toZ bs1 >= toZ bs2)%Z.
 Proof.
-Admitted.
-
-
+  move => w g ibs1 ibs2 E g' ils11 ils2 cs olr.
+  rewrite /bit_blast_sge.
+  move => Hsle Henc1 Henc2 Hcnf.
+  move : (bit_blast_sle_correct Hsle Henc2 Henc1 Hcnf) => Hrsle.
+  rewrite Hrsle; omega.
+Qed.
 
 (* ===== bit_blast_conj ===== *)
 
