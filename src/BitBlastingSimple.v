@@ -2293,6 +2293,12 @@ Definition bit_blast_disj g (l1 l2: literal) : generator * cnf * literal :=
   let cs := [[neg_lit r; l1; l2]; [r; neg_lit l1]; [r; neg_lit l2]]
   in (g', cs, r).
 
+Definition mk_env_disj E g (l1 l2 : literal) : env * generator * cnf * literal :=
+  let (g', r) := gen g in
+  let E' := env_upd E (var_of_lit r) (interp_lit E l1 || interp_lit E l2) in
+  let cs := [[neg_lit r; l1; l2]; [r; neg_lit l1]; [r; neg_lit l2]] in
+  (E', g', cs, r).
+  
 Lemma bit_blast_disj_correct :
   forall g b1 b2 E g' l1 l2 cs lr,
     bit_blast_disj g l1 l2 = (g', cs, lr) ->
@@ -2329,7 +2335,67 @@ Proof.
     move/eqP : Henc2 => Henc2; done.
 Qed.
 
+Lemma mk_env_disj_is_bit_blast_disj :
+  forall E g (l1 l2: literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    bit_blast_disj g l1 l2 = (g', cs, lr).
+Proof.
+  rewrite /mk_env_disj /bit_blast_disj /=; intros; dcase_hyps; subst; reflexivity.
+Qed.
 
+Lemma mk_env_disj_newer_gen :
+  forall E g (l1 l2: literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    (g <=? g')%positive.
+Proof. move => E g l1 l2 E' g' cs lr. case => _ <- _ _. exact: pos_leb_add_diag_r.
+Qed.
+
+Lemma mk_env_disj_newer_res :
+  forall E g (l1 l2: literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g' lr.
+Proof.
+  move => E g l1 l2 E' g' cs lr. case => _ <- _ <-. 
+  exact : newer_than_lit_add_diag_r.
+Qed.
+
+Lemma mk_env_disj_newer_cnf :
+  forall E g (l1 l2: literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    newer_than_cnf g' cs.
+Proof.
+  move => E g l1 l2 E' g' cs lr. case => _ <- <- _ Hnew_l1 Hnew_l2 /=.
+  move : (newer_than_lit_add_r 1 Hnew_l1) => {Hnew_l1} Hnew_l1;
+  move : (newer_than_lit_add_r 1 Hnew_l2) => {Hnew_l2} Hnew_l2.
+  rewrite 2!newer_than_lit_neg Hnew_l1 Hnew_l2.
+  replace (g + 1)%positive with (var_of_lit (Neg g) + 1)%positive at 1 2
+    by reflexivity.
+  rewrite newer_than_lit_add_diag_r.
+  replace (g + 1)%positive with (var_of_lit (Pos g) + 1)%positive by reflexivity.
+  rewrite newer_than_lit_add_diag_r. done.
+Qed.
+
+Lemma mk_env_disj_preserve :
+  forall E g (l1 l2 : literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    env_preserve E E' g.
+Proof.
+  move=> E g l1 l2 E' g' cs lr. case=> <- _ _ _. exact: env_upd_eq_preserve.
+Qed.
+
+Lemma mk_env_disj_sat :
+  forall E g (l1 l2 : literal) E' g' cs lr,
+    mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    interp_cnf E' cs.
+Proof.
+  move=> E g l1 l2 E' g' cs lr. case=> <- _ <- Hlr /= Hnew1 Hnew2.
+  rewrite !interp_lit_neg_lit. rewrite env_upd_eq.
+  rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew1)).
+  rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew2)).
+  by case: (interp_lit E l1); case: (interp_lit E l2).
+Qed.
 
 (* ===== bit_blast_ule ===== *)
 
@@ -2682,21 +2748,7 @@ Proof.
       apply Z.le_ge; apply <-Z.div2_nonneg.
       omega.
 Qed.
-    
-Lemma toPosZ_fromPosZ n m : @toPosZ n (fromPosZ m) = Zmod m (Z.of_nat (2^(n))).
-Proof.
-  
-  
-Admitted.
-    
-Lemma fromZK n : cancel (fromPosZ) (@toPosZ n).
-Proof.
-Admitted.
 
-Lemma toPosZ_inj n : injective (@toPosZ n).
-Proof.
-Admitted.
-      
 Lemma toPosZ_lt n : forall (p1 p2: BITS n),
     ltB p1 p2 -> ((toPosZ p1)< (toPosZ p2))%Z.
 Proof.
@@ -3281,7 +3333,12 @@ bit_blast_bexp (m : vm) (g : generator) (e : QFBV64.bexp) : vm * generator * cnf
     let '(m2, g2, cs2, l2) := bit_blast_bexp m1 g1 e2 in
     let '(g', cs, r) := bit_blast_conj g2 l1 l2 in
     (m2, g', cs1++cs2++cs, r)
-  | QFBV64.bvDisj e1 e2 => (m, g, [], lit_ff) (* TODO *)
+  | QFBV64.bvDisj e1 e2 =>
+    let '(m1, g1, cs1, l1) := bit_blast_bexp m g e1 in
+    let '(m2, g2, cs2, l2) := bit_blast_bexp m g e2 in
+    let '(g', cs, r) := bit_blast_disj g2 l1 l2 in
+    (m2, g', cs1++cs2++cs, r)
+    (*(m, g, [], lit_ff)*) (* TODO *)
   end.
 
 Fixpoint mk_env_exp w (m : vm) (s : QFBV64.State.t) (E : env) (g : generator) (e : QFBV64.exp w) : vm * env * generator * cnf * w.-tuple literal :=
@@ -3352,7 +3409,12 @@ mk_env_bexp (m : vm) (s : QFBV64.State.t) (E : env) (g : generator) (e : QFBV64.
     let '(m2, E2, g2, cs2, l2) := mk_env_bexp m1 s E1 g1 e2 in
     let '(E', g', cs, r) := mk_env_conj E2 g2 l1 l2 in
     (m2, E', g', cs1++cs2++cs, r)
-  | QFBV64.bvDisj e1 e2 => (m, E, g, [], lit_ff) (* TODO *)
+  | QFBV64.bvDisj e1 e2 => 
+    let '(m1, E1, g1, cs1, l1) := mk_env_bexp m s E g e1 in
+    let '(m2, E2, g2, cs2, l2) := mk_env_bexp m1 s E1 g1 e2 in
+    let '(E', g', cs, r) := mk_env_disj E2 g2 l1 l2 in
+    (m2, E', g', cs1++cs2++cs, r)
+      (*(m, E, g, [], lit_ff)*) (* TODO *)
   end.
 
 (* = bit_blast_exp_preserve and bit_blast_bexp_preserve = *)
