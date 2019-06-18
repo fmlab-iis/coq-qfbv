@@ -76,7 +76,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvConst _ n => n
     | bvNot w e => fromNat 0 (* TODO *)
     | bvAnd w e e2 => fromNat 0 (* TODO *)
-    | bvOr w e1 e2 => fromNat 0 (* TODO *)
+    | bvOr w e1 e2 => orB (eval_exp e1 s) (eval_exp e2 s)
     | bvXor w e1 e2 => fromNat 0 (* TODO *)
     | bvNeg w e => fromNat 0 (* TODO *)
     | bvAdd w e1 e2 => fromNat 0 (* TODO *)
