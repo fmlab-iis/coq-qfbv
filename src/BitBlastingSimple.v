@@ -4196,7 +4196,6 @@ Proof.
   move: (vm_preserve_consistent (bit_blast_exp_preserve H) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ H Hcon1 Hcs0) => Hencls0.
   move: (IHe1 _ _ _ _ _ _ _ _ H0 H6 Hcs1) => Hencls1.
-  Check bit_blast_or_correct .
   apply: (bit_blast_or_correct H1 Hencls0 Hencls1 Hcs2).
 Qed .
 
