@@ -499,7 +499,7 @@ Lemma mk_env_var_enc :
     enc_bits E' lrs bs.
 Proof.
   move=> E g bs v E' g' cs lrs. rewrite /mk_env_var.
-  case Henv: (mk_env_var' E g bs)=> [[E_v g_v] lrs_v].
+  case Henv: (mk_env_var' E g bs) => [[E_v g_v] lrs_v].
   case=> <- _ _ <-. exact: (mk_env_var'_enc Henv).
 Qed.
 
@@ -856,15 +856,23 @@ Admitted.
 (* ===== bit_blast_or ===== *)
 
 Definition bit_blast_or1 (g: generator) (a1 a2: literal) :generator * cnf * literal :=
-  let (g', r) := gen g in
-  let cs :=
-      if (a1 == lit_tt) || (a2 == lit_tt) then [[r]]
-      else if (a1 == lit_ff) then
-             [[neg_lit r; a2]; [r; neg_lit a2]]
-           else if (a2 == lit_ff) then
-                  [[neg_lit r; a1]; [r; neg_lit a1]]
-                else [[neg_lit r; a1; a2]; [r; neg_lit a1]; [r; neg_lit a2]]
-  in (g', cs, r).
+  if (a1 == lit_tt) || (a2 == lit_tt) then (g, [], lit_tt)
+  else if (a1 == lit_ff) then (g, [], a2)
+       else if (a2 == lit_ff) then (g, [], a1)
+            else
+              let (g', r) := gen g in
+              (g', [[neg_lit r; a1; a2]; [r; neg_lit a1]; [r; neg_lit a2]], r).
+
+Definition mk_env_or1 E g a1 a2 : env * generator * cnf * literal :=
+  if (a1 == lit_tt) || (a2 == lit_tt) then (E, g, [], lit_tt)
+  else if a1 == lit_ff then (E, g, [], a2)
+       else if a2 == lit_ff then (E, g, [], a1)
+            else let (g', r) := gen g in
+                 let E' := env_upd E (var_of_lit r)
+                                   (interp_lit E a1 || interp_lit E a2) in
+                 let cs := [[neg_lit r; a1; a2]; [r; neg_lit a1];
+                              [r; neg_lit a2]] in
+                 (E', g', cs, r).
 
 Fixpoint bit_blast_or  w (g: generator): w.-tuple literal -> w.-tuple literal -> generator * cnf * w.-tuple literal :=
   if w is _.+1 then
@@ -878,7 +886,17 @@ Fixpoint bit_blast_or  w (g: generator): w.-tuple literal -> w.-tuple literal ->
     fun _ _ =>
       (g, [], [tuple]).
 
-Parameter mk_env_or : forall w : nat, env -> generator -> w.-tuple literal -> w.-tuple literal -> env * generator * cnf * w.-tuple literal.
+Fixpoint mk_env_or w (E : env) (g : generator) : w.-tuple literal -> w.-tuple literal -> env * generator * cnf * w.-tuple literal :=
+  if w is _.+1 then
+    fun ls1 ls2 =>
+      let (ls1_tl, ls1_hd) := eta_expand (splitlsb ls1) in
+      let (ls2_tl, ls2_hd) := eta_expand (splitlsb ls2) in
+      let '(E_hd, g_hd, cs_hd, lrs_hd) := mk_env_or1 E g ls1_hd ls2_hd in
+      let '(E_tl, g_tl, cs_tl, lrs_tl) := mk_env_or E_hd g_hd ls1_tl ls2_tl in
+      (E_tl, g_tl, cs_hd++cs_tl, cons_tuple lrs_hd lrs_tl)
+  else
+    fun _ _ =>
+      (E, g, [], [tuple]).
 
 Lemma bit_blast_or1_correct:
   forall g b1 b2 br E l1 l2 g' cs lr,
@@ -889,26 +907,15 @@ Lemma bit_blast_or1_correct:
     enc_bit E lr br.
 Proof.
   move => g b1 b2 br E l1 l2 g' cs lr. rewrite /bit_blast_or1 /enc_bit.
-  case => _ {g'}. case Htt1: (l1 == lit_tt).
-  - rewrite /=. move=> <- <- /eqP <- /eqP <- /=. move=> /andP [Htt ->] H.
-    rewrite (eqP Htt1) /= Htt orTb in H. by rewrite -H.
-  - case Htt2: (l2 == lit_tt).
-    + rewrite /=. move=> <- <- /eqP <- /eqP <- /=. move=> /andP [Htt ->] H.
-      rewrite (eqP Htt2) /= Htt orbT in H. by rewrite -H.
-    + rewrite /=. case Hff1: (l1 == lit_ff).
-      * move=> <- <- /eqP <- /eqP <- /=.
-        rewrite (eqP Hff1) /= !interp_lit_neg_lit.
-        move/andP => [Htt Hcs] <-. rewrite Htt orFb. rewrite expand_eq.
-        rewrite andbC. exact: Hcs.
-      * case Hff2: (l2 == lit_ff).
-        -- move=> <- <- /eqP <- /eqP <- /=.
-           rewrite (eqP Hff2) /= !interp_lit_neg_lit.
-           move/andP => [Htt Hcs] <-. rewrite Htt orbF. rewrite expand_eq.
-           rewrite andbC. exact: Hcs.
-        -- move=> <- <- /eqP <- /eqP <- /=.
-           rewrite /= !interp_lit_neg_lit. move/andP => [Htt Hcs] <-.
-           move: Hcs.
-           by case: (E g); case: (interp_lit E l1); case: (interp_lit E l2).
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)).
+  - case=> _ <- <- /eqP <- /eqP <- /= Htt1 <-.
+    move /orP: Htt; case => /eqP -> /=; by [rewrite Htt1 | rewrite Htt1 orbT].
+  - case Hff1: (l1 == lit_ff); last case Hff2: (l2 == lit_ff) .
+    + case=> _ <- <- /eqP <- /eqP <- /= Htt1 <-; by [rewrite (eqP Hff1) /= Htt1].
+    + case=> _ <- <- /eqP <- /eqP <- /= Htt1 <-; by [rewrite (eqP Hff2) /= Htt1 orbF ] .
+    + case=> _ <- <- /eqP <- /eqP <- /andP /= . case => [Htt1 Hcs] <- .
+      rewrite !interp_lit_neg_lit in Hcs . move: Hcs .
+      by case: (E g); case: (interp_lit E l1); case: (interp_lit E l2) .
 Qed.
 
 Lemma bit_blast_or_correct :
@@ -941,15 +948,202 @@ Proof.
       apply: val_inj. exact: Holrs_tl.
 Qed.
 
+Lemma mk_env_or1_is_bit_blast_or1 :
+  forall E g l1 l2 E' g' cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    bit_blast_or1 g l1 l2 = (g', cs, lr).
+Proof.
+  rewrite /mk_env_or1 /bit_blast_or1; intros;
+    dite_hyps; dcase_hyps; subst; reflexivity .
+Qed .
+
 Lemma mk_env_or_is_bit_blast_or :
   forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
     mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
     bit_blast_or g ls1 ls2 = (g', cs, lrs).
 Proof.
-Admitted.
+  elim .
+  - move=> E g ls1 ls2 E' g' cs lrs /=; case=> _ <- <- <-; reflexivity .
+  - move=> w iH E g.
+    case /tupleP => ls1_hd ls1_tl; case /tupleP => ls2_hd ls2_tl E' g' cs; case /tupleP => lrs_hd lrs_tl .
+    rewrite /= !theadE !beheadCons /= .
+    case Henv : (mk_env_or1 E g ls1_hd ls2_hd) => [[[E_hd g_hd] cs_hd] lrs_hd0] .
+    move : (mk_env_or1_is_bit_blast_or1 Henv) -> .
+    case Henv1 : (mk_env_or E_hd g_hd ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] lrs_tl0] .
+    move : (iH _ _ _ _ _ _ _ _ Henv1) -> .
+    case => [_] <- <- <- Heq .
+    rewrite (tval_eq Heq); reflexivity .
+Qed .
 
+Lemma mk_env_or1_newer :
+  forall E g E' g' l1 l2 cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    (g <=? g')%positive.
+Proof.
+  move => E g E' g' l1 l2 cs lr . rewrite /mk_env_or1 .
+  case Htt :((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ <- _ _; exact: Pos.leb_refl .
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+    + case => _ <- _ _; exact: Pos.leb_refl .
+    + case => _ <- _ _; exact: Pos.leb_refl .
+    + case => _ <- _ _ . apply /pos_leP . rewrite Pos.add_1_r .
+      apply: Pos.lt_le_incl . exact: Pos.lt_succ_diag_r .
+Qed.
 
+Lemma mk_env_or_newer_gen :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+    (g <=? g')%positive.
+Proof.
+  elim.
+  - move=> E g ls1 ls2 E' g' cs lrs [] _ <- _ _ . exact: Pos.leb_refl.
+  - intros_tuple. dcase_hyps; subst. move=> Hls.
+    move: (H _ _ _ _ _ _ _ _ H2) => Hg1g. apply: (pos_leb_trans _ Hg1g).
+    apply: (mk_env_or1_newer H0).
+Qed.
 
+Lemma mk_env_or1_newer_res :
+  forall E g E' g' l1 l2 cs lr,
+    newer_than_lit g lit_tt ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g' lr.
+Proof.
+  move => E g E' g' l1 l2 cs lr Hgtt Hgl1 Hgl2 . rewrite /mk_env_or1 .
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ <- _ <- . done .
+  - case Ht1 : (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+    + case => _ <- _ <- . done .
+    + case => _ <- _ <- . done .
+    + move => [[_ g0'] _] . case => <- . rewrite -g0' .
+      exact: (newer_than_var_add_diag_r) .
+Qed .
+
+Lemma mk_env_or_newer_res :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g' lrs.
+Proof.
+  elim .
+  - move=> E g ls1 ls2 E' g' cs lrs _ _ _ [] _ <- _ <- . done .
+  - intros_tuple. dcase_hyps; subst. move=> Hls .
+    rewrite -(tval_eq Hls).
+    case :H1 => /andP [Hgls1 Hgls0] .
+    case :H2 => /andP [Hgls2 Hgls3] .
+    move: (mk_env_or1_newer H3) => Hgg0 .
+    move: (mk_env_or1_newer_res H0 Hgls1 Hgls2 H3) => {H3} Hg0lrs .
+    move: (newer_than_lit_le_newer H0 Hgg0) => {Hgls1 Hgls2} Hg0tt .
+    move: (newer_than_lits_le_newer Hgls0 Hgg0)
+            (newer_than_lits_le_newer Hgls3 Hgg0) =>
+    {Hgls0 Hgls3} Hg0ls0 Hg0ls3 .
+    move: (H _ _ _ _ _ _ _ _ Hg0tt Hg0ls0 Hg0ls3 H5) =>
+    {Hg0tt Hg0ls0 Hg0ls3} Hg'ls .
+    rewrite Hg'ls andbT .
+    move: (mk_env_or_newer_gen H5) => {H5} Hg0g' .
+    apply: (newer_than_lit_le_newer _ Hg0g') . done .
+Qed .
+
+Lemma mk_env_or1_newer_cnf :
+  forall E g l1 l2 E' g' cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    newer_than_cnf g' cs.
+Proof.
+  intros E g l1 l2 E' g' cs lr Henv Hgl1 Hgl2 .
+  move: Henv . rewrite /mk_env_or1 /= .
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ _ <- _ . done .
+  - case Ht1 : (l1 == lit_ff); last case Ht2 : (l2 == lit_ff) .
+    + case => _ _ <- _ . done .
+    + case => _ _ <- _ . done .
+    + case => _ <- <- _ {Htt Ht1 Ht2} /= .
+      move: (newer_than_lit_le_newer Hgl1 (pos_leb_add_diag_r g 1)) => Hg1l1 .
+      move: (newer_than_lit_le_newer Hgl2 (pos_leb_add_diag_r g 1)) => Hg1l2 .
+      rewrite !newer_than_lit_neg Hg1l1 Hg1l2 .
+      rewrite /newer_than_lit /var_of_lit /= .
+      rewrite (newer_than_var_add_diag_r g 1) .
+      done .
+Qed .
+  
+Lemma mk_env_or_newer_cnf :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+    newer_than_cnf g' cs.
+Proof.
+  elim.
+  - move=> E g ls1 ls2 E' g' cs lrs [] _ <- <- _ Hnew_gls1 Hnew_gls2. done.
+  - intros_tuple. dcase_hyps; subst. move=> _ /=.
+    move /andP: H1 => [Hgls1 Hgls0] .
+    move /andP: H2 => [Hgls2 Hgls3] .
+    rewrite newer_than_cnf_append .
+    (* newer_than_cnf g' cs1 *)
+    move: (mk_env_or1_newer H0) => Hgg0 .
+    move: (newer_than_lits_le_newer Hgls0 Hgg0)
+            (newer_than_lits_le_newer Hgls3 Hgg0)
+    => Hg0ls0 Hg0ls3 .
+    rewrite (H _ _ _ _ _ _ _ _ H4 Hg0ls0 Hg0ls3) andbT
+            {Hgls0 Hgls3 Hg0ls0 Hg0ls3 H} .
+    (* newer_than_cnf g' cs0 *)
+    move: (mk_env_or_newer_gen H4) => Hg0g' .
+    move: (mk_env_or1_newer_cnf H0 Hgls1 Hgls2) => Hg0cs0 .
+    exact: (newer_than_cnf_le_newer Hg0cs0 Hg0g') .
+Qed .
+
+Lemma mk_env_or_preserve :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  elim .
+  - move=> E g ls1 ls2 E' g' cs lrs /=. case=> <- _ _ _. exact: env_preserve_refl.
+  - intros_tuple. dcase_hyps; intros; subst. move: (H _ _ _ _ _ _ _ _ H2) => Hpre.
+    move: (mk_env_or1_newer H0) => Hg0g' .
+    move: (env_preserve_le Hpre Hg0g') => {Hpre} HE0E'g .
+    apply: (env_preserve_trans _ HE0E'g) .
+    move: H0; rewrite /mk_env_or1 .
+    case Htt: ((ls1 == lit_tt) || (ls2 == lit_tt)) .
+    + case => <- _ _ _; exact: env_preserve_refl .
+    + case Ht1: (ls1 == lit_ff); last case Ht2: (ls2 == lit_ff) .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_upd_eq_preserve .
+Qed .
+
+Lemma mk_env_or_sat :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+    interp_cnf E' cs.
+Proof.
+  elim .
+  - move=> E g ls1 ls2 E' g' cs lrs. case=> <- _ <- _ _ _ . done.
+  - intros_tuple. dcase_hyps; intros; subst. rewrite !interp_cnf_append .
+    move /andP: H1 => [Hgls1 Hgls0] .
+    move /andP: H2 => [Hgls2 Hgls3] .
+    move: (mk_env_or1_newer H0) => Hgg0 .
+    move: (H _ _ _ _ _ _ _ _ H4 (newer_than_lits_le_newer Hgls0 Hgg0)
+             (newer_than_lits_le_newer Hgls3 Hgg0))
+    => {Hgls0 Hgls3} -> .
+    move: (mk_env_or_preserve H4) => HE0E'g0 .
+    move: (mk_env_or1_newer_cnf H0 Hgls1 Hgls2) => Hg0cs0 .
+    rewrite (env_preserve_cnf HE0E'g0 Hg0cs0) .
+    move: H0; rewrite /mk_env_or1 .
+    case Htt: ((ls1 == lit_tt) || (ls2 == lit_tt)) .
+    + case => _ _ <- _ . done .
+    + case Ht1: (ls1 == lit_ff); last case Ht2: (ls2 == lit_ff) .
+      * case => _ _ <- _ . done .
+      * case => _ _ <- _ . done .
+      * case => <- _ <- Hr .
+        rewrite !interp_cnf_cons /interp_clause !interp_lit_neg_lit .
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgls1)).
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgls2)).
+        by case: (interp_lit E ls1); case: (interp_lit E ls2); 
+        rewrite /interp_lit !env_upd_eq .
+Qed .
+        
 (* ===== bit_blast_full_adder ===== *)
 
 Definition bit_blast_full_adder1 g a1 a2 cin :=
@@ -1860,6 +2054,32 @@ Proof.
   rewrite -(toNatK bs2). replace (toNat bs2) with (toNat bs2 * (2^ 0)) by ring.
   exact: (bit_blast_mul_rec_correct Hmul Henc_bs1 Henc_bs2 Hcnf).
 Qed.
+
+
+
+(* ===== bit_blast_concat ===== *)
+
+Definition bit_blast_concat w0 w1 (g: generator) (ls0 : w0.-tuple literal) (ls1 : w1.-tuple literal) : generator * cnf * (w1 + w0).-tuple literal :=
+  (g, [], cat_tuple ls1 ls0) .
+
+Definition mk_env_concat w0 w1 (E : env) (g : generator) (ls0 : w0.-tuple literal) (ls1 : w1.-tuple literal) : env * generator * cnf * (w1 + w0).-tuple literal :=
+  (E, g, [], cat_tuple ls1 ls0) .
+
+Lemma bit_blast_concat_correct :
+  forall w0 w1 (bs0 : BITS w0) (bs1 : BITS w1) E ls0 ls1,
+    enc_bits E ls0 bs0 ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E (cat_tuple ls1 ls0) (catB bs0 bs1).
+Proof.
+  move=> w0 .
+  elim .
+  - move => bs0 bs1 E ls0 ls1 Hencls0 Hencls1 .
+    rewrite tuple0 /catB catNil .
+    by rewrite tuple0 catNil .
+  - move => w1 IHw1 .
+    move => bs0 bs1 E ls0 ls1 Hencls0 Hencls1 .
+    exact: enc_bits_concat .
+Qed .
 
 
 
@@ -3422,7 +3642,10 @@ Fixpoint bit_blast_exp w (m : vm) (g : generator) (e : QFBV64.exp w) : vm * gene
                           (m, g', cs, rs)
   | QFBV64.bvNot w e => (m, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAnd w e e2 => (m, g, [], copy w lit_tt) (* TODO *)
-  | QFBV64.bvOr w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
+  | QFBV64.bvOr w e1 e2 => let '(m1, g1, cs1, rs1) := bit_blast_exp  m  g e1 in
+                           let '(m2, g2, cs2, rs2) := bit_blast_exp m1 g1 e2 in
+                           let '(g', cs, rs) := bit_blast_or g2 rs1 rs2 in
+                           (m2, g', cs1 ++ cs2 ++ cs, rs)
   | QFBV64.bvXor w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvNeg w e => (m, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAdd w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
@@ -3434,7 +3657,9 @@ Fixpoint bit_blast_exp w (m : vm) (g : generator) (e : QFBV64.exp w) : vm * gene
   | QFBV64.bvShl w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvLshr w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAshr w e1 e2 => (m, g, [], copy w lit_tt) (* TODO *)
-  | QFBV64.bvConcat w1 w2 e1 e2 => (m, g, [], copy (w2 + w1) lit_tt) (* TODO *)
+  | QFBV64.bvConcat w1 w2 e1 e2 => let '(m1, g1, cs1, rs1) := bit_blast_exp m g e1 in
+                                   let '(m', g2, cs2, rs2) := bit_blast_exp m1 g1 e2 in
+                                   let '(g', cs, rs) := bit_blast_concat g2 rs1 rs2 in (m', g', cs1 ++ cs2 ++ cs, rs)
   | QFBV64.bvExtract w i j e => (m, g, [], copy (i - j + 1) lit_tt) (* TODO *)
   | QFBV64.bvSlice w1 w2 w3 e => (m, g, [], copy w2 lit_tt) (* TODO *)
   | QFBV64.bvHigh wh wl e => (m, g, [], copy wh lit_tt) (* TODO *)
@@ -3498,7 +3723,11 @@ Fixpoint mk_env_exp w (m : vm) (s : QFBV64.State.t) (E : env) (g : generator) (e
                           (m, E', g', cs, rs)
   | QFBV64.bvNot w e => (m, E, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAnd w e e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
-  | QFBV64.bvOr w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
+  | QFBV64.bvOr w e1 e2 =>
+    let '(m1, E1, g1, cs1, ls1) := mk_env_exp m s E g e1 in
+    let '(m2, E2, g2, cs2, ls2) := mk_env_exp m1 s E1 g1 e2 in
+    let '(E', g', cs, ls) := mk_env_or E2 g2 ls1 ls2 in
+    (m2, E', g', cs1 ++ cs2 ++ cs, ls)
   | QFBV64.bvXor w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvNeg w e => (m, E, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAdd w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
@@ -3510,7 +3739,11 @@ Fixpoint mk_env_exp w (m : vm) (s : QFBV64.State.t) (E : env) (g : generator) (e
   | QFBV64.bvShl w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvLshr w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
   | QFBV64.bvAshr w e1 e2 => (m, E, g, [], copy w lit_tt) (* TODO *)
-  | QFBV64.bvConcat w1 w2 e1 e2 => (m, E, g, [], copy (w2 + w1) lit_tt) (* TODO *)
+  | QFBV64.bvConcat w1 w2 e1 e2 =>
+    let '(m1, E1, g1, cs1, ls1) := mk_env_exp m s E g e1 in
+    let '(m', E2, g2, cs2, ls2) := mk_env_exp m1 s E1 g1 e2 in
+    let '(E', g', cs, ls) := mk_env_concat E2 g2 ls1 ls2 in
+    (m', E', g', cs1 ++ cs2 ++ cs, ls)
   | QFBV64.bvExtract w i j e => (m, E, g, [], copy (i - j + 1) lit_tt) (* TODO *)
   | QFBV64.bvSlice w1 w2 w3 e => (m, E, g, [], copy w2 lit_tt) (* TODO *)
   | QFBV64.bvHigh wh wl e => (m, E, g, [], copy wh lit_tt) (* TODO *)
@@ -3627,11 +3860,21 @@ Proof.
 Admitted.
 
 Lemma bit_blast_exp_preserve_or :
-  forall (w0 : nat) (e : QFBV64.exp w0) (e0 : QFBV64.exp w0) (m : vm) (g : generator)
-         (m' : vm) (g' : generator) (cs : cnf) (lrs : w0.-tuple literal),
-    bit_blast_exp m g (QFBV64.bvOr w0 e e0) = (m', g', cs, lrs) -> vm_preserve m m'.
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m  : vm) (g  : generator)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g e0 = (m', g', cs, lrs) -> vm_preserve m m') ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m  : vm) (g  : generator)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g e1 = (m', g', cs, lrs) -> vm_preserve m m') ->
+    forall (m  : vm) (g  : generator)
+           (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+      bit_blast_exp m g (QFBV64.bvOr w e0 e1) = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
-Admitted.
+  auto_bit_blast_vm_preserve.
+Qed.
 
 Lemma bit_blast_exp_preserve_xor :
   forall (w0 : nat) (e : QFBV64.exp w0) (e0 : QFBV64.exp w0) (m : vm) (g : generator)
@@ -3711,13 +3954,22 @@ Proof.
 Admitted.
 
 Lemma bit_blast_exp_preserve_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (g : generator)
-         (m' : vm) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    bit_blast_exp m g (QFBV64.bvConcat w1 w2 e e0) = (m', g', cs, lrs) ->
-    vm_preserve m m'.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (g : generator) (m' : vm) (g' : generator)
+              (cs : cnf) (lrs : w0.-tuple literal),
+          bit_blast_exp m g e0 = (m', g', cs, lrs) -> vm_preserve m m') ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (g : generator) (m' : vm) (g' : generator)
+              (cs : cnf) (lrs : w1.-tuple literal),
+          bit_blast_exp m g e1 = (m', g', cs, lrs) -> vm_preserve m m') ->
+    forall (m : vm) (g : generator) (m' : vm) (g' : generator)
+           (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      bit_blast_exp m g (QFBV64.bvConcat w0 w1 e0 e1) = (m', g', cs, lrs) ->
+      vm_preserve m m'.
 Proof.
-Admitted.
+  auto_bit_blast_vm_preserve.
+Qed .
 
 Lemma bit_blast_exp_preserve_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -3987,7 +4239,9 @@ Proof.
   - exact: bit_blast_exp_preserve_const.
   - exact: bit_blast_exp_preserve_not.
   - exact: bit_blast_exp_preserve_and.
-  - exact: bit_blast_exp_preserve_or.
+  - move=> w e0 e1 .
+    move: (bit_blast_exp_preserve _ e0) (bit_blast_exp_preserve _ e1) => IH0 IH1 .
+    exact: (bit_blast_exp_preserve_or IH0 IH1) .
   - exact: bit_blast_exp_preserve_xor.
   - exact: bit_blast_exp_preserve_neg.
   - exact: bit_blast_exp_preserve_add.
@@ -3999,7 +4253,10 @@ Proof.
   - exact: bit_blast_exp_preserve_shl.
   - exact: bit_blast_exp_preserve_lshr.
   - exact: bit_blast_exp_preserve_ashr.
-  - exact: bit_blast_exp_preserve_concat.
+  - move => w0 w1 e0 e1 .
+    move: (bit_blast_exp_preserve _ e0) (bit_blast_exp_preserve _ e1)
+    => IHe0 IHe1 .
+    exact: (bit_blast_exp_preserve_concat IHe0 IHe1) .
   - exact: bit_blast_exp_preserve_extract.
   - exact: bit_blast_exp_preserve_slice.
   - exact: bit_blast_exp_preserve_high.
@@ -4101,15 +4358,38 @@ Proof.
 Admitted.
 
 Lemma bit_blast_exp_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (g : generator)
-         (s : QFBV64.State.t) (E : env)
-         (m' : vm) (g' : generator) (cs : cnf) (lrs : w0.-tuple literal),
-    bit_blast_exp m g (QFBV64.bvOr w0 e e0) = (m', g', cs, lrs) ->
-    consistent m' E s ->
-    interp_cnf E (add_prelude cs) ->
-    enc_bits E lrs (QFBV64.eval_exp (QFBV64.bvOr w0 e e0) s).
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m  : vm) (g  : generator) (s : QFBV64.State.t) (E : env)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g e0 = (m', g', cs, lrs) ->
+          consistent m' E s ->
+          interp_cnf E (add_prelude cs) ->
+          enc_bits E lrs (QFBV64.eval_exp e0 s)) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m  : vm) (g  : generator) (s : QFBV64.State.t) (E : env)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+          bit_blast_exp m g e1 = (m', g', cs, lrs) ->
+          consistent m' E s ->
+          interp_cnf E (add_prelude cs) ->
+          enc_bits E lrs (QFBV64.eval_exp e1 s)) ->
+    forall (m  : vm) (g  : generator) (s : QFBV64.State.t) (E : env)
+           (m' : vm) (g' : generator) (cs : cnf) (lrs : w.-tuple literal),
+      bit_blast_exp m g (QFBV64.bvOr w e0 e1) = (m', g', cs, lrs) ->
+      consistent m' E s ->
+      interp_cnf E (add_prelude cs) ->
+      enc_bits E lrs (QFBV64.eval_exp (QFBV64.bvOr w e0 e1) s).
 Proof.
-Admitted.
+  move=> w e0 IHe0 e1 IHe1 m g s E m' g' cs lrs.
+  rewrite (lock interp_cnf) /= -lock. dcase_goal. case; intros; subst.
+  rewrite !add_prelude_append in H7.
+  move: H7 => /andP [Hcs0 /andP [Hcs1 Hcs2]] .
+  move: (vm_preserve_consistent (bit_blast_exp_preserve H0) H6) => Hcon1.
+  move: (vm_preserve_consistent (bit_blast_exp_preserve H) Hcon1) => Hcon0.
+  move: (IHe0 _ _ _ _ _ _ _ _ H Hcon1 Hcs0) => Hencls0.
+  move: (IHe1 _ _ _ _ _ _ _ _ H0 H6 Hcs1) => Hencls1.
+  apply: (bit_blast_or_correct H1 Hencls0 Hencls1 Hcs2).
+Qed .
 
 Lemma bit_blast_exp_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (g : generator)
@@ -4233,15 +4513,38 @@ Proof.
 Admitted.
 
 Lemma bit_blast_exp_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (g : generator) (s : QFBV64.State.t) (E : env)
-         (m' : vm) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    bit_blast_exp m g (QFBV64.bvConcat w1 w2 e e0) = (m', g', cs, lrs) ->
-    consistent m' E s ->
-    interp_cnf E (add_prelude cs) ->
-    enc_bits E lrs (QFBV64.eval_exp (QFBV64.bvConcat w1 w2 e e0) s).
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m  : vm) (g  : generator) (s : QFBV64.State.t) (E : env)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w0.-tuple literal),
+          bit_blast_exp m g e0 = (m', g', cs, lrs) ->
+          consistent m' E s ->
+          interp_cnf E (add_prelude cs) ->
+          enc_bits E lrs (QFBV64.eval_exp e0 s)) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m  : vm) (g  : generator) (s : QFBV64.State.t) (E : env)
+              (m' : vm) (g' : generator) (cs : cnf) (lrs : w1.-tuple literal),
+          bit_blast_exp m g e1 = (m', g', cs, lrs) ->
+          consistent m' E s ->
+          interp_cnf E (add_prelude cs) ->
+          enc_bits E lrs (QFBV64.eval_exp e1 s)) ->
+    forall (m : vm) (g : generator) (s : QFBV64.State.t) (E : env)
+           (m' : vm) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      bit_blast_exp m g (QFBV64.bvConcat w0 w1 e0 e1) = (m', g', cs, lrs) ->
+      consistent m' E s ->
+      interp_cnf E (add_prelude cs) ->
+      enc_bits E lrs (QFBV64.eval_exp (QFBV64.bvConcat w0 w1 e0 e1) s).
 Proof.
-Admitted.
+  move => w0 w1 e0 IHe0 e1 IHe1 m g s E m' g' cs lrs .
+  rewrite (lock interp_cnf) /= -lock. dcase_goal. case; intros; subst.
+  rewrite !add_prelude_append in H6 .
+  move: H6 => /andP [Hcs0 /andP [Hcs1 _]] .
+  move: (vm_preserve_consistent (bit_blast_exp_preserve H0) H5) => Hcon1.
+  move: (vm_preserve_consistent (bit_blast_exp_preserve H) Hcon1) => Hcon0.
+  move: (IHe0 _ _ _ _ _ _ _ _ H Hcon1 Hcs0) => Hencls0.
+  move: (IHe1 _ _ _ _ _ _ _ _ H0 H5 Hcs1) => Hencls1.
+  apply: (bit_blast_concat_correct Hencls0 Hencls1).
+Qed .
 
 Lemma bit_blast_exp_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -4675,7 +4978,9 @@ Proof.
   - exact: bit_blast_exp_const.
   - exact: bit_blast_exp_not.
   - exact: bit_blast_exp_and.
-  - exact: bit_blast_exp_or.
+  - move => w e0 e1 .
+    move: (bit_blast_exp_correct _ e0) (bit_blast_exp_correct _ e1) => IHe0 IHe1 .
+    exact: (bit_blast_exp_or IHe0 IHe1) .
   - exact: bit_blast_exp_xor.
   - exact: bit_blast_exp_neg.
   - exact: bit_blast_exp_add.
@@ -4687,7 +4992,10 @@ Proof.
   - exact: bit_blast_exp_shl.
   - exact: bit_blast_exp_lshr.
   - exact: bit_blast_exp_ashr.
-  - exact: bit_blast_exp_concat.
+  - move => w0 w1 e0 e1 .
+    move: (bit_blast_exp_correct _ e0) (bit_blast_exp_correct _ e1)
+    => IHe0 IHe1 .
+    exact: (bit_blast_exp_concat IHe0 IHe1) .
   - exact: bit_blast_exp_extract.
   - exact: bit_blast_exp_slice.
   - exact: bit_blast_exp_high.
@@ -4771,13 +5079,29 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_is_bit_blast_exp_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (E : env)
-         (g : generator) (s : QFBV64.State.t) (m' : vm) (E' : env)
-         (g' : generator) (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
-    bit_blast_exp m g (QFBV64.bvOr w0 e e0) = (m', g', cs, lrs).
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m  : vm) (E  : env) (g  : generator) (s : QFBV64.State.t)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          bit_blast_exp m g e0 = (m', g', cs, lrs)) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m  : vm) (E  : env) (g  : generator) (s : QFBV64.State.t)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          bit_blast_exp m g e1 = (m', g', cs, lrs)) ->
+    forall (m  : vm) (E  : env) (g  : generator) (s : QFBV64.State.t)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+           (lrs : w.-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
+      bit_blast_exp m g (QFBV64.bvOr w e0 e1) = (m', g', cs, lrs).
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  rewrite (H _ _ _ _ _ _ _ _ _ H1) (H0 _ _ _ _ _ _ _ _ _ H3) .
+  rewrite (mk_env_or_is_bit_blast_or H2). reflexivity.
+Qed .  
 
 Lemma mk_env_exp_is_bit_blast_exp_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (E : env)
@@ -4879,13 +5203,27 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_is_bit_blast_exp_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (E : env) (g : generator) (s : QFBV64.State.t)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    bit_blast_exp m g (QFBV64.bvConcat w1 w2 e e0) = (m', g', cs, lrs).
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m  : vm) (E  : env) (g  : generator) (s : QFBV64.State.t)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          bit_blast_exp m g e0 = (m', g', cs, lrs)) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m  : vm) (E  : env) (g  : generator) (s : QFBV64.State.t)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          bit_blast_exp m g e1 = (m', g', cs, lrs)) ->
+    forall (m : vm) (E : env) (g : generator) (s : QFBV64.State.t)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+    bit_blast_exp m g (QFBV64.bvConcat w0 w1 e0 e1) = (m', g', cs, lrs).
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  by rewrite (H _ _ _ _ _ _ _ _ _ H1) (H0 _ _ _ _ _ _ _ _ _ H3) .
+Qed .
 
 Lemma mk_env_exp_is_bit_blast_exp_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -5211,7 +5549,10 @@ Proof.
   - exact: mk_env_exp_is_bit_blast_exp_const.
   - exact: mk_env_exp_is_bit_blast_exp_not.
   - exact: mk_env_exp_is_bit_blast_exp_and.
-  - exact: mk_env_exp_is_bit_blast_exp_or.
+  - move => w e0 e1 .
+    move: (mk_env_exp_is_bit_blast_exp _ e0)
+            (mk_env_exp_is_bit_blast_exp _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_is_bit_blast_exp_or IHe0 IHe1) .
   - exact: mk_env_exp_is_bit_blast_exp_xor.
   - exact: mk_env_exp_is_bit_blast_exp_neg.
   - exact: mk_env_exp_is_bit_blast_exp_add.
@@ -5223,7 +5564,10 @@ Proof.
   - exact: mk_env_exp_is_bit_blast_exp_shl.
   - exact: mk_env_exp_is_bit_blast_exp_lshr.
   - exact: mk_env_exp_is_bit_blast_exp_ashr.
-  - exact: mk_env_exp_is_bit_blast_exp_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_is_bit_blast_exp _ e0)
+            (mk_env_exp_is_bit_blast_exp _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_is_bit_blast_exp_concat IHe0 IHe1) .
   - exact: mk_env_exp_is_bit_blast_exp_extract.
   - exact: mk_env_exp_is_bit_blast_exp_slice.
   - exact: mk_env_exp_is_bit_blast_exp_high.
@@ -5309,13 +5653,29 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_gen_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
-    (g <=? g')%positive.
+  forall (w : nat),
+    forall (e0: QFBV64.exp w),
+      (forall (m  : vm) (s  : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) -> (g <=? g')%positive) ->
+    forall (e1: QFBV64.exp w),
+      (forall (m  : vm) (s  : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) -> (g <=? g')%positive) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+           (lrs : w.-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
+      (g <=? g')%positive.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  move: (mk_env_or_newer_gen H2) => Hg2g'.
+  move: (H0 _ _ _ _ _ _ _ _ _ H3) => Hg1g2.
+  move: (H  _ _ _ _ _ _ _ _ _ H1) => Hg0g1 .
+  apply: (pos_leb_trans _ Hg2g'). by [ apply: (pos_leb_trans _ Hg1g2)] .
+Qed .
 
 Lemma mk_env_exp_newer_gen_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -5417,13 +5777,27 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_gen_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    (g <=? g')%positive.
+  forall (w0 w1 : nat),
+    forall (e0: QFBV64.exp w0),
+      (forall (m  : vm) (s  : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) -> (g <=? g')%positive) ->
+    forall (e1: QFBV64.exp w1),
+      (forall (m  : vm) (s  : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) -> (g <=? g')%positive) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      (g <=? g')%positive.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  move: (H0 _ _ _ _ _ _ _ _ _ H3) => Hg0g'.
+  move: (H  _ _ _ _ _ _ _ _ _ H1) => Hgg0 .
+  by apply: (pos_leb_trans _ Hg0g').
+Qed .
 
 Lemma mk_env_exp_newer_gen_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -5757,7 +6131,9 @@ Proof.
   - exact: mk_env_exp_newer_gen_const.
   - exact: mk_env_exp_newer_gen_not.
   - exact: mk_env_exp_newer_gen_and.
-  - exact: mk_env_exp_newer_gen_or.
+  - move => w e0 e1 .
+    move: (mk_env_exp_newer_gen _ e0) (mk_env_exp_newer_gen _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_newer_gen_or IHe0 IHe1) .
   - exact: mk_env_exp_newer_gen_xor.
   - exact: mk_env_exp_newer_gen_neg.
   - exact: mk_env_exp_newer_gen_add.
@@ -5769,7 +6145,10 @@ Proof.
   - exact: mk_env_exp_newer_gen_shl.
   - exact: mk_env_exp_newer_gen_lshr.
   - exact: mk_env_exp_newer_gen_ashr.
-  - exact: mk_env_exp_newer_gen_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_newer_gen _ e0) (mk_env_exp_newer_gen _ e1)
+    => IHe0 IHe1 .
+    apply (mk_env_exp_newer_gen_concat IHe0 IHe1) .
   - exact: mk_env_exp_newer_gen_extract.
   - exact: mk_env_exp_newer_gen_slice.
   - exact: mk_env_exp_newer_gen_high.
@@ -5859,13 +6238,30 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_vm_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m -> newer_than_vm g' m'.
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_vm g' m') ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_vm g' m') ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator)
+           (cs : cnf) (lrs : w.-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m -> newer_than_vm g' m'.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst. move: (mk_env_or_newer_gen H3) => Hg2g'.
+  apply: (newer_than_vm_le_newer _ Hg2g').
+  apply: (H0 _ _ _ _ _ _ _ _ _ H4) .
+  by [apply: (H _ _ _ _ _ _ _ _ _ H1)] .
+Qed .
 
 Lemma mk_env_exp_newer_vm_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -5967,13 +6363,28 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_vm_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m -> newer_than_vm g' m'.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_vm g' m') ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_vm g' m') ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m -> newer_than_vm g' m'.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  apply: (H0 _ _ _ _ _ _ _ _ _ H4) .
+  by apply: (H _ _ _ _ _ _ _ _ _ H1) .
+Qed .
 
 Lemma mk_env_exp_newer_vm_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -6312,7 +6723,9 @@ Proof.
   - exact: mk_env_exp_newer_vm_const.
   - exact: mk_env_exp_newer_vm_not.
   - exact: mk_env_exp_newer_vm_and.
-  - exact: mk_env_exp_newer_vm_or.
+  - move => w e0 e1 .
+    move: (mk_env_exp_newer_vm _ e0) (mk_env_exp_newer_vm _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_newer_vm_or IHe0 IHe1) .
   - exact: mk_env_exp_newer_vm_xor.
   - exact: mk_env_exp_newer_vm_neg.
   - exact: mk_env_exp_newer_vm_add.
@@ -6324,7 +6737,9 @@ Proof.
   - exact: mk_env_exp_newer_vm_shl.
   - exact: mk_env_exp_newer_vm_lshr.
   - exact: mk_env_exp_newer_vm_ashr.
-  - exact: mk_env_exp_newer_vm_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_newer_vm _ e0) (mk_env_exp_newer_vm _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_newer_vm_concat IHe0 IHe1) .
   - exact: mk_env_exp_newer_vm_extract.
   - exact: mk_env_exp_newer_vm_slice.
   - exact: mk_env_exp_newer_vm_high.
@@ -6411,13 +6826,39 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_res_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator)
+              (cs : cnf) (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_lit g lit_tt ->
+          newer_than_lits g' lrs) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator)
+              (cs : cnf) (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_lit g lit_tt ->
+          newer_than_lits g' lrs) ->
+    forall (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
     newer_than_vm g m -> newer_than_lit g lit_tt -> newer_than_lits g' lrs.
 Proof.
-Admitted.
+  intros w e0 IHe0 e1 IHe1 .
+  rewrite /=; intros; dcase_hyps; subst .
+  move : (mk_env_exp_newer_gen H) => Hgg0 .
+  move : (mk_env_exp_newer_gen H3) => Hg0g1 .
+  move : (mk_env_exp_newer_vm H H0) => Hg0m0 .
+  move : (newer_than_lit_le_newer H1 Hgg0) => {Hgg0} Hg0tt .
+  move : (IHe0 _ _ _ _ _ _ _ _ _ H H0 H1) => {H H0 IHe0} IHg0ls .
+  move : (IHe1 _ _ _ _ _ _ _ _ _ H3 Hg0m0 Hg0tt) => {IHe1 Hg0m0} Hg1ls0 .
+  move : (newer_than_lits_le_newer IHg0ls Hg0g1) => {IHg0ls} Hg1ls .
+  move : (newer_than_lit_le_newer Hg0tt Hg0g1) => {Hg0tt} Hg1tt .
+  exact : (mk_env_or_newer_res Hg1tt Hg1ls Hg1ls0 H2) .
+Qed .
 
 Lemma mk_env_exp_newer_res_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -6519,13 +6960,37 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_res_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m -> newer_than_lit g lit_tt -> newer_than_lits g' lrs.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator)
+              (cs : cnf) (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_lit g lit_tt ->
+          newer_than_lits g' lrs) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator)
+              (cs : cnf) (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_lit g lit_tt ->
+          newer_than_lits g' lrs) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m -> newer_than_lit g lit_tt -> newer_than_lits g' lrs.
 Proof.
-Admitted.
+  intros w0 w1 e0 IHe0 e1 IHe1 .
+  rewrite /=; intros; dcase_hyps; subst .
+  move : (mk_env_exp_newer_gen H) => Hgg0 .
+  move : (mk_env_exp_newer_gen H3) => Hg0g1 .
+  move : (mk_env_exp_newer_vm H H0) => Hg0m0 .
+  move : (newer_than_lit_le_newer H1 Hgg0) => {Hgg0} Hg0tt .
+  move : (IHe0 _ _ _ _ _ _ _ _ _ H H0 H1) => {H H0 IHe0} IHg0ls .
+  move : (IHe1 _ _ _ _ _ _ _ _ _ H3 Hg0m0 Hg0tt) => {IHe1 Hg0m0} Hg'ls0 .
+  move : (newer_than_lits_le_newer IHg0ls Hg0g1) => {IHg0ls} Hg'ls .
+  by rewrite newer_than_lits_append Hg'ls0 Hg'ls .
+Qed .
 
 Lemma mk_env_exp_newer_res_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -6795,7 +7260,9 @@ Proof.
   - exact: mk_env_exp_newer_res_const.
   - exact: mk_env_exp_newer_res_not.
   - exact: mk_env_exp_newer_res_and.
-  - exact: mk_env_exp_newer_res_or.
+  - intros . move: (mk_env_exp_newer_res _ e) => IHe .
+    move: (mk_env_exp_newer_res _ e0) => IHe0 .
+    exact: (mk_env_exp_newer_res_or IHe IHe0 H H0 H1) .
   - exact: mk_env_exp_newer_res_xor.
   - exact: mk_env_exp_newer_res_neg.
   - exact: mk_env_exp_newer_res_add.
@@ -6807,7 +7274,10 @@ Proof.
   - exact: mk_env_exp_newer_res_shl.
   - exact: mk_env_exp_newer_res_lshr.
   - exact: mk_env_exp_newer_res_ashr.
-  - exact: mk_env_exp_newer_res_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_newer_res _ e0) (mk_env_exp_newer_res _ e1)
+    => IHe0 IHe1 .
+    exact: (mk_env_exp_newer_res_concat IHe0 IHe1) .
   - exact: mk_env_exp_newer_res_extract.
   - exact: mk_env_exp_newer_res_slice.
   - exact: mk_env_exp_newer_res_high.
@@ -6891,15 +7361,50 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_cnf_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          newer_than_cnf g' cs) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          newer_than_cnf g' cs) ->
+    forall (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
     newer_than_vm g m ->
     newer_than_lit g lit_tt ->
     newer_than_cnf g' cs.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst. rewrite !newer_than_cnf_append.
+  move: (mk_env_exp_newer_gen H1) => Hgg0 .
+  move: (mk_env_exp_newer_gen H5) => Hg0g1.
+  move: (mk_env_or_newer_gen H4) => Hg1g'.
+  (* newer_than_cnf g' cs0 *)
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => Hnew_g0cs0.
+  move: (pos_leb_trans Hg0g1 Hg1g') => Hg0g'.
+  rewrite (newer_than_cnf_le_newer Hnew_g0cs0 Hg0g') /=.
+  (* newer_than_cnf g' cs1 *)
+  move: (mk_env_exp_newer_vm H1 H2) => Hnew_g0m0.
+  move: (newer_than_lit_le_newer H3 Hgg0) => {Hgg0} Hg0tt.
+  move: (H0 _ _ _ _ _ _ _ _ _ H5 Hnew_g0m0 Hg0tt) => Hnew_g1cs1.
+  rewrite (newer_than_cnf_le_newer Hnew_g1cs1 Hg1g') /=.
+  (* newer_than_cnf g' cs2 *)
+  move: (mk_env_exp_newer_res H1 H2 H3) => Hnew_g0ls.
+  move: (mk_env_exp_newer_res H5 Hnew_g0m0 Hg0tt) => Hnew_g1ls0 .
+  move: (newer_than_lits_le_newer Hnew_g0ls Hg0g1) => Hnew_g1ls .
+  exact: (mk_env_or_newer_cnf H4 Hnew_g1ls Hnew_g1ls0) .
+Qed.
 
 Lemma mk_env_exp_newer_cnf_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -7023,15 +7528,43 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_newer_cnf_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m ->
-    newer_than_lit g lit_tt ->
-    newer_than_cnf g' cs.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          newer_than_cnf g' cs) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          newer_than_cnf g' cs) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m ->
+      newer_than_lit g lit_tt ->
+      newer_than_cnf g' cs.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst. rewrite !newer_than_cnf_append.
+  move: (mk_env_exp_newer_gen H1) => Hgg0 .
+  move: (mk_env_exp_newer_gen H5) => Hg0g'.
+  (* newer_than_cnf g' cs0 *)
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => Hnew_g0cs0.
+  move: (pos_leb_trans Hgg0 Hg0g') => Hgg'.
+  rewrite (newer_than_cnf_le_newer Hnew_g0cs0 Hg0g') /=.
+  (* newer_than_cnf g' cs1 *)
+  move: (mk_env_exp_newer_vm H1 H2) => Hnew_g0m0.
+  move: (newer_than_lit_le_newer H3 Hgg0) => {Hgg0} Hg0tt.
+  move: (H0 _ _ _ _ _ _ _ _ _ H5 Hnew_g0m0 Hg0tt) => Hnew_g'cs1.
+  by rewrite Hnew_g'cs1 .
+Qed .
 
 Lemma mk_env_exp_newer_cnf_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -7474,7 +8007,9 @@ Proof.
   - exact: mk_env_exp_newer_cnf_const.
   - exact: mk_env_exp_newer_cnf_not.
   - exact: mk_env_exp_newer_cnf_and.
-  - exact: mk_env_exp_newer_cnf_or.
+  - move=> w e0 e1.
+    move: (mk_env_exp_newer_cnf _ e0) (mk_env_exp_newer_cnf _ e1) => IHe0 IHe1.
+    exact: (mk_env_exp_newer_cnf_or IHe0 IHe1).
   - exact: mk_env_exp_newer_cnf_xor.
   - exact: mk_env_exp_newer_cnf_neg.
   - exact: mk_env_exp_newer_cnf_add.
@@ -7486,7 +8021,10 @@ Proof.
   - exact: mk_env_exp_newer_cnf_shl.
   - exact: mk_env_exp_newer_cnf_lshr.
   - exact: mk_env_exp_newer_cnf_ashr.
-  - exact: mk_env_exp_newer_cnf_concat.
+  - move => w0 w1 e0 e1 .
+    move : (mk_env_exp_newer_cnf _ e0) (mk_env_exp_newer_cnf _ e1)
+    => IHe0 IHe1 .
+    exact: (mk_env_exp_newer_cnf_concat IHe0 IHe1) .
   - exact: mk_env_exp_newer_cnf_extract.
   - exact: mk_env_exp_newer_cnf_slice.
   - exact: mk_env_exp_newer_cnf_high.
@@ -7581,13 +8119,33 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_consistent_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (m : vm) (s : QFBV64.State.t)
+           (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
+         (cs : cnf) (lrs : w.-tuple literal),
+    mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
     newer_than_vm g m -> consistent m E s -> consistent m' E' s.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  move: (mk_env_exp_newer_vm H1 H2) => Hnew_g0m0.
+  move: (mk_env_exp_newer_vm H5 Hnew_g0m0) => Hnew_g1m'.
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => Hm0E0 .
+  move: (mk_env_or_preserve H4) => HE1E'g1 .
+  move: (H0 _ _ _ _ _ _ _ _ _ H5 Hnew_g0m0 Hm0E0) => Hm'E1 .
+  exact: (env_preserve_consistent Hnew_g1m' HE1E'g1 Hm'E1) .
+Qed .  
 
 Lemma mk_env_exp_consistent_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -7689,13 +8247,30 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_consistent_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m -> consistent m E s -> consistent m' E' s.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  move: (mk_env_exp_newer_vm H1 H2) => Hnew_g0m0.
+  move: (mk_env_exp_newer_vm H5 Hnew_g0m0) => Hnew_g'm'.
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => Hm0E0 .
+  apply: (H0 _ _ _ _ _ _ _ _ _ H5 Hnew_g0m0 Hm0E0) .
+Qed .
 
 Lemma mk_env_exp_consistent_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -8056,7 +8631,9 @@ Proof.
   - exact: mk_env_exp_consistent_const.
   - exact: mk_env_exp_consistent_not.
   - exact: mk_env_exp_consistent_and.
-  - exact: mk_env_exp_consistent_or.
+  - move=> w e0 e1 .
+    move: (mk_env_exp_consistent _ e0) (mk_env_exp_consistent _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_consistent_or IHe0 IHe1) .
   - exact: mk_env_exp_consistent_xor.
   - exact: mk_env_exp_consistent_neg.
   - exact: mk_env_exp_consistent_add.
@@ -8068,7 +8645,10 @@ Proof.
   - exact: mk_env_exp_consistent_shl.
   - exact: mk_env_exp_consistent_lshr.
   - exact: mk_env_exp_consistent_ashr.
-  - exact: mk_env_exp_consistent_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_consistent _ e0) (mk_env_exp_consistent _ e1)
+    => IHe0 IHe1 .
+    exact: (mk_env_exp_consistent_concat IHe0 IHe1) .
   - exact: mk_env_exp_consistent_extract.
   - exact: mk_env_exp_consistent_slice.
   - exact: mk_env_exp_consistent_high.
@@ -8152,13 +8732,36 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_preserve_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
-    env_preserve E E' g.
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator)
+           (cs : cnf) (lrs : w.-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
+      env_preserve E E' g.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst .
+  move: (H _ _ _ _ _ _ _ _ _ H1) => {H} HEE0g .
+  move: (H0 _ _ _ _ _ _ _ _ _ H3) => {H0} HE0E1g0 .
+  move: (mk_env_exp_newer_gen H1) => Hgg0 .
+  move: (env_preserve_le HE0E1g0 Hgg0) => HE0E1g .
+  move: (env_preserve_trans HEE0g HE0E1g)
+  => {HEE0g HE0E1g0 HE0E1g} HEE1g .
+  move: (mk_env_or_preserve H2) => HE1E'g1 .
+  move: (mk_env_exp_newer_gen H3) => Hg0g1 .
+  move: (env_preserve_le HE1E'g1 Hg0g1) => HE1E'g0 .
+  move: (env_preserve_le HE1E'g0 Hgg0) => HE1E'g .
+  exact: (env_preserve_trans HEE1g HE1E'g) .
+Qed .           
 
 Lemma mk_env_exp_preserve_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -8260,13 +8863,31 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_preserve_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    env_preserve E E' g.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      env_preserve E E' g.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst.
+  move: (H _ _ _ _ _ _ _ _ _ H1) => {H} HEE0g .
+  move: (H0 _ _ _ _ _ _ _ _ _ H3) => {H0} HE0E1g0 .
+  move: (mk_env_exp_newer_gen H1) => Hgg0 .
+  move: (env_preserve_le HE0E1g0 Hgg0) => HE0E'g .
+  move: (env_preserve_trans HEE0g HE0E'g)
+  => {HEE0g HE0E1g0 HE0E'g} HEE'g .
+  done .
+Qed .
 
 Lemma mk_env_exp_preserve_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -8618,7 +9239,9 @@ Proof.
   - exact: mk_env_exp_preserve_const.
   - exact: mk_env_exp_preserve_not.
   - exact: mk_env_exp_preserve_and.
-  - exact: mk_env_exp_preserve_or.
+  - move => w e0 e1 .
+    move: (mk_env_exp_preserve _ e0) (mk_env_exp_preserve _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_preserve_or IHe0 IHe1) .
   - exact: mk_env_exp_preserve_xor.
   - exact: mk_env_exp_preserve_neg.
   - exact: mk_env_exp_preserve_add.
@@ -8630,7 +9253,10 @@ Proof.
   - exact: mk_env_exp_preserve_shl.
   - exact: mk_env_exp_preserve_lshr.
   - exact: mk_env_exp_preserve_ashr.
-  - exact: mk_env_exp_preserve_concat.
+  - move => w0 w1 e0 e1 .
+    move : (mk_env_exp_preserve _ e0) (mk_env_exp_preserve _ e1)
+    => IHe0 IHe1 .
+    exact: (mk_env_exp_preserve_concat IHe0 IHe1) .
   - exact: mk_env_exp_preserve_extract.
   - exact: mk_env_exp_preserve_slice.
   - exact: mk_env_exp_preserve_high.
@@ -8723,15 +9349,56 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_sat_or :
-  forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lrs : w0.-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvOr w0 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m ->
-    newer_than_lit g lit_tt ->
-    interp_cnf E' cs.
+  forall (w : nat),
+    forall (e0 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          interp_cnf E' cs) ->
+    forall (e1 : QFBV64.exp w),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          interp_cnf E' cs) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator)
+           (cs : cnf) (lrs : w.-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvOr w e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m ->
+      newer_than_lit g lit_tt ->
+      interp_cnf E' cs.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst. rewrite !interp_cnf_append.
+  move: (mk_env_exp_newer_gen H1) => Hgg0.
+  move: (mk_env_exp_newer_gen H5) => Hg0g1.
+  move: (mk_env_or_newer_gen H4) => Hg1g'.
+  move: (mk_env_exp_newer_vm H1 H2) => Hg0m0.
+  move: (mk_env_exp_newer_vm H5 Hg0m0) => Hg1m'.
+  move: (newer_than_lit_le_newer H3 Hgg0) => Hg0tt.
+  move: (newer_than_lit_le_newer Hg0tt Hg0g1) => Hg1tt.
+  move: (mk_env_exp_newer_cnf H1 H2 H3) => Hg0cs0 .
+  move: (mk_env_exp_newer_cnf H5 Hg0m0 Hg0tt) => Hg1cs1 .
+  move: (mk_env_exp_preserve H1) => HEE0g .
+  move: (mk_env_exp_preserve H5) => HE0E1g0 .
+  move: (mk_env_or_preserve H4) => HE1E'g1 .
+  (* interp_cnf E' cs0 *)
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => HE0cs0 .
+  move: (env_preserve_trans HE0E1g0 (env_preserve_le HE1E'g1 Hg0g1)) => HE0E'g0 .
+  rewrite (env_preserve_cnf HE0E'g0 Hg0cs0) HE0cs0 .
+  (* interp_cnf E' cs1 *)
+  move: (H0 _ _ _ _ _ _ _ _ _ H5 Hg0m0 Hg0tt) => HE1cs1 .
+  rewrite (env_preserve_cnf HE1E'g1 Hg1cs1) HE1cs1 .
+  (* interp_cnf E' cs2 *)
+  move: (newer_than_lits_le_newer (mk_env_exp_newer_res H1 H2 H3) Hg0g1) => Hg1ls .
+  move: (mk_env_exp_newer_res H5 Hg0m0 Hg0tt) => Hg1ls0 .
+  exact: (mk_env_or_sat H4 Hg1ls Hg1ls0) => HE2cs2 .
+Qed.   
 
 Lemma mk_env_exp_sat_xor :
   forall (w0 : nat) (e e0 : QFBV64.exp w0) (m : vm) (s : QFBV64.State.t)
@@ -8855,15 +9522,47 @@ Proof.
 Admitted.
 
 Lemma mk_env_exp_sat_concat :
-  forall (w1 w2 : nat) (e : QFBV64.exp w1) (e0 : QFBV64.exp w2)
-         (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
-         (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w2 + w1).-tuple literal),
-    mk_env_exp m s E g (QFBV64.bvConcat w1 w2 e e0) = (m', E', g', cs, lrs) ->
-    newer_than_vm g m ->
-    newer_than_lit g lit_tt ->
-    interp_cnf E' cs.
+  forall (w0 w1 : nat),
+    forall (e0 : QFBV64.exp w0),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w0.-tuple literal),
+          mk_env_exp m s E g e0 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          interp_cnf E' cs) ->
+    forall (e1 : QFBV64.exp w1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w1.-tuple literal),
+          mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m ->
+          newer_than_lit g lit_tt ->
+          interp_cnf E' cs) ->
+    forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+           (m' : vm) (E' : env) (g' : generator) (cs : cnf) (lrs : (w1 + w0).-tuple literal),
+      mk_env_exp m s E g (QFBV64.bvConcat w0 w1 e0 e1) = (m', E', g', cs, lrs) ->
+      newer_than_vm g m ->
+      newer_than_lit g lit_tt ->
+      interp_cnf E' cs.
 Proof.
-Admitted.
+  rewrite /=; intros; dcase_hyps; subst. rewrite !interp_cnf_append.
+  move: (mk_env_exp_newer_gen H1) => Hgg0.
+  move: (mk_env_exp_newer_gen H5) => Hg0g'.
+  move: (mk_env_exp_newer_vm H1 H2) => Hg0m0.
+  move: (mk_env_exp_newer_vm H5 Hg0m0) => Hg'm'.
+  move: (newer_than_lit_le_newer H3 Hgg0) => Hg0tt.
+  move: (newer_than_lit_le_newer Hg0tt Hg0g') => Hg'tt.
+  move: (mk_env_exp_newer_cnf H1 H2 H3) => Hg0cs0 .
+  move: (mk_env_exp_newer_cnf H5 Hg0m0 Hg0tt) => Hg'cs1 .
+  move: (mk_env_exp_preserve H1) => HEE0g .
+  move: (mk_env_exp_preserve H5) => HE0E'g0 .
+  (* interp_cnf E' cs0 *)
+  move: (H _ _ _ _ _ _ _ _ _ H1 H2 H3) => HE0cs0 .
+  rewrite (env_preserve_cnf HE0E'g0 Hg0cs0) HE0cs0 .
+  (* interp_cnf E' cs1 *)
+  by rewrite (H0 _ _ _ _ _ _ _ _ _ H5 Hg0m0 Hg0tt) .
+Qed .
 
 Lemma mk_env_exp_sat_extract :
   forall (w0 i j : nat) (e : QFBV64.exp (j + (i - j + 1) + (w0 - i - 1)))
@@ -9319,7 +10018,9 @@ Proof.
   - exact: mk_env_exp_sat_const.
   - exact: mk_env_exp_sat_not.
   - exact: mk_env_exp_sat_and.
-  - exact: mk_env_exp_sat_or.
+  - move=> w e0 e1 .
+    move: (mk_env_exp_sat _ e0) (mk_env_exp_sat _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_sat_or IHe0 IHe1) .
   - exact: mk_env_exp_sat_xor.
   - exact: mk_env_exp_sat_neg.
   - exact: mk_env_exp_sat_add.
@@ -9331,7 +10032,9 @@ Proof.
   - exact: mk_env_exp_sat_shl.
   - exact: mk_env_exp_sat_lshr.
   - exact: mk_env_exp_sat_ashr.
-  - exact: mk_env_exp_sat_concat.
+  - move => w0 w1 e0 e1 .
+    move: (mk_env_exp_sat _ e0) (mk_env_exp_sat _ e1) => IHe0 IHe1 .
+    exact: (mk_env_exp_sat_concat IHe0 IHe1) .
   - exact: mk_env_exp_sat_extract.
   - exact: mk_env_exp_sat_slice.
   - exact: mk_env_exp_sat_high.
