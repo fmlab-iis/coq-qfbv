@@ -88,7 +88,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvShl w e1 e2 => fromNat 0 (* TODO *)
     | bvLshr w e1 e2 => fromNat 0 (* TODO *)
     | bvAshr w e1 e2 => fromNat 0 (* TODO *)
-    | bvConcat w1 w2 e1 e2 => fromNat 0 (* TODO *)
+    | bvConcat w1 w2 e1 e2 => catB (eval_exp e1 s) (eval_exp e2 s)
     | bvExtract w i j e => fromNat 0 (* TODO *)
     | bvSlice w1 w2 w3 e => fromNat 0 (* TODO *)
     | bvHigh wh wl e => fromNat 0 (* TODO *)
