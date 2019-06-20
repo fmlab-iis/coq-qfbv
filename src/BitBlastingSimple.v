@@ -586,6 +586,8 @@ Definition bit_blast_not1 (g: generator) (a:literal) : generator * cnf * literal
         [r; a]; [neg_lit r; neg_lit a]
       ] in (g', cs , r).
 
+(*Definition mk_env_not1 E g a *)
+
 Fixpoint bit_blast_not w (g:generator) : w.-tuple literal -> generator * cnf * w.-tuple literal :=
   if w is _.+1 then
   fun ls =>
@@ -598,6 +600,9 @@ Fixpoint bit_blast_not w (g:generator) : w.-tuple literal -> generator * cnf * w
       (g, [], [tuple]).
 
 Parameter mk_env_not : forall w : nat, env -> generator -> w.-tuple literal -> env * generator * cnf * w.-tuple literal.
+
+(*Definition mk_env_not E g l1 : env * generator * cnf * w.-tuple literal :=*)
+  
 
 Lemma bit_blast_not1_correct :
   forall g b br E l g' cs lr,
@@ -1053,6 +1058,18 @@ Fixpoint bit_blast_full_adder (g : generator) w lcin : w.-tuple literal -> w.-tu
     fun _ _ =>
         (g, [], lcin, [tuple]).
 
+Fixpoint mk_env_full_adder w E (g: generator) (lcin : literal) : w.-tuple literal -> w.-tuple literal -> env * generator * cnf * literal * w.-tuple literal :=
+  if w is _.+1 then
+    fun ls1 ls2 =>
+      let (ls1_tl, ls1_hd) := eta_expand (splitlsb ls1) in
+      let (ls2_tl, ls2_hd) := eta_expand (splitlsb ls2) in
+      let '(E_hd, g_hd, cs_hd, lcout_hd, lrs_hd) := mk_env_full_adder1 E g ls1_hd ls2_hd lcin in
+      let '(E_tl, g_tl, cs_tl, lcout_tl, lrs_tl) := mk_env_full_adder E_hd g_hd lcout_hd ls1_tl ls2_tl in
+      (E_tl, g_tl, cs_hd++cs_tl, lcout_tl, cons_tuple lrs_hd lrs_tl)
+  else
+    fun _ _ =>
+      (E, g, [], lcin, [tuple]).
+
 Lemma bit_blast_full_adder_correct :
   forall w g (bv1 bv2 : BITS w) bcin bcout brs E (ls1 ls2 : w.-tuple literal) lcin g' cs lcout lrs,
     bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs) ->
@@ -1145,9 +1162,138 @@ Proof.
   move=> [H1 H2]; exact: H2.
 Qed.
 
+Lemma mk_env_full_adder_is_bit_blast_full_adder :
+  forall w E g lcin (ls1 ls2 : w.-tuple literal) E' g' cs lcout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, lcout, lrs) ->
+    bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs).
+Proof.
+  elim.
+  - rewrite /mk_env_full_adder/bit_blast_full_adder/= => E g lcin ls1 ls2 E' g' cs lcout lrs.
+     by case => _ <- <- <- <-.
+  - intros_tuple. dcase_hyps; subst. move => Hls.
+    rewrite (H _ _ _ _ _ _ _ _ _ _ H0). by rewrite (tval_eq Hls).
+Qed.
 
+Lemma mk_env_full_adder_newer_gen :
+  forall w E g lcin (ls1 ls2: w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    (g <=? g')%positive.
+Proof.
+  elim.
+  - move => E g lcin ls1 ls2 E' g' cs cout lrs [] _ <- _ _ _.
+    exact: Pos.leb_refl.
+  - intros_tuple. dcase_hyps; subst. move => Hls.
+    move : (H _ _ _ _ _ _ _ _ _ _ H0) => IHm.
+    apply: (pos_leb_trans _ IHm). rewrite -Pos.add_assoc.
+    exact: (pos_leb_add_diag_r g (1+1)).
+Qed.
 
-(* ===== bit_blast_ite ===== *)
+Lemma mk_env_full_adder_newer_res :
+  forall w E g lcin (ls1 ls2: w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    newer_than_lits g' lrs.
+Proof.
+  elim.
+  - move => E g lcin ls1 ls2 E' g' cs cout lrs [] _ <- _ _ <-. 
+    done.
+  - intros_tuple. dcase_hyps; subst. move => Hls.
+    move : (H _ _ _ _ _ _ _ _ _ _ H0) => IHm. rewrite -Hls.
+    rewrite IHm andbT.
+    move: (mk_env_full_adder_newer_gen H0) => Hg1g. apply: (newer_than_var_le_newer _ Hg1g).
+    rewrite -Pos.add_assoc.
+    exact: newer_than_var_add_diag_r.
+Qed.
+
+Lemma mk_env_full_adder_newer_cnf :
+  forall w E g lcin (ls1 ls2: w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    newer_than_lit g lcin ->
+    newer_than_lits g ls1 ->
+    newer_than_lits g ls2 ->
+    newer_than_cnf g' cs.
+Proof.
+  elim.
+  - move => E g lcin ls1 ls2 E' g' cs cout lrs [] _ <- <- _ _ Hnewcin Hnewls1 Hnewls2.
+    done.
+  - intros_tuple. dcase_hyps; subst. move => Hls.
+    rewrite /=!newer_than_lit_neg.
+    move/andP: H2 => [Hnewls1 Hnewls0]; move/andP: H3 => [Hnewls2 Hnewls3].
+    move: (mk_env_full_adder_newer_gen H0) => Hg11. rewrite -Pos.add_assoc in Hg11.
+    move: (newer_than_lit_add_r (1+1) H1) => Hnewg11lcin.
+    move: (newer_than_lit_add_r (1+1) Hnewls1) => Hnewg11ls1.
+    move: (newer_than_lit_add_r (1+1) Hnewls2) => Hnewg11ls2.
+    move: (newer_than_lits_add_r (1+1) Hnewls3) => Hnewg11ls3. rewrite Pos.add_assoc in Hnewg11ls3.
+    move: (newer_than_lits_add_r (1+1) Hnewls0) => Hnewg11ls0. rewrite Pos.add_assoc in Hnewg11ls0.
+    assert ((g + 1 <? g + 1 + 1)%positive) as Hg1g11 by exact: (pos_ltb_add_diag_r (g+1) 1).
+    move : (H  _ _ _ _ _ _ _ _ _ _ H0 Hg1g11 Hnewg11ls0 Hnewg11ls3) => Hnew.
+    move: (newer_than_lit_le_newer Hnewg11lcin Hg11) => ->.
+    move: (newer_than_lit_le_newer Hnewg11ls1 Hg11) => ->.
+    move: (newer_than_lit_le_newer Hnewg11ls2 Hg11) => ->.
+    rewrite Hnew /newer_than_lit/newer_than_var/=.
+    rewrite (pos_ltb_leb_trans (pos_ltb_add_diag_r g (1+1)) Hg11).
+    rewrite Pos.add_assoc in Hg11.
+    rewrite (pos_ltb_leb_trans (pos_ltb_add_diag_r (g+1) 1) Hg11).
+    done.
+Qed.
+
+Lemma mk_env_full_adder_preserve :
+  forall w E g lcin (ls1 ls2 : w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    env_preserve E E' g.
+Proof.
+  elim.
+  - move=> E g lcin ls1 ls2 E' g' cs cout lrs /=.
+    case=> <- _ _ _ _. exact: env_preserve_refl.
+  - intros_tuple. dcase_hyps; subst. move => Hls.
+    move: (H _ _ _ _ _ _ _ _ _ _ H0) => Hpre.
+    move :(env_preserve_env_upd_succ Hpre) => Hpre1.
+    exact :(env_preserve_env_upd_succ Hpre1).
+Qed.
+
+Lemma mk_env_full_adder_sat :
+  forall w E g lcin (ls1 ls2 : w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    newer_than_lit g lcin -> newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+    interp_cnf E' cs.
+Proof.
+  elim.
+  - move => E g lcin ls1 ls2 E' g' cs cout lrs [] <- -> <- _ _ Hlcin Hls1 Hls2.
+    done.
+  - intros_tuple. dcase_hyps; subst. rewrite !interp_cnf_cons. move => Hls.
+    move/andP : H2 => [Hnewls1 Hnewls0]; move/andP : H3=> [Hnewls2 Hnewls3].
+    move : (newer_than_lit_le_newer H1 (pos_leb_add_diag_r g (1+1))) => Hnewlcin. rewrite Pos.add_assoc in Hnewlcin.
+    move : (newer_than_lit_le_newer H1 (pos_leb_add_diag_r g (1))) => Hnew1lcin.
+    move : (newer_than_lits_le_newer Hnewls0 (pos_leb_add_diag_r (g) (1+1))) => Hnewg11ls0. rewrite Pos.add_assoc in Hnewg11ls0.
+    move : (newer_than_lits_le_newer Hnewls3 (pos_leb_add_diag_r g (1+1))) => Hnewg11ls3. rewrite Pos.add_assoc in Hnewg11ls3.
+    move : (newer_than_lit_le_newer Hnewls1 (pos_leb_add_diag_r g (1+1))) => Hnewg11ls1. rewrite Pos.add_assoc in Hnewg11ls1.
+    move : (newer_than_lit_le_newer Hnewls1 (pos_leb_add_diag_r g (1))) => Hnewg1ls1.
+    move : (newer_than_lit_le_newer Hnewls2 (pos_leb_add_diag_r g (1+1))) => Hnewg11ls2. rewrite Pos.add_assoc in Hnewg11ls2.
+    move : (newer_than_lit_le_newer Hnewls2 (pos_leb_add_diag_r g (1))) => Hnewg1ls2.
+    move : (pos_ltb_add_diag_r (g+1) 1) => Hg11.
+    move: (H _ _ _ _ _ _ _ _ _ _ H0 Hg11 Hnewg11ls0 Hnewg11ls3) => Hcnfcs0.
+    rewrite /= Hcnfcs0 !interp_lit_neg_lit andbT /=.
+    move : (mk_env_full_adder_preserve H0) => Hpre1.
+    move : (Hpre1 (g+1)%positive (newer_than_var_add_diag_r (g+1) 1)).
+    rewrite !env_upd_eq.
+    move : (Hpre1 g). rewrite -Pos.add_assoc.
+    move => H2. move : (H2 (newer_than_var_add_diag_r (g) (1+1))).
+    rewrite env_upd_neq. rewrite env_upd_eq.
+    move : (env_preserve_lit Hpre1 Hnewg11ls2).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnewg1ls2)).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnewls2)).
+    move : (env_preserve_lit Hpre1 Hnewg11ls1).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnewg1ls1)).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnewls1)).
+    move : (env_preserve_lit Hpre1 Hnewlcin).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew1lcin)).
+    rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq H1)).
+    move => -> -> -> -> ->.
+    by case: (interp_lit E lcin); case: (interp_lit E ls1); case: (interp_lit E ls2).
+    apply/eqP/not_eq_sym. move : (Pos.succ_discr g). rewrite Pplus_one_succ_r. 
+    done.
+Qed.
+
+    (* ===== bit_blast_ite ===== *)
 
 Definition bit_blast_ite1 (g : generator) (c : literal) (a1 a2 : literal) : generator * cnf * literal :=
   let (g', r) := gen g in
@@ -1584,8 +1730,10 @@ Proof.
   exact: (add_prelude_enc_bit_ff Hcs).
 Qed.
 
-
-
+Definition mk_env_add w E (g: generator) ls1 ls2 : env * generator * cnf * w.-tuple literal :=
+  let '(E', g', cs, cout, lrs) := mk_env_full_adder E g lit_ff ls1 ls2 in
+  (E', g', cs, lrs).
+  
 (* ===== bit_blast_mul ===== *)
 
 Fixpoint bit_blast_mul_rec w wn (g:generator) : w.-tuple literal -> wn.-tuple literal -> nat -> generator * cnf * w.-tuple literal :=
@@ -2220,12 +2368,12 @@ Definition bit_blast_ult w (g: generator) (ls1 ls2: w.-tuple literal): generator
   let '(g_fa, cs3, cout, r_fa) := bit_blast_full_adder g_not wahr ls1 r_nls2 in
   let cs4 := [[r; cout]; [neg_lit r; neg_lit cout]] in
   (g_fa, cs1++cs2++cs3++cs4, r).
-
-(*Definition mk_env_ult E g (l1 l2: literal) : env * generator * cnf * literal :=
+(*
+Definition mk_env_ult E g (l1 l2: literal) : env * generator * cnf * literal :=
   let (g', r) := gen g in
   let E' := env_upd E (var_of_lit r) (ltB (interp_lit E l1) (interp_lit l2)) in
   let cs := 
- *)
+*)
 
 Lemma adcB_ltB_leB :
   forall n (ibs1 ibs2: BITS n),
