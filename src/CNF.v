@@ -846,6 +846,17 @@ Proof.
     rewrite (IH _ _ Hnew_tl Hle). done.
 Qed.
 
+Lemma newer_than_lits_nseq_lit :
+  forall g n lit, newer_than_lit g lit -> newer_than_lits g (nseq_tuple n lit) .
+Proof .
+  move => g n lit Hglit .
+  elim n .
+  - by rewrite tuple0 .
+  - move => m IH .
+    rewrite newer_than_lits_cons Hglit .
+    done .
+Qed .
+
 Lemma newer_than_lits_enc_bits_env_upd :
   forall w E x b (ls : w.-tuple literal) bs,
     newer_than_lits x ls ->
