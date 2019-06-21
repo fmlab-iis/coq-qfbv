@@ -622,6 +622,25 @@ Proof.
   by apply: enc_bits_splitmsb_res.
 Qed.
 
+Lemma enc_bits_concat: forall w0 w1 E (ls0 : w0.-tuple literal) bs0 (ls1 : w1.-tuple literal) bs1,
+    enc_bits E ls0 bs0 -> enc_bits E ls1 bs1 ->
+    enc_bits E (cat_tuple ls1 ls0) (bs0 ## bs1) .
+Proof .
+  move => w0 w1 E ls0 bs0 ls1 bs1 Hls0bs0 .
+  move: w1 ls1 bs1 .
+  elim .
+  - intros . rewrite /catB . rewrite tuple0 catNil .
+    rewrite tuple0 catNil . done .
+  - move => w1 IHw1 . case/tupleP => ls1 ls2 /= .
+    case/tupleP => bs1 bs2 /= .
+    rewrite /catB !tupleE !catCons !theadE !beheadCons .
+    move/andP => [Hls1bs1 Hls2bs2] .
+    move: (IHw1 ls2 bs2 Hls2bs2) .
+    rewrite /catB => Hbs2bs0 .
+    rewrite Hls1bs1 Hbs2bs0 .
+    done .
+Qed .
+
 Lemma enc_bit_env_upd_updated :
   forall E b l x y,
     x != var_of_lit b ->
