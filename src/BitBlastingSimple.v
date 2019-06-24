@@ -2656,15 +2656,10 @@ Lemma bit_blast_concat_correct :
     enc_bits E ls1 bs1 ->
     enc_bits E (cat_tuple ls1 ls0) (catB bs0 bs1).
 Proof.
-  move=> w0 .
-  elim .
-  - move => bs0 bs1 E ls0 ls1 Hencls0 Hencls1 .
-    rewrite tuple0 /catB catNil .
-    by rewrite tuple0 catNil .
-  - move => w1 IHw1 .
-    move => bs0 bs1 E ls0 ls1 Hencls0 Hencls1 .
-    exact: enc_bits_concat .
-Qed . 
+  move=> w0 w1 bs0 bs1 E ls0 ls1 H1 H2.
+  exact: (enc_bits_concat H1 H2).
+Qed.
+
 
 
 (* ===== bit_blast_zeroextend ===== *)
