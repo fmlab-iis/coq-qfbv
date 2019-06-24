@@ -344,6 +344,18 @@ Fixpoint lits_equiv E ls1 ls2 :=
   | _, _ => false
   end.
 
+Lemma interp_lits_lits_equiv :
+  forall w E (ls1 ls2 : w.-tuple literal),
+    interp_lits E ls1 = interp_lits E ls2 ->
+    lits_equiv E ls1 ls2.
+Proof.
+  elim.
+  - move=> E ls1 ls2 H. rewrite tuple0 /= tuple0 /=. by trivial.
+  - move=> w IH E. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
+    rewrite /= 2!interp_lits_cons. move=> H. move: (splitTuple H) => [Hhd Htl].
+    rewrite Hhd eqxx /=. exact: (IH E ls1_tl ls2_tl Htl).
+Qed.
+
 
 
 (* Relation between literals and bit-vectors. *)
@@ -657,6 +669,20 @@ Lemma enc_bit_env_upd_original :
 Proof.
   rewrite /enc_bit => E b l x y Hne. rewrite (interp_lit_env_upd_neq _ _ Hne).
   reflexivity.
+Qed.
+
+Lemma interp_lits_enc_bits :
+  forall w E (ls1 ls2 : w.-tuple literal) bs,
+    interp_lits E ls1 = interp_lits E ls2 ->
+    enc_bits E ls1 bs -> enc_bits E ls2 bs.
+Proof.
+  elim.
+  - by trivial.
+  - move=> w IH E. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
+    case/tupleP=> [bs_hd bs_tl]. rewrite /= !theadE !beheadCons 2!interp_lits_cons.
+    move=> H /andP [Henchd Henctl]. move: (splitTuple H)=> {H} [Hhd Htl].
+    rewrite (enc_bit_change_lit Hhd Henchd) andTb.
+    exact: (IH E ls1_tl ls2_tl bs_tl Htl Henctl).
 Qed.
 
 

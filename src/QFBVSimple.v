@@ -1408,7 +1408,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
       + move=> {H} H. apply: GT. exact: H.
   Defined.
 
-  Module NexpOrderedMinimal : SsrOrderedTypeMinimal.
+  Module NexpOrderedMinimal <: SsrOrderedTypeMinimal.
     Definition t := nexp_eqType.
     Definition eq (e1 e2 : t) : bool := e1 == e2.
     Definition lt (e1 e2 : t) : bool := nexp_ltb e1 e2.
@@ -1425,7 +1425,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
 
   Module NexpOrdered := MakeSsrOrderedType NexpOrderedMinimal.
 
-  Module NbexpOrderedMinimal : SsrOrderedTypeMinimal.
+  Module NbexpOrderedMinimal <: SsrOrderedTypeMinimal.
     Definition t := nbexp_eqType.
     Definition eq (e1 e2 : t) : bool := e1 == e2.
     Definition lt (e1 e2 : t) : bool := nbexp_ltb e1 e2.
