@@ -653,6 +653,19 @@ Proof .
     done .
 Qed .
 
+Lemma enc_bits_nseq : forall E n l b,
+    enc_bit E l b -> enc_bits E (nseq_tuple n l) (nseq_tuple n b) .
+Proof .
+  move => E n l b Hencbit .
+  elim n .
+  - done .
+  - move => n' IH .
+    rewrite enc_bits_splitlsb /= .
+    apply /andP ; split .
+    + done .
+    + by rewrite !behead_nseq.
+Qed .
+
 Lemma enc_bit_env_upd_updated :
   forall E b l x y,
     x != var_of_lit b ->

@@ -96,7 +96,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvHigh wh wl e => fromNat 0 (* TODO *)
     | bvLow wh wl e => fromNat 0 (* TODO *)
     | bvZeroExtend w n e => zeroExtend n (eval_exp e s)
-    | bvSignExtend w n e => fromNat 0 (* TODO *)
+    | bvSignExtend w n e => signExtend n (eval_exp e s)
     | bvIte w b e1 e2 => if eval_bexp b s then eval_exp e1 s else eval_exp e2 s
     end
     with
