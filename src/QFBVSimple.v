@@ -93,7 +93,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvConcat w1 w2 e1 e2 => catB (eval_exp e1 s) (eval_exp e2 s)
     | bvExtract w i j e => fromNat 0 (* TODO *)
     | bvSlice w1 w2 w3 e => fromNat 0 (* TODO *)
-    | bvHigh wh wl e => fromNat 0 (* TODO *)
+    | bvHigh wh wl e => high wh (eval_exp e s)
     | bvLow wh wl e => fromNat 0 (* TODO *)
     | bvZeroExtend w n e => zeroExtend n (eval_exp e s)
     | bvSignExtend w n e => signExtend n (eval_exp e s)
