@@ -841,6 +841,15 @@ Proof.
   - move=> l ls1 IH ls2. rewrite /=. rewrite (IH ls2). rewrite andbA. reflexivity.
 Qed.
 
+Lemma newer_than_lits_behead :
+  forall w g (ls : (w.+1).-tuple literal),
+    newer_than_lits g ls -> newer_than_lits g (behead_tuple ls) .
+Proof .
+  move => w g ls .
+  rewrite (tuple_eta ls) /= .
+  by move /andP => [_ H] .
+Qed .
+
 Lemma newer_than_lits_neq :
   forall g ls l,
     l \in ls ->
