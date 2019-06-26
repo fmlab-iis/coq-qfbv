@@ -76,7 +76,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     match e with
     | bvVar v => State.acc v s
     | bvConst _ n => n
-    | bvNot w e => fromNat 0 (* TODO *)
+    | bvNot w e => invB (eval_exp e s)
     | bvAnd w e1 e2 => andB (eval_exp e1 s) (eval_exp e2 s)
     | bvOr w e1 e2 => orB (eval_exp e1 s) (eval_exp e2 s)
     | bvXor w e1 e2 => xorB (eval_exp e1 s) (eval_exp e2 s)
@@ -91,12 +91,12 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvLshr w e1 e2 => fromNat 0 (* TODO *)
     | bvAshr w e1 e2 => fromNat 0 (* TODO *)
     | bvConcat w1 w2 e1 e2 => catB (eval_exp e1 s) (eval_exp e2 s)
-    | bvExtract w i j e => fromNat 0 (* TODO *)
-    | bvSlice w1 w2 w3 e => fromNat 0 (* TODO *)
-    | bvHigh wh wl e => fromNat 0 (* TODO *)
-    | bvLow wh wl e => fromNat 0 (* TODO *)
+    | bvExtract w i j e => slice j (i-j+1) w (eval_exp e s)
+    | bvSlice w1 w2 w3 e => slice w3 w2 w1 (eval_exp e s)
+    | bvHigh wh wl e => high wh (eval_exp e s)
+    | bvLow wh wl e => low wl (eval_exp e s)
     | bvZeroExtend w n e => zeroExtend n (eval_exp e s)
-    | bvSignExtend w n e => fromNat 0 (* TODO *)
+    | bvSignExtend w n e => signExtend n (eval_exp e s)
     | bvIte w b e1 e2 => if eval_bexp b s then eval_exp e1 s else eval_exp e2 s
     end
     with
