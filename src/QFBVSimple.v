@@ -76,7 +76,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     match e with
     | bvVar v => State.acc v s
     | bvConst _ n => n
-    | bvNot w e => fromNat 0 (* TODO *)
+    | bvNot w e => invB (eval_exp e s)
     | bvAnd w e1 e2 => andB (eval_exp e1 s) (eval_exp e2 s)
     | bvOr w e1 e2 => orB (eval_exp e1 s) (eval_exp e2 s)
     | bvXor w e1 e2 => xorB (eval_exp e1 s) (eval_exp e2 s)
