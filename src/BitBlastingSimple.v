@@ -3847,7 +3847,7 @@ Qed.
  *)
 Definition bit_blast_ule (w: nat) g (ls1 ls2: w.-tuple literal) : generator * cnf * literal :=
   let '(g_eq, cs_eq, r_eq) := bit_blast_eq g ls1 ls2 in
-  let '(g_ult, cs_ult, r_ult) := bit_blast_ult g ls1 ls2 in
+  let '(g_ult, cs_ult, r_ult) := bit_blast_ult g_eq ls1 ls2 in
   let '(g_disj, cs_disj, r_disj) := bit_blast_disj g_ult r_eq r_ult in
   (g_disj, cs_eq++cs_ult++cs_disj, r_disj).
 
@@ -3862,7 +3862,7 @@ Proof.
   move => w g ibs1 ibs2 E g' ils1 ils2 cs olr.
   rewrite /bit_blast_ule.
   case Heq : (bit_blast_eq g ils1 ils2) => [[g_eq cs_eq] r_eq].
-  case Hult : (bit_blast_ult g ils1 ils2) => [[g_ult cs_ult] r_ult].
+  case Hult : (bit_blast_ult g_eq ils1 ils2) => [[g_ult cs_ult] r_ult].
   case Hdisj : (bit_blast_disj g_ult r_eq r_ult) => [[g_disj cs_disj] r_disj].
   case => _ <- <- Henc1 Henc2.
   rewrite 2!add_prelude_append.
@@ -4434,7 +4434,7 @@ Qed.
  *)
 Definition bit_blast_sle (w: nat) g (ls1 ls2: w.+1.-tuple literal) : generator * cnf * literal :=
   let '(g_eq, cs_eq, r_eq) := bit_blast_eq g ls1 ls2 in
-  let '(g_slt, cs_slt, r_slt) := bit_blast_slt g ls1 ls2 in
+  let '(g_slt, cs_slt, r_slt) := bit_blast_slt g_eq ls1 ls2 in
   let '(g_disj, cs_disj, r_disj) := bit_blast_disj g_slt r_eq r_slt in
   (g_disj, cs_eq++cs_slt++cs_disj, r_disj).
 
@@ -4528,7 +4528,7 @@ Proof.
   move => w g ibs1 ibs2 E og ils1 ils2 cs olr.
   rewrite /bit_blast_sle.
   case Heq: (bit_blast_eq g ils1 ils2) => [[g_eq cs_eq] r_eq].
-  case Hslt : (bit_blast_slt g ils1 ils2) => [[g_slt cs_slt] r_slt].
+  case Hslt : (bit_blast_slt g_eq ils1 ils2) => [[g_slt cs_slt] r_slt].
   case Hdisj : (bit_blast_disj g_slt r_eq r_slt) => [[g_disj cs_disj] r_disj].
   case => _ <- <- Henc1 Henc2.
   rewrite 2!add_prelude_append.
