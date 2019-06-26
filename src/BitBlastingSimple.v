@@ -2118,6 +2118,20 @@ Proof.
     exact: newer_than_var_add_diag_r.
 Qed.
 
+Lemma mk_env_full_adder_newer_cout :
+  forall w E g lcin (ls1 ls2: w.-tuple literal) E' g' cs cout lrs,
+    mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
+    newer_than_lit g lcin ->
+    newer_than_lit g' cout.
+Proof.
+  elim.
+  - move => E g lcin ls1 ls2 E' g' cs cout lrs [] _ <- _ <- _.
+    done.
+  - intros_tuple. dcase_hyps; subst. move => Hlrs.
+    rewrite (H _ _ _ _ _ _ _ _ _ _ H0). done. 
+    exact : newer_than_var_add_diag_r.
+Qed.
+    
 Lemma mk_env_full_adder_newer_cnf :
   forall w E g lcin (ls1 ls2: w.-tuple literal) E' g' cs cout lrs,
     mk_env_full_adder E g lcin ls1 ls2 = (E', g', cs, cout, lrs) ->
@@ -2803,12 +2817,12 @@ Lemma mk_env_mul_newer_gen :
     (g <=? g')%positive.
 Proof.
   elim.
-  - move => E g 
-  move =>  w E g ls1 ls2 E' g' cs lrs.
-  rewrite /mk_env_mul.
-  case Hmk: (mk_env_ E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] _ <- _ _.
-  apply (mk_env_full_adder_newer_gen Hmk).
+  - move => E g ls1 ls2 E' g' cs lrs [] _ <- _ _.
+    exact: Pos.leb_refl.
+  - rewrite /mk_env_mul.
+    intros_tuple. dcase_hyps; subst. 
 *)
+
 
 Lemma andB_copy_case :
   forall w b (bs : BITS w),
