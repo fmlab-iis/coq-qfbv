@@ -107,8 +107,8 @@ Module Make (V : SsrOrderedType) (A : Arch).
       | bvEq w e1 e2 => eval_exp e1 s == eval_exp e2 s
       | bvUlt w e1 e2 => ltB (eval_exp e1 s) (eval_exp e2 s)
       | bvUle w e1 e2 => leB (eval_exp e1 s) (eval_exp e2 s)
-      | bvUgt w e1 e2 => true (* TODO *)
-      | bvUge w e1 e2 => true (* TODO *)
+      | bvUgt w e1 e2 => ltB (eval_exp e2 s) (eval_exp e1 s)
+      | bvUge w e1 e2 => leB (eval_exp e2 s) (eval_exp e1 s)
       | bvSlt w e1 e2 => true (* TODO *)
       | bvSle w e1 e2 => true (* TODO *)
       | bvSgt w e1 e2 => true (* TODO *)
