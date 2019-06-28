@@ -5,12 +5,10 @@
  * - ssrlib from https://github.com/mht208/coq-ssrlib.git
  *)
 
-From Coq Require Import ZArith List.
+From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import Var SsrOrdered ZAriths.
+From ssrlib Require Import Var SsrOrdered ZAriths Seqs Lists.
 From Bits Require Export bits ssrextra.tuple.
-
-Import ListNotations.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -66,16 +64,16 @@ Definition neg_lit lit :=
   | Neg v => Pos v
   end.
 
-Definition clause : Set := list literal.
+Definition clause : Set := seq literal.
 
-Definition cnf : Set := list clause.
+Definition cnf : Set := seq clause.
 
 Definition env : Set := var -> bool.
 
-Fixpoint lits_as_cnf (ls : list literal) :=
+Fixpoint lits_as_cnf (ls : seq literal) :=
   match ls with
-  | [] => []
-  | hd::tl => [hd]::(lits_as_cnf tl)
+  | [::] => [::]
+  | hd::tl => [::hd]::(lits_as_cnf tl)
   end.
 
 Definition tuple_as_cnf w (ls : w.-tuple literal) :=
@@ -92,15 +90,15 @@ Definition interp_lits w (E : env) (ls : w.-tuple literal) : BITS w :=
 
 Fixpoint interp_clause (E : env) (c : clause) : bool :=
   match c with
-  | [] => false
-  | hd::[] => interp_lit E hd
+  | [::] => false
+  | [::hd] => interp_lit E hd
   | hd::tl => interp_lit E hd || interp_clause E tl
   end.
 
 Fixpoint interp_cnf (E : env) (f : cnf) : bool :=
   match f with
-  | [] => true
-  | hd::[] => interp_clause E hd
+  | [::] => true
+  | [::hd] => interp_clause E hd
   | hd::tl => interp_clause E hd && interp_cnf E tl
   end.
 
@@ -190,6 +188,17 @@ Proof.
       rewrite in_cons Hin. rewrite Bool.orb_true_r. done.
 Qed.
 
+Lemma interp_clause_mem :
+  forall E c,
+    interp_clause E c -> exists l : literal, (l \in c) && interp_lit E l.
+Proof.
+  move=> E. elim; first by done.
+  move=> hd tl IH. rewrite interp_clause_cons. case/orP.
+  - move=> H; exists hd. by rewrite mem_head H.
+  - move=> H; move: (IH H)=> {H} [l /andP [H1 H2]]. exists l.
+    by rewrite in_cons H1 H2 andbT orbT.
+Qed.
+
 
 
 (* interp_cnf *)
@@ -211,6 +220,17 @@ Proof.
   - move=> cs1_hd cs1_tl IH cs2. rewrite cat_cons interp_cnf_cons.
     rewrite (@interp_cnf_cons E cs1_hd cs1_tl).
     rewrite IH. rewrite andbA. reflexivity.
+Qed.
+
+Lemma interp_cnf_mem :
+  forall E c cs,
+    interp_cnf E cs -> c \in cs -> interp_clause E c.
+Proof.
+  move=> E c. elim; first by done.
+  move=> hd tl IH. rewrite interp_cnf_cons => /andP [H1 H2].
+  rewrite in_cons. case/orP.
+  - move/eqP=> ->. exact: H1.
+  - exact: (IH H2).
 Qed.
 
 
@@ -255,7 +275,7 @@ Qed.
 
 (* add_prelude *)
 
-Definition add_prelude cnf := [lit_tt]::cnf.
+Definition add_prelude cnf := [::lit_tt]::cnf.
 
 Lemma add_prelude_tt :
   forall E cs, interp_cnf E (add_prelude cs) -> interp_lit E lit_tt.
@@ -280,13 +300,13 @@ Proof.
 Qed.
 
 Lemma add_prelude_empty :
-  forall E, interp_cnf E (add_prelude []) = interp_lit E lit_tt.
+  forall E, interp_cnf E (add_prelude [::]) = interp_lit E lit_tt.
 Proof.
   reflexivity.
 Qed.
 
 Lemma add_prelude_singleton :
-  forall E c, interp_cnf E (add_prelude [c]) = interp_lit E lit_tt && interp_clause E c.
+  forall E c, interp_cnf E (add_prelude [::c]) = interp_lit E lit_tt && interp_clause E c.
 Proof.
   reflexivity.
 Qed.
@@ -294,7 +314,7 @@ Qed.
 Lemma add_prelude_cons :
   forall E c cs,
     interp_cnf E (add_prelude (c::cs)) =
-    interp_cnf E (add_prelude [c]) && interp_cnf E (add_prelude cs).
+    interp_cnf E (add_prelude [::c]) && interp_cnf E (add_prelude cs).
 Proof.
   move=> E c cs. rewrite /add_prelude /=. case: (E var_tt) => //=. case: cs.
   - rewrite Bool.andb_true_r. reflexivity.
@@ -328,7 +348,7 @@ Proof.
     rewrite -{1}(add_prelude_idem). rewrite {1}/add_prelude. reflexivity.
   - move=> cs1_hd cs1_tl IH cs2. rewrite cat_cons {1}add_prelude_cons.
     rewrite (add_prelude_cons E cs1_hd cs1_tl).
-    case: (interp_cnf E (add_prelude [cs1_hd])); last by done.
+    case: (interp_cnf E (add_prelude [::cs1_hd])); last by done.
     rewrite 2!Bool.andb_true_l. exact: IH.
 Qed.
 
@@ -338,7 +358,7 @@ Qed.
 
 Fixpoint lits_equiv E ls1 ls2 :=
   match ls1, ls2 with
-  | [], [] => true
+  | [::], [::] => true
   | hd1::tl1, hd2::tl2 =>
     (interp_lit E hd1 == interp_lit E hd2) && lits_equiv E tl1 tl2
   | _, _ => false
@@ -706,9 +726,9 @@ Definition newer_than_var g v : bool := Pos.ltb v g.
 
 Definition newer_than_lit g l : bool := newer_than_var g (var_of_lit l).
 
-Definition newer_than_lits g ls : bool := List.forallb (newer_than_lit g) ls.
+Definition newer_than_lits g ls : bool := all (newer_than_lit g) ls.
 
-Definition newer_than_cnf g cs : bool := List.forallb (newer_than_lits g) cs.
+Definition newer_than_cnf g cs : bool := all (newer_than_lits g) cs.
 
 Lemma newer_than_var_irrefl :
   forall x, ~~ newer_than_var x x.
@@ -1183,4 +1203,148 @@ Lemma env_preserve_le :
 Proof.
   move=> E E' g g' Hpre Hle v Hnew.
   exact: (Hpre v (newer_than_var_le_newer Hnew Hle)).
+Qed.
+
+
+
+(* Duplicates removal *)
+
+Definition z_of_lit (x : literal) : Z :=
+  match x with
+  | Pos n => Zpos n
+  | Neg n => Zneg n
+  end.
+
+Lemma z_of_lit_inj :
+  forall (x y : literal), z_of_lit x = z_of_lit y -> x = y.
+Proof.
+  case.
+  - move=> x; case => y /=.
+    + case => ->. reflexivity.
+    + discriminate.
+  - move=> x; case => y /=.
+    + discriminate.
+    + case => ->. reflexivity.
+Qed.
+
+Definition lit_lt (x y : literal) : bool := (z_of_lit x <? z_of_lit y)%Z.
+
+Lemma lit_lt_trans :
+  forall (x y z : literal), lit_lt x y -> lit_lt y z -> lit_lt x z.
+Proof.
+  move=> x y z. exact: ZOrder.lt_trans.
+Qed.
+
+Lemma lit_lt_not_eq :
+  forall (x y : literal), lit_lt x y -> x != y.
+Proof.
+  move=> x y Hlt. move: (ZOrder.lt_not_eq Hlt). move=> H1; apply/eqP => H2.
+  apply: H1. rewrite H2. exact: eqxx.
+Qed.
+
+Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
+  Definition t := lit_eqType.
+  Definition eq (x y : t) := x == y.
+  Definition lt (x y : t) := lit_lt x y.
+  Definition lt_trans := lit_lt_trans.
+  Definition lt_not_eq := lit_lt_not_eq.
+  Definition compare (x y : t) : Compare lt eq x y.
+  Proof.
+    case Heq: (x == y).
+    - exact: (EQ Heq).
+    - case Hlt: (lit_lt x y).
+      + exact: (LT Hlt).
+      + apply: GT. move: (proj1 (Z.ltb_ge (z_of_lit x) (z_of_lit y)) Hlt) => {Hlt} Hlt.
+        have Hne: z_of_lit y <> z_of_lit x
+          by move=> H; apply/eqP/idP: Heq; rewrite (z_of_lit_inj H) eqxx.
+        apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
+  Defined.
+End LiteralOrderedMinimal.
+Module LiteralOrdered := MakeSsrOrderedType LiteralOrderedMinimal.
+Module ClauseOrdered := SeqOrdered LiteralOrdered.
+Module ClauseSet := FSets.MakeTreeSet ClauseOrdered.
+
+Definition cnf_imp_each E (cs1 cs2 : cnf) :=
+  forall c2,
+    c2 \in cs2 ->
+           exists c1, c1 \in cs1 /\ (interp_clause E c1 -> interp_clause E c2).
+
+Lemma cnf_imp_each_interp :
+  forall E (cs1 cs2 : cnf),
+    cnf_imp_each E cs1 cs2 ->
+    interp_cnf E cs1 -> interp_cnf E cs2.
+Proof.
+  move=> E cs1 cs2. elim: cs2 cs1; first by done.
+  move=> hd2 tl2 IH1. move=> cs1 IH2 Hcs1.
+  move: (IH2 hd2 (mem_head hd2 tl2)) => [l1 [H1 H2]].
+  rewrite interp_cnf_cons. rewrite (H2 (interp_cnf_mem Hcs1 H1)) andTb.
+  apply: (IH1 cs1 _ Hcs1). move=> c2 Hc2.
+  have Hin: (c2 \in hd2 :: tl2) by rewrite in_cons Hc2 orbT.
+  exact: (IH2 c2 Hin).
+Qed.
+
+Definition cnf_contains (cs1 cs2 : cnf) :=
+  forall c2, c2 \in cs2 -> c2 \in cs1.
+
+Lemma cnf_contains_imp_each :
+  forall E cs1 cs2,
+    cnf_contains cs1 cs2 ->
+    cnf_imp_each E cs1 cs2.
+Proof.
+  move=> E cs1 cs2 Hcon c2 Hin. exists c2. split.
+  - exact: (Hcon _ Hin).
+  - by apply.
+Qed.
+
+Lemma cnf_contains_interp :
+  forall E (cs1 cs2 : cnf),
+    cnf_contains cs1 cs2 ->
+    interp_cnf E cs1 -> interp_cnf E cs2.
+Proof.
+  move=> E cs1 cs2 Hcon. exact: (cnf_imp_each_interp (cnf_contains_imp_each E Hcon)).
+Qed.
+
+Lemma cnf_contains_eqsat :
+  forall E (cs1 cs2 : cnf),
+    cnf_contains cs1 cs2 -> cnf_contains cs2 cs1 ->
+    interp_cnf E cs1 = interp_cnf E cs2.
+Proof.
+  move=> E cs1 cs2 H12 H21.
+  move: (cnf_imp_each_interp (cnf_contains_imp_each E H12)).
+  move: (cnf_imp_each_interp (cnf_contains_imp_each E H21)).
+  case: (interp_cnf E cs1).
+  - move=> _ H. by rewrite (H is_true_true).
+  - case: (interp_cnf E cs2).
+    + move=> H _. exact: (H is_true_true).
+    + reflexivity.
+Qed.
+
+Definition cnf_remove_duplicate (cs : cnf) :=
+  ClauseSet.elements (ClauseSet.Lemmas.OP.P.of_list cs).
+
+Lemma cnf_remove_duplicate_contains1 :
+  forall cs, cnf_contains cs (cnf_remove_duplicate cs).
+Proof.
+  elim.
+  - rewrite /cnf_remove_duplicate /=. by rewrite ClauseSet.Lemmas.OP.P.elements_empty.
+  - move=> hd tl Hcon c Hin. rewrite /cnf_remove_duplicate in Hin.
+    move: (ClauseSet.Lemmas.in_elements_mem Hin) => {Hin} Hin.
+    exact: (ClauseSet.Lemmas.mem_of_list_in Hin).
+Qed.
+
+Lemma cnf_remove_duplicate_contains2 :
+  forall cs, cnf_contains (cnf_remove_duplicate cs) cs.
+Proof.
+  elim.
+  - rewrite /cnf_remove_duplicate /=. by rewrite ClauseSet.Lemmas.OP.P.elements_empty.
+  - move=> hd tl Hcon c Hin. rewrite /cnf_remove_duplicate.
+    apply: ClauseSet.Lemmas.mem_in_elements.
+    exact: (ClauseSet.Lemmas.in_mem_of_list Hin).
+Qed.
+
+Lemma cnf_remove_duplicate_eqsat :
+  forall E cs, interp_cnf E cs = interp_cnf E (cnf_remove_duplicate cs).
+Proof.
+  move=> E cs. exact: (cnf_contains_eqsat E (@cnf_remove_duplicate_contains1 cs)
+                                          (@cnf_remove_duplicate_contains2 cs)).
 Qed.
