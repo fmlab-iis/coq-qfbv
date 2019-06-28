@@ -87,7 +87,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvMod w e1 e2 => fromNat 0 (* TODO *)
     | bvSrem w e1 e2 => fromNat 0 (* TODO *)
     | bvSmod w e1 e2 => fromNat 0 (* TODO *)
-    | bvShl w e1 e2 => fromNat 0 (* TODO *)
+    | bvShl w e1 e2 => shlBn (eval_exp e1 s) (toNat (eval_exp e2 s))
     | bvLshr w e1 e2 => fromNat 0 (* TODO *)
     | bvAshr w e1 e2 => fromNat 0 (* TODO *)
     | bvConcat w1 w2 e1 e2 => catB (eval_exp e1 s) (eval_exp e2 s)
@@ -105,10 +105,10 @@ Module Make (V : SsrOrderedType) (A : Arch).
       | bvFalse => false
       | bvTrue => true
       | bvEq w e1 e2 => eval_exp e1 s == eval_exp e2 s
-      | bvUlt w e1 e2 => true (* TODO *)
-      | bvUle w e1 e2 => true (* TODO *)
-      | bvUgt w e1 e2 => true (* TODO *)
-      | bvUge w e1 e2 => true (* TODO *)
+      | bvUlt w e1 e2 => ltB (eval_exp e1 s) (eval_exp e2 s)
+      | bvUle w e1 e2 => leB (eval_exp e1 s) (eval_exp e2 s)
+      | bvUgt w e1 e2 => ltB (eval_exp e2 s) (eval_exp e1 s)
+      | bvUge w e1 e2 => leB (eval_exp e2 s) (eval_exp e1 s)
       | bvSlt w e1 e2 => true (* TODO *)
       | bvSle w e1 e2 => true (* TODO *)
       | bvSgt w e1 e2 => true (* TODO *)
