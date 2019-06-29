@@ -4442,6 +4442,8 @@ Proof.
         rewrite ltBNle Hsubltb in Hlt; discriminate.
 Qed.
 
+
+
 (* ===== bit_blast_sle ===== *)
 
 (*Parameter bit_blast_sle : forall w : nat, generator -> w.+1.-tuple literal -> w.+1.-tuple literal -> generator * cnf * literal.
@@ -5435,7 +5437,7 @@ Proof.
 Admitted.
 
 Lemma bit_blast_bexp_preserve_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (g : generator)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (g : generator)
          (m' : vm) (g' : generator) (cs : cnf) (lrs : literal),
     bit_blast_bexp m g (QFBV64.bvSlt w e e0) = (m', g', cs, lrs) -> vm_preserve m m'.
 Proof.
@@ -6319,7 +6321,7 @@ Proof.
 Admitted.
 
 Lemma bit_blast_bexp_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (g : generator)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (g : generator)
          (s : QFBV64.State.t) (E : env)
          (m' : vm) (g' : generator) (cs : cnf) (lr : literal),
     bit_blast_bexp m g (QFBV64.bvSlt w e e0) = (m', g', cs, lr) ->
@@ -7119,7 +7121,7 @@ Proof.
 Admitted.
 
 Lemma mk_env_bexp_is_bit_blast_bexp_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -7860,7 +7862,7 @@ Proof.
 Admitted.
 
 Lemma mk_env_bexp_newer_gen_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -8612,7 +8614,7 @@ Proof.
 Admitted.
 
 Lemma mk_env_bexp_newer_vm_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
