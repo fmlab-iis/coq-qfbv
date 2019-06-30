@@ -10395,7 +10395,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_newer_gen_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -12144,7 +12144,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_newer_res_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -13298,7 +13298,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_newer_cnf_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -14311,7 +14311,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_consistent_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -15233,7 +15233,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_preserve_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
@@ -16551,7 +16551,7 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_sat_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
+  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
          (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
          (cs : cnf) (lr : literal),
     mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
