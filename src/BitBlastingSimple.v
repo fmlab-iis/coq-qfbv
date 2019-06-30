@@ -7099,7 +7099,9 @@ Proof.
   - move=> w e0 e1 .
     move: (bit_blast_exp_preserve _ e0) (bit_blast_exp_preserve _ e1) => IH0 IH1 .
     exact: bit_blast_exp_preserve_add.
-  - exact: bit_blast_exp_preserve_sub.
+  - move=> w e0 e1 .
+    move: (bit_blast_exp_preserve _ e0) (bit_blast_exp_preserve _ e1) => IH0 IH1 .
+    exact: (bit_blast_exp_preserve_sub IH0 IH1).
   - move=> w e0 e1.
     move: (bit_blast_exp_preserve _ e0) (bit_blast_exp_preserve _ e1) => IH0 IH1.
     exact: bit_blast_exp_preserve_mul.
