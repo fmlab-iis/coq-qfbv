@@ -925,6 +925,48 @@ Proof .
     done .
 Qed .
 
+Lemma newer_than_lits_splitmsb :
+  forall w g (lits : (w.+1).-tuple literal) msb others,
+    newer_than_lits g lits ->
+    splitmsb lits = (msb, others) ->
+    newer_than_lit g msb && newer_than_lits g others .
+Proof .
+  elim .
+  - move => g lits msb others Hglits .
+    case => <- <- .
+    rewrite -(newer_than_lits_cons) .
+    by rewrite (tuple_eta lits) in Hglits .
+  - move => n IH g /tupleP [lits_hd lits_tl] msb others Hglits .
+    case Hsplittl : (splitmsb (behead_tuple [tuple of lits_hd :: lits_tl])) => [msb_tl others_tl] .
+    move: (IH _ _ _ _ (newer_than_lits_behead Hglits) Hsplittl) => Htl .
+    rewrite /= Hsplittl !theadCons /joinlsb /= .
+    case => <- <- .
+    move : Htl => /andP [Hmsb_tl Hothers_tl] .
+    apply /andP; split .
+    + trivial .
+    + rewrite /= .
+      apply /andP; split .
+      * rewrite newer_than_lits_cons in Hglits .
+        by move: Hglits => /andP [H0 _] .
+      * trivial .
+Qed .
+
+Lemma newer_than_lits_joinmsb :
+  forall w g l (ls : w.-tuple literal),
+    newer_than_lit g l -> newer_than_lits g ls ->
+    newer_than_lits g (joinmsb (l, ls)) .
+Proof .
+  elim .
+  - move => g l ls Hgl _ /= .
+    by rewrite Hgl .
+  - move => n IH g l /tupleP [ls_hd ls_tl] Hgl Hgls /= .
+    rewrite !theadCons !beheadCons /= .
+    rewrite newer_than_lits_cons in Hgls .
+    case : Hgls => /andP [Hglshd Hglstl] .
+    move : (IH _ _ _ Hgl Hglstl) => Hllstl .
+    apply /andP; split; trivial .
+Qed .
+
 Lemma newer_than_lits_enc_bits_env_upd :
   forall w E x b (ls : w.-tuple literal) bs,
     newer_than_lits x ls ->
