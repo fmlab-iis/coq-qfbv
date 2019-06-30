@@ -82,7 +82,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvXor w e1 e2 => xorB (eval_exp e1 s) (eval_exp e2 s)
     | bvNeg w e => negB (eval_exp e s)
     | bvAdd w e1 e2 => addB (eval_exp e1 s) (eval_exp e2 s)
-    | bvSub w e1 e2 => addB (eval_exp e1 s) (eval_exp e2 s)
+    | bvSub w e1 e2 => subB (eval_exp e1 s) (eval_exp e2 s)
     | bvMul w e1 e2 => mulB (eval_exp e1 s) (eval_exp e2 s)
     | bvMod w e1 e2 => fromNat 0 (* TODO *)
     | bvSrem w e1 e2 => fromNat 0 (* TODO *)
