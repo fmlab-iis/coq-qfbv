@@ -32,7 +32,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
   | bvSmod : forall w, exp w -> exp w -> exp w
   | bvShl : forall w, exp w -> exp w -> exp w
   | bvLshr : forall w, exp w -> exp w -> exp w
-  | bvAshr : forall w, exp w -> exp w -> exp w
+  | bvAshr : forall w, exp (w.+1) -> exp (w.+1) -> exp (w.+1)
   | bvConcat : forall w1 w2, exp w1 -> exp w2 -> exp (w2 + w1)
   | bvExtract : forall w i j, exp (j + (i - j + 1) + w) -> exp (i - j + 1)
   | bvSlice : forall w1 w2 w3, exp (w3 + w2 + w1) -> exp w2
@@ -80,16 +80,16 @@ Module Make (V : SsrOrderedType) (A : Arch).
     | bvAnd w e1 e2 => andB (eval_exp e1 s) (eval_exp e2 s)
     | bvOr w e1 e2 => orB (eval_exp e1 s) (eval_exp e2 s)
     | bvXor w e1 e2 => xorB (eval_exp e1 s) (eval_exp e2 s)
-    | bvNeg w e => fromNat 0 (* TODO *)
+    | bvNeg w e => negB (eval_exp e s)
     | bvAdd w e1 e2 => addB (eval_exp e1 s) (eval_exp e2 s)
-    | bvSub w e1 e2 => fromNat 0 (* TODO *)
+    | bvSub w e1 e2 => subB (eval_exp e1 s) (eval_exp e2 s)
     | bvMul w e1 e2 => mulB (eval_exp e1 s) (eval_exp e2 s)
     | bvMod w e1 e2 => fromNat 0 (* TODO *)
     | bvSrem w e1 e2 => fromNat 0 (* TODO *)
     | bvSmod w e1 e2 => fromNat 0 (* TODO *)
     | bvShl w e1 e2 => shlBn (eval_exp e1 s) (toNat (eval_exp e2 s))
     | bvLshr w e1 e2 => shrBn (eval_exp e1 s) (toNat (eval_exp e2 s))
-    | bvAshr w e1 e2 => fromNat 0 (* TODO *)
+    | bvAshr w e1 e2 => sarBn (eval_exp e1 s) (toNat (eval_exp e2 s))
     | bvConcat w1 w2 e1 e2 => catB (eval_exp e1 s) (eval_exp e2 s)
     | bvExtract w i j e => slice j (i-j+1) w (eval_exp e s)
     | bvSlice w1 w2 w3 e => slice w3 w2 w1 (eval_exp e s)
@@ -320,7 +320,14 @@ Module Make (V : SsrOrderedType) (A : Arch).
     - exp_dedep_jmeq2.
     - exp_dedep_jmeq2.
     - exp_dedep_jmeq2.
-    - exp_dedep_jmeq2.
+    - move => /= [] . move => He1 He2 .
+      move : {He1} (exp_dedep_jmeq _ _ _ _ He1) => [Hw He1] .
+      move /eqP : Hw . rewrite eqSS . move /eqP => Hw .
+      move : e1_1 e1_2 e2_1 e2_2 He1 He2 .
+      rewrite Hw . move => e1_1 e1_2 e2_1 e2_2 He1 He2 .
+      move : {He2} (exp_dedep_jmeq _ _ _ _ He2) => [_  He2] .
+      split; first by reflexivity .
+      rewrite He1 He2; by reflexivity .
     - exp_dedep_jmeq2.
     - move=> /= []. move=> He Hi Hj. move: {He} (exp_dedep_jmeq _ _ _ _ He).
       move=> [Hij He]. move: e1 Hij He. rewrite Hi Hj. move=> e1 Hij He.
