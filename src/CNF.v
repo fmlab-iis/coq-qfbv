@@ -400,6 +400,14 @@ Proof.
   move=> E b l1 l2 H. rewrite /enc_bit H. by apply.
 Qed.
 
+Lemma enc_bit_not :
+  forall E b l,
+    enc_bit E l b = enc_bit E (neg_lit l) (~~ b).
+Proof.
+  move=> E b l. rewrite /enc_bit. rewrite interp_lit_neg_lit.
+  by case: (interp_lit E l); case: b.
+Qed.
+
 Lemma enc_bit_eq_bit :
   forall E b1 b2 l1 l2,
     interp_lit E l1 = interp_lit E l2 ->
