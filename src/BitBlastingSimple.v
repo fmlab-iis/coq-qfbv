@@ -6690,24 +6690,6 @@ Definition bit_blast_slt w g (ls1 ls2 : w.+1.-tuple literal) : generator * cnf *
                 [r; neg_lit cout; sign1; neg_lit sign2]] in
   (gr, cs_not++cs_fadd++csr, r).
 
-(* Definition bit_blast_slt w g (ls1 ls2 : w.+1.-tuple literal) : generator * cnf * literal := *)
-(*   let (g', r) := gen g in *)
-(*   let (g'', wahr) := gen g' in *)
-(*   let cs1 := [[wahr]] in *)
-(*   let (sign1, uls1) := eta_expand (splitmsb ls1) in *)
-(*   let (sign2, uls2) := eta_expand (splitmsb ls2) in *)
-(*   let '(g_not, cs_not, r_not) := bit_blast_not g'' ls2 in *)
-(*   let '(g_fadd, cs_fadd, cout, r_fadd) := bit_blast_full_adder g_not wahr ls1 r_not in *)
-(*   let cs4 := [[neg_lit r; cout; neg_lit sign1; sign2]; *)
-(*                 [neg_lit r; cout; sign1; neg_lit sign2]; *)
-(*                 [neg_lit r; neg_lit cout; sign1; sign2]; *)
-(*                 [neg_lit r; neg_lit cout; neg_lit sign1; neg_lit sign2]; *)
-(*                 [r; cout; sign1; sign2]; *)
-(*                 [r; cout; neg_lit sign1; neg_lit sign2]; *)
-(*                 [r; neg_lit cout; neg_lit sign1; sign2]; *)
-(*                 [r; neg_lit cout; sign1; neg_lit sign2]] in *)
-(*   (g_fadd, cs1++cs_not++cs_fadd++cs4, r). *)
-
 Lemma toNegZCons n b  (p:BITS n) : toNegZ (consB b p) = if b then Zdouble (toNegZ p) else Zsucc (Zdouble (toNegZ p)).
 Proof. done. Qed.
 
@@ -7109,8 +7091,6 @@ Lemma bit_blast_slt_correct_iff :
 Proof.
   move => w ig ibs1 ibs2 E g' ils1 ils2 cs olr.
   rewrite /bit_blast_slt.
-  (* case Hg1 : (gen ig) => [ig' r]. *)
-  (* case Hg2 : (gen ig') => [ig'' wahr]. *)
   case Hnot : (bit_blast_not ig ils2) => [[g_not cs_not] r_not].
   case Hfadd : (bit_blast_full_adder g_not lit_tt ils1 r_not) => [[[g_fadd cs_fadd] c_out] r_fadd].
   case Hg1 : (gen g_fadd) => [gr r].
@@ -7121,7 +7101,6 @@ Proof.
   rewrite !interp_lit_neg_lit /=.
   move => Hcnf.
   move/andP : Hcnf => [Htt Hcnf].
-  (* move/andP : Hcnf => [Hwahr Hcnf]. *)
   move/andP : Hcnf => [Hcnf_not Hcnf].
   move/andP : Hcnf => [Hcnf_fadd Hcnf].
   move/andP : Hcnf => [Hcnf1 Hcnf]; move/andP : Hcnf => [Hcnf2 Hcnf]; move/andP : Hcnf => [Hcnf3 Hcnf]; move/andP : Hcnf => [Hcnf4 Hcnf]; move/andP : Hcnf => [Hcnf5 Hcnf]; move/andP : Hcnf => [Hcnf6 Hcnf]; move/andP : Hcnf => [Hcnf7 Hcnf]; move/andP : Hcnf => [Hcnf8 _].
@@ -7129,10 +7108,8 @@ Proof.
   assert (interp_lit E lit_tt && interp_cnf E cs_not) as Hcnf_addnot by (rewrite Hintt Hcnf_not; done).
   rewrite -add_prelude_expand in Hcnf_addnot.
   move : (bit_blast_not_correct Hnot Henc2 Hcnf_addnot) => Hrnot.
-  (* case Hcin : (interp_lit E wahr); [| rewrite Hcin in Hwahr; discriminate]. *)
   assert (adcB true ibs1 (invB ibs2) = eta_expand (adcB true ibs1 (invB ibs2))) as Hadcb
     by apply surjective_pairing.
-  (* assert (enc_bit E wahr true) as Henc_cin by (rewrite /enc_bit Hcin; done). *)
   assert (enc_bit E lit_tt true) as Henc_cin 
                                    by apply (add_prelude_enc_bit_tt Hcnf_addnot).
   assert (interp_lit E lit_tt && interp_cnf E cs_fadd) as Hcnf_addadd by (rewrite Hintt Hcnf_fadd; done).
@@ -7198,95 +7175,6 @@ Proof.
         rewrite ltBNle Hsubltb in Hlt; discriminate.
 Qed.
 
-(* Proof. *)
-(*   move => w ig ibs1 ibs2 E g' ils1 ils2 cs olr. *)
-(*   rewrite /bit_blast_slt. *)
-(*   case Hg1 : (gen ig) => [ig' r]. *)
-(*   case Hg2 : (gen ig') => [ig'' wahr]. *)
-(*   case Hnot : (bit_blast_not ig'' ils2) => [[g_not cs_not] r_not]. *)
-(*   case Hfadd : (bit_blast_full_adder g_not wahr ils1 r_not) => [[[g_fadd cs_fadd] c_out] r_fadd]. *)
-(*   case => _ <- <-. *)
-(*   move => Henc1 Henc2. *)
-(*   rewrite 2!interp_cnf_cons 2!interp_cnf_append. *)
-(*   rewrite !interp_cnf_cons /=. *)
-(*   rewrite !interp_lit_neg_lit /=. *)
-(*   move => Hcnf. *)
-(*   move/andP : Hcnf => [Htt Hcnf]. *)
-(*   move/andP : Hcnf => [Hwahr Hcnf]. *)
-(*   move/andP : Hcnf => [Hcnf_not Hcnf]. *)
-(*   move/andP : Hcnf => [Hcnf_fadd Hcnf]. *)
-(*   move/andP : Hcnf => [Hcnf1 Hcnf]; move/andP : Hcnf => [Hcnf2 Hcnf]; move/andP : Hcnf => [Hcnf3 Hcnf]; move/andP : Hcnf => [Hcnf4 Hcnf]; move/andP : Hcnf => [Hcnf5 Hcnf]; move/andP : Hcnf => [Hcnf6 Hcnf]; move/andP : Hcnf => [Hcnf7 Hcnf]; move/andP : Hcnf => [Hcnf8 _]. *)
-(*   assert (interp_lit E lit_tt) as Hintt by done. *)
-(*   assert (interp_lit E lit_tt && interp_cnf E cs_not) as Hcnf_addnot by (rewrite Hintt Hcnf_not; done). *)
-(*   rewrite -add_prelude_expand in Hcnf_addnot. *)
-(*   move : (bit_blast_not_correct Hnot Henc2 Hcnf_addnot) => Hrnot. *)
-(*   case Hcin : (interp_lit E wahr); [| rewrite Hcin in Hwahr; discriminate]. *)
-(*   assert (adcB true ibs1 (invB ibs2) = eta_expand (adcB true ibs1 (invB ibs2))) as Hadcb *)
-(*     by apply surjective_pairing. *)
-(*   assert (enc_bit E wahr true) as Henc_cin by (rewrite /enc_bit Hcin; done). *)
-(*   assert (interp_lit E lit_tt && interp_cnf E cs_fadd) as Hcnf_addadd by (rewrite Hintt Hcnf_fadd; done). *)
-(*   rewrite -add_prelude_expand in Hcnf_addadd. *)
-(*   move : (bit_blast_full_adder_correct Hfadd Henc1 Hrnot Henc_cin Hcnf_addadd Hadcb) => Henc_add. *)
-(*   move/andP/andP : Henc_add => [Henc_radd Henc_cout]. *)
-(*   assert ((sbbB false ibs1 ibs2).1 = ~~(adcB true ibs1 (invB ibs2)).1) as Hsbbb1 by done. *)
-(*   rewrite /enc_bit in Henc_cout. move/eqP :Henc_cout=> Henc_cout. *)
-(*   rewrite !enc_bits_splitmsb in Henc1 Henc2. *)
-(*   move/andP: Henc1 => [Henc1msb Henc1]; move/andP: Henc2 => [Henc2msb Henc2]. *)
-(*   rewrite /enc_bit in Henc1msb Henc2msb. *)
-(*   move/eqP : Henc1msb => Henc1msb; move/eqP : Henc2msb => Henc2msb. *)
-(*   rewrite Henc1msb Henc2msb in Hcnf1 Hcnf2 Hcnf3 Hcnf4 Hcnf5 Hcnf6 Hcnf7 Hcnf8. *)
-(*   move : (sbbB_ltB_leB ibs1 ibs2) => Hsubltb. *)
-(*   rewrite -Z.ltb_lt. *)
-(*   case Hr : (interp_lit E r); *)
-(*     rewrite Hr /= in Hcnf1 Hcnf2 Hcnf3 Hcnf4 Hcnf5 Hcnf6 Hcnf7 Hcnf8. *)
-(*   - split; try done. *)
-(*     move => _. *)
-(*     case  Hcsub : (carry_subB ibs1 ibs2); *)
-(*       rewrite !Hcsub in Hsbbb1 Hsubltb; symmetry in Hsbbb1; *)
-(*         move/eqP/eqP: Hsubltb => Hsubltb. *)
-(*     + apply Bool.negb_true_iff in Hsbbb1. *)
-(*       rewrite Hsbbb1 in Henc_cout. rewrite !Henc_cout/= in Hcnf1 Hcnf2. *)
-(*       case Hs1 :((splitmsb ibs1).1); case Hs2 :((splitmsb ibs2).1); *)
-(*         try (rewrite -ltB_toZ_SameSign; [exact|rewrite Hs1 Hs2; reflexivity] *)
-(*                                ||rewrite Hs1 Hs2 in Hcnf1 Hcnf2; discriminate). *)
-(*     + apply Bool.negb_false_iff in Hsbbb1. *)
-(*       rewrite Hsbbb1 in Henc_cout. rewrite !Henc_cout/= in Hcnf1 Hcnf2 Hcnf3 Hcnf4. *)
-(*       case Hs1 :((splitmsb ibs1).1); case Hs2 :((splitmsb ibs2).1); *)
-(*          (rewrite Hs1 Hs2 /= in Hcnf3 Hcnf4; try discriminate). *)
-(*       * rewrite -ltB_toZ_DiffSign; [|rewrite Hs1 Hs2; done]. *)
-(*         case Hspl1: (splitmsb ibs1) => [b1 ibss1]; case Hspl2: (splitmsb ibs2) => [b2 ibss2]. *)
-(*         move : (splitmsbK ibs1) => <-; move : (splitmsbK ibs2) => <-. *)
-(*         rewrite Hspl1/= in Hs1; rewrite Hspl2/= in Hs2. *)
-(*         rewrite Hspl1 Hspl2 Hs1 Hs2. *)
-(*         apply toNat_joinmsb_lt. *)
-(*       * move : (toNat_joinmsb_lt (splitmsb ibs2).2 (splitmsb ibs1).2) => Hlt. *)
-(*         rewrite -Hs1 -Hs2 -!surjective_pairing !splitmsbK ltBNle in Hlt. *)
-(*         rewrite Hsubltb in Hlt; discriminate. *)
-(*   - split; try discriminate. *)
-(*     move => Hlt. *)
-(*     case  Hcsub : (carry_subB ibs1 ibs2); *)
-(*       rewrite !Hcsub in Hsbbb1 Hsubltb; symmetry in Hsbbb1; *)
-(*         move/eqP/eqP: Hsubltb => Hsubltb. *)
-(*     + apply Bool.negb_true_iff in Hsbbb1. *)
-(*       rewrite Hsbbb1 in Henc_cout. rewrite !Henc_cout/= in Hcnf5 Hcnf6 Hcnf7 Hcnf8. *)
-(*       case Hs1 :((splitmsb ibs1).1); case Hs2 :((splitmsb ibs2).1); *)
-(*         rewrite Hs1 Hs2 /= in Hcnf5 Hcnf6; try discriminate. *)
-(*       * move : (toNat_joinmsb_lt (splitmsb ibs1).2 (splitmsb ibs2).2) => Hltneg. *)
-(*         rewrite -Hs1 -Hs2 -!surjective_pairing !splitmsbK ltBNle /leB in Hltneg. *)
-(*         rewrite Hsubltb /= in Hltneg; discriminate. *)
-(*       * rewrite -ltB_toZ_DiffSign in Hlt; [|rewrite Hs1 Hs2; done]. *)
-(*         rewrite ltBNle /leB Hsubltb/= in Hlt; discriminate. *)
-(*     + apply Bool.negb_false_iff in Hsbbb1. *)
-(*       rewrite Hsbbb1 in Henc_cout. rewrite !Henc_cout/= in Hcnf5 Hcnf6 Hcnf7 Hcnf8. *)
-(*       case Hs1 :((splitmsb ibs1).1); case Hs2 :((splitmsb ibs2).1); *)
-(*         rewrite Hs1 Hs2 /= in Hcnf7 Hcnf8; try discriminate. *)
-(*       * rewrite -ltB_toZ_SameSign in Hlt; [|rewrite Hs1 Hs2; done]. *)
-(*         rewrite ltBNle Hsubltb in Hlt; discriminate. *)
-(*       * rewrite -ltB_toZ_SameSign in Hlt; [|rewrite Hs1 Hs2; done]. *)
-(*         rewrite ltBNle Hsubltb in Hlt; discriminate. *)
-(* Qed. *)
-
-(* ========= start here =========== *)
 Lemma bit_blast_slt_correct :
   forall w g (bs1 bs2 : BITS (w.+1)) E g' ls1 ls2 cs lr,
     bit_blast_slt g ls1 ls2 = (g', cs, lr) ->
@@ -7320,29 +7208,6 @@ Definition mk_env_slt w (E : env) g (ls1 ls2 : w.+1.-tuple literal) : env * gene
                 [r; neg_lit cout; neg_lit sign1; sign2];
                 [r; neg_lit cout; sign1; neg_lit sign2]] in
   (Er, gr, cs_not++cs_fadd++csr, r).
-  (* let (g', r) := gen g in *)
-  (* let (g'', wahr) := gen g' in *)
-  (* let E'' := env_upd E (var_of_lit wahr) true in *)
-  (* let cs1 := [[wahr]] in *)
-  (* let (sign1, uls1) := eta_expand (splitmsb ls1) in *)
-  (* let (sign2, uls2) := eta_expand (splitmsb ls2) in *)
-  (* let '(E_not, g_not, cs_not, r_not) := mk_env_not E'' g'' ls2 in *)
-  (* let '(E_fadd, g_fadd, cs_fadd, cout, r_fadd) := mk_env_full_adder E_not g_not wahr ls1 r_not in *)
-  (* let cs4 := [[neg_lit r; cout; neg_lit sign1; sign2]; *)
-  (*               [neg_lit r; cout; sign1; neg_lit sign2]; *)
-  (*               [neg_lit r; neg_lit cout; sign1; sign2]; *)
-  (*               [neg_lit r; neg_lit cout; neg_lit sign1; neg_lit sign2]; *)
-  (*               [r; cout; sign1; sign2]; *)
-  (*               [r; cout; neg_lit sign1; neg_lit sign2]; *)
-  (*               [r; neg_lit cout; neg_lit sign1; sign2]; *)
-  (*               [r; neg_lit cout; sign1; neg_lit sign2]] in *)
-  (* let E' := env_upd E_fadd (var_of_lit r) *)
-  (*                   (orb ((interp_lit E_fadd sign1) && ~~ (interp_lit E_fadd sign2)) *)
-  (*                        ((interp_lit E_fadd sign1 == interp_lit E_fadd sign2)  *)
-  (*                           && ~~ interp_lit E_fadd cout)) in *)
-  (*                   (* (BinInt.Z.ltb (toZ (interp_lits E ls1))  *) *)
-  (*                   (*               (toZ (interp_lits E ls2))) in *) *)
-  (* (E', g_fadd, cs1++cs_not++cs_fadd++cs4, r). *)
 
 Lemma mk_env_slt_is_bit_blast_slt :
   forall w E g (ls1 ls2 : w.+1.-tuple literal) E' g' cs lr,
@@ -7564,7 +7429,6 @@ Proof.
   rewrite (env_preserve_cnf HpEnEfgn Hgncn).
   rewrite (mk_env_not_sat Hmknot Hgl2).
   (* interp_cnf Er cs_fadd *)
-  Check mk_env_full_adder_newer_cnf.
   move : (mk_env_not_newer_gen Hmknot) => Hggn.
   move : (newer_than_lit_le_newer Hgt Hggn) => Hgnt.
   move : (newer_than_lits_le_newer Hgl1 Hggn) => Hgnl1.
@@ -7607,11 +7471,6 @@ Proof.
     move : Hsign_eq.
     by case (interp_lit E_not sign1); case (interp_lit E_fadd sign2).
 Qed.    
-
-
-(* ================= end here ================== *)
-
-
 
 
 (* ===== bit_blast_sle ===== *)
@@ -16366,7 +16225,9 @@ Proof.
   - move=> w e1 e2.
     move: (mk_env_exp_consistent _ e1) (mk_env_exp_consistent _ e2) => ih1 ih2.
     exact: (mk_env_bexp_consistent_uge ih1 ih2).
-  - exact: mk_env_bexp_consistent_slt.
+  - move=> w e1 e2.
+    move: (mk_env_exp_consistent _ e1) (mk_env_exp_consistent _ e2) => IH1 IH2.
+    exact: (mk_env_bexp_consistent_slt IH1 IH2).
   - exact: mk_env_bexp_consistent_sle.
   - exact: mk_env_bexp_consistent_sgt.
   - exact: mk_env_bexp_consistent_sge.
@@ -17088,13 +16949,36 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_preserve_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lr : literal),
-    mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
-    env_preserve E E' g.
+  forall (w : nat) (e1 : QFBV64.exp w.+1),
+    (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+            (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+            (lrs : w.+1.-tuple literal),
+        mk_env_exp m s E g e1 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+    forall (e2 : QFBV64.exp w.+1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.+1.-tuple literal),
+          mk_env_exp m s E g e2 = (m', E', g', cs, lrs) -> env_preserve E E' g) ->
+      forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+             (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+             (lr : literal),
+        mk_env_bexp m s E g (QFBV64.bvSlt w e1 e2) = (m', E', g', cs, lr) ->
+        env_preserve E E' g.
 Proof.
-Admitted.
+  move=> w e1 IH1 e2 IH2 m s E g m' E' g' cs lr /=.
+  case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
+  case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
+  case Hmkr : (mk_env_slt E2 g2 ls1 ls2) => [[[Er gr] csr] r].
+  case=> _ <- _ _ _.
+  move: (IH1 _ _ _ _ _ _ _ _ _ Hmke1) => HpEE1g.
+  move: (IH2 _ _ _ _ _ _ _ _ _ Hmke2) => HpE1E2g1.
+  move: (mk_env_slt_preserve Hmkr) => HpE2Erg2.
+  move: (mk_env_exp_newer_gen Hmke1) (mk_env_exp_newer_gen Hmke2) => Hgg1 Hg1g2.
+  move: (env_preserve_le HpE1E2g1 Hgg1) => HpE1E2g.
+  move: (env_preserve_le HpE2Erg2 (pos_leb_trans Hgg1 Hg1g2)) => HpE2Erg.
+  apply: (env_preserve_trans _ HpE2Erg).
+  exact: (env_preserve_trans HpEE1g HpE1E2g).
+Qed.
 
 Lemma mk_env_bexp_preserve_sle :
   forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
@@ -17351,7 +17235,9 @@ Proof.
   - move=> w e1 e2.
     move: (mk_env_exp_preserve _ e1) (mk_env_exp_preserve _ e2) => IH1 IH2.
     exact: (mk_env_bexp_preserve_uge IH1 IH2).
-  - exact: mk_env_bexp_preserve_slt.
+  - move=> w e1 e2.
+    move: (mk_env_exp_preserve _ e1) (mk_env_exp_preserve _ e2) => IH1 IH2.
+    exact: (mk_env_bexp_preserve_slt IH1 IH2).
   - exact: mk_env_bexp_preserve_sle.
   - exact: mk_env_bexp_preserve_sgt.
   - exact: mk_env_bexp_preserve_sge.
@@ -18512,13 +18398,52 @@ Proof.
 Qed.
 
 Lemma mk_env_bexp_sat_slt :
-  forall (w : nat) (e e0 : QFBV64.exp w.+1) (m : vm) (s : QFBV64.State.t)
-         (E : env) (g : generator) (m' : vm) (E' : env) (g' : generator)
-         (cs : cnf) (lr : literal),
-    mk_env_bexp m s E g (QFBV64.bvSlt w e e0) = (m', E', g', cs, lr) ->
-    newer_than_vm g m -> newer_than_lit g lit_tt -> interp_cnf E' cs.
+  forall (w : nat) (e1 : QFBV64.exp w.+1),
+    (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+            (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+            (lrs : w.+1.-tuple literal),
+        mk_env_exp m s E g e1 = (m', E', g', cs, lrs) ->
+        newer_than_vm g m -> newer_than_lit g lit_tt -> interp_cnf E' cs) ->
+    forall (e2 : QFBV64.exp w.+1),
+      (forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+              (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+              (lrs : w.+1.-tuple literal),
+          mk_env_exp m s E g e2 = (m', E', g', cs, lrs) ->
+          newer_than_vm g m -> newer_than_lit g lit_tt -> interp_cnf E' cs) ->
+      forall (m : vm) (s : QFBV64.State.t) (E : env) (g : generator)
+             (m' : vm) (E' : env) (g' : generator) (cs : cnf)
+             (lr : literal),
+        mk_env_bexp m s E g (QFBV64.bvSlt w e1 e2) = (m', E', g', cs, lr) ->
+        newer_than_vm g m -> newer_than_lit g lit_tt -> interp_cnf E' cs.
 Proof.
-Admitted.
+  move=> w e1 IH1 e2 IH2 m s E g m' E' g' cs lr /=.
+  case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
+  case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
+  case Hmkr : (mk_env_slt E2 g2 ls1 ls2) => [[[Er gr] csr] r].
+  case=> _ <- _ <- _ Hgm Hgt. rewrite !interp_cnf_append.
+  (* interp_cnf Er cs1 *)
+  move: (IH1 _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt) => HiE1c1.
+  move: (mk_env_exp_preserve Hmke2) => HpE1E2g1.
+  move: (mk_env_slt_preserve Hmkr) => HpE2Erg2.
+  move: (mk_env_exp_newer_gen Hmke2) => Hg1g2.
+  move: (env_preserve_le HpE2Erg2 Hg1g2) => HpE2Erg1.
+  move: (env_preserve_trans HpE1E2g1 HpE2Erg1) => HpE1Erg1.
+  move: (mk_env_exp_newer_cnf Hmke1 Hgm Hgt) => Hg1c1.
+  rewrite (env_preserve_cnf HpE1Erg1 Hg1c1) HiE1c1 /=.
+  (* interp_cnf Er cs2 *)
+  move: (mk_env_exp_newer_vm Hmke1 Hgm) => Hg1m1.
+  move: (mk_env_exp_newer_gen Hmke1) => Hgg1.
+  move: (newer_than_lit_le_newer Hgt Hgg1) => Hg1t.
+  move: (IH2 _ _ _ _ _ _ _ _ _ Hmke2 Hg1m1 Hg1t) => HiE2c2.
+  move: (mk_env_exp_newer_cnf Hmke2 Hg1m1 Hg1t) => Hg2c2.
+  rewrite (env_preserve_cnf HpE2Erg2 Hg2c2) HiE2c2 /=.
+  (* interp_cnf Er csr *)
+  move: (mk_env_exp_newer_res Hmke1 Hgm Hgt) => Hg1l1.
+  move: (mk_env_exp_newer_res Hmke2 Hg1m1 Hg1t) => Hg2l2.
+  move: (newer_than_lits_le_newer Hg1l1 Hg1g2) => Hg2l1.
+  move: (newer_than_lit_le_newer Hg1t Hg1g2) => Hg2t.
+  exact: (mk_env_slt_sat Hmkr Hg2t Hg2l1 Hg2l2).
+Qed.
 
 Lemma mk_env_bexp_sat_sle :
   forall (w : nat) (e e0 : QFBV64.exp w) (m : vm) (s : QFBV64.State.t)
@@ -18811,7 +18736,9 @@ Proof.
   - move=> w e1 e2.
     move: (mk_env_exp_sat _ e1) (mk_env_exp_sat _ e2) => IH1 IH2.
     exact: (mk_env_bexp_sat_uge IH1 IH2).
-  - exact: mk_env_bexp_sat_slt.
+  - move=> w e1 e2.
+    move: (mk_env_exp_sat _ e1) (mk_env_exp_sat _ e2) => IH1 IH2.
+    exact: (mk_env_bexp_sat_slt IH1 IH2).
   - exact: mk_env_bexp_sat_sle.
   - exact: mk_env_bexp_sat_sgt.
   - exact: mk_env_bexp_sat_sge.
