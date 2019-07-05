@@ -51,7 +51,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
   | bvUgt : forall w, exp w -> exp w -> bexp
   | bvUge : forall w, exp w -> exp w -> bexp
   | bvSlt : forall w, exp (w.+1) -> exp (w.+1) -> bexp
-  | bvSle : forall w, exp w -> exp w -> bexp
+  | bvSle : forall w, exp (w.+1) -> exp (w.+1) -> bexp
   | bvSgt : forall w, exp w -> exp w -> bexp
   | bvSge : forall w, exp w -> exp w -> bexp
   | bvUaddo : forall w, exp w -> exp w -> bexp
@@ -110,7 +110,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
       | bvUgt w e1 e2 => ltB (eval_exp e2 s) (eval_exp e1 s)
       | bvUge w e1 e2 => leB (eval_exp e2 s) (eval_exp e1 s)
       | bvSlt w e1 e2 => BinInt.Z.ltb (toZ (eval_exp e1 s)) (toZ (eval_exp e2 s))
-      | bvSle w e1 e2 => true (* TODO *)
+      | bvSle w e1 e2 => BinInt.Z.leb (toZ (eval_exp e1 s)) (toZ (eval_exp e2 s))
       | bvSgt w e1 e2 => true (* TODO *)
       | bvSge w e1 e2 => true (* TODO *)
       | bvUaddo w e1 e2 => true (* TODO *)
@@ -372,7 +372,13 @@ Module Make (V : SsrOrderedType) (A : Arch).
       move: e e0 He1 He2; rewrite Hw1 => e e0 He1 He2.
       move: {He2} (exp_dedep_jmeq _ _ _ _ He2) => [Hw2 He2].
       by rewrite He1 He2.
-    - bexp_dedep_eq2.
+    - move=> /= []. move=> He1 He2. 
+      move: {He1} (exp_dedep_jmeq _ _ _ _ He1) => [Hw1 He1]. 
+      rewrite -(addn1 w) -(addn1 w0) in Hw1.
+      move: (proj1 (Nat.add_cancel_r _ _ _) Hw1) => {Hw1} Hw1.
+      move: e e0 He1 He2; rewrite Hw1 => e e0 He1 He2.
+      move: {He2} (exp_dedep_jmeq _ _ _ _ He2) => [Hw2 He2].
+      by rewrite He1 He2.
     - bexp_dedep_eq2.
     - bexp_dedep_eq2.
     - bexp_dedep_eq2.
