@@ -359,6 +359,14 @@ Definition mk_env_var E g (bv : BITS wordsize) (v : var) : env * generator * cnf
   let '(E', g', vs) := mk_env_var' E g bv in
   (E', g', [], vs).
 
+Lemma bit_blast_var_cnf_empty :
+  forall g v g' cs lrs,
+    bit_blast_var g v = (g', cs, lrs) -> cs = [].
+Proof.
+  move=> g v g' cs lrs. rewrite /bit_blast_var. dcase (bit_blast_var' g wordsize).
+  move=> [g_v lrs_v] Hbb. case=> _ <- _. reflexivity.
+Qed.
+
 Lemma mk_env_var'_is_bit_blast_var' :
   forall w E g (bs : BITS w) E' g' lrs,
     mk_env_var' E g bs = (E', g', lrs) ->
