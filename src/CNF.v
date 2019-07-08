@@ -400,6 +400,14 @@ Proof.
   move=> E b l1 l2 H. rewrite /enc_bit H. by apply.
 Qed.
 
+Lemma enc_bit_not :
+  forall E b l,
+    enc_bit E l b = enc_bit E (neg_lit l) (~~ b).
+Proof.
+  move=> E b l. rewrite /enc_bit. rewrite interp_lit_neg_lit.
+  by case: (interp_lit E l); case: b.
+Qed.
+
 Lemma enc_bit_eq_bit :
   forall E b1 b2 l1 l2,
     interp_lit E l1 = interp_lit E l2 ->
@@ -686,6 +694,34 @@ Proof .
     + by rewrite !behead_nseq.
 Qed .
 
+Lemma tuple1_behead : forall T (ls : 1.-tuple T), behead ls = [tuple] .
+Proof .
+  move => T .
+  case => [val sz] .
+  apply size0nil .
+  rewrite size_behead /= .
+  by rewrite (eqP sz) .
+Qed .
+
+Lemma enc_bits_last : forall w (bs : BITS w.+1) E ls b l,
+    enc_bits E ls bs ->
+    enc_bit E (last l ls) (last b bs) .
+Proof .
+  elim .
+  - move => bs E ls b l .
+    rewrite enc_bits_splitlsb => /andP [Hencbit _] .
+    rewrite /splitlsb /= in Hencbit .
+    rewrite (tuple_eta ls) (tuple_eta bs) /last /= .
+    by rewrite (tuple1_behead ls) (tuple1_behead bs) .
+  - move => n IH bs E ls b l Hencbit .
+    move: Hencbit; rewrite enc_bits_splitlsb => /andP [_ Hencbits] .
+    rewrite /splitlsb in Hencbits .
+    move: (IH (behead_tuple bs) _ (behead_tuple ls)
+              (thead bs) (thead ls) Hencbits)
+    => {Hencbits} Hencbits .
+    by rewrite (tuple_eta ls) (tuple_eta bs) /last /= .
+Qed .
+
 Lemma enc_bit_env_upd_updated :
   forall E b l x y,
     x != var_of_lit b ->
@@ -965,6 +1001,36 @@ Proof .
     case : Hgls => /andP [Hglshd Hglstl] .
     move : (IH _ _ _ Hgl Hglstl) => Hllstl .
     apply /andP; split; trivial .
+Qed .
+
+Lemma newer_than_lits_last :
+  forall w g (ls : (w.+1).-tuple literal) l,
+    newer_than_lits g ls -> newer_than_lit g (last l ls) .
+Proof .
+  elim .
+  - move => g ls l .
+    rewrite (tuple_eta ls) /last /= .
+    rewrite (tuple1_behead ls) .
+    by move /andP => [Hlshd _] .
+  - move => n IH g ls l .
+    rewrite (tuple_eta ls) /= .
+    move /andP => [_ Hlstl] .
+    move: (IH _ (behead_tuple ls) (thead ls) Hlstl) .
+    by rewrite (tuple_eta ls) theadE /= .
+Qed .
+
+Lemma newer_than_lits_default_last :
+  forall w g (ls : w.-tuple literal) l,
+    newer_than_lits g ls -> newer_than_lit g l ->
+    newer_than_lit g (last l ls) .
+Proof .
+  elim .
+  - move => g ls l _ .
+    by rewrite tuple0 /= .
+  - move => n IH g ls l .
+    rewrite (tuple_eta ls) /= .
+    move /andP => [Hlshd Hlstl] _ .
+    by apply: (IH _ (behead_tuple ls) (thead ls) Hlstl) .
 Qed .
 
 Lemma newer_than_lits_enc_bits_env_upd :
