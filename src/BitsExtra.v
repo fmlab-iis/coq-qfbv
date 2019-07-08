@@ -2197,6 +2197,3 @@ Ltac bvzsimpl :=
           fromNat toNat fromPosZ toPosZ fromZ toZ
   ].
 Global Opaque adcB sbbB.
-
-(* Don't simplify fullmulB. Otherwise, Coq freezes. *)
-Global Opaque low high fullmulB mulB ltB leB shlBn shrBn.

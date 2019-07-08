@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple ssrfun.
-From BitBlasting Require Import QFBVSimple CNF BBCommon BBNot BBAdd.
+From BitBlasting Require Import QFBVSimple CNF BitsExtra BBCommon BBNot BBAdd.
 From ssrlib Require Import Var ZAriths Tuples Tactics.
 From Bits Require Import bits.
 
@@ -176,28 +176,6 @@ Proof.
   done.
 Qed.
 
-Lemma toPosZ_toNat n : forall (p: BITS n),
-    toPosZ p = Z.of_nat (toNat p).
-Proof.
-  induction n.
-  - move => p. rewrite (tuple0 p) /= /toPosZ /=; reflexivity.
-  - case/tupleP => [p_hd p_tl].
-    case p_hd.
-    + replace [tuple of true :: p_tl] with (consB true p_tl) by done.
-      rewrite toPosZCons toNatCons /=.
-      rewrite Zpos_P_of_succ_nat.
-      rewrite (IHn p_tl).
-      apply Z.succ_inj_wd. rewrite Z.double_spec.
-      rewrite -muln2 Nat2Z.inj_mul.
-      ring.
-    + replace [tuple of false :: p_tl] with (consB false p_tl) by done.
-      rewrite toPosZCons toNatCons /=.
-      rewrite (IHn p_tl).
-      rewrite Z.double_spec.
-      rewrite -muln2 Nat2Z.inj_add Nat2Z.inj_0 Nat2Z.inj_mul.
-      ring.
-Qed.
-
 Lemma toNegZ_toNat n : forall (p: BITS n),
     toNegZ p = Z.of_nat ((2^n-1) - (toNat p)).
 Proof.
@@ -241,49 +219,8 @@ Lemma fromPosZ_fromNat n:
     (z >= 0)%Z ->
     @fromPosZ n z = @fromNat n (Z.to_nat z).
 Proof.
-  induction n.
-  - done.
-  - move => z Hge0.
-    rewrite /= (IHn (Z.div2 z)).
-    case Heven : (Z.even z).
-     apply toNat_inj; rewrite toNat_joinlsb/=.
-    + rewrite add0n 2!toNat_fromNat/= expnS -muln2.
-      apply Zeven_bool_iff in Heven.
-      move : (Zeven_div2 z Heven) => Hed2.
-      symmetry; rewrite ->Hed2 at 1.
-      rewrite Z2Nat.inj_mul; try omega.
-      replace (Z.to_nat 2) with 2%coq_nat by done.
-      rewrite -Nats.muln_mul -div.muln_modr; [ring|auto].
-    + apply Bool.negb_true_iff in Heven.
-      rewrite Z.negb_even in Heven.
-      rewrite /fromNat /=.
-      assert (odd (Z.to_nat z) = true) as Hoddz.
-      rewrite Nats.ssrodd_odd. apply Nat.odd_spec.
-      rewrite /Nat.Odd. exists (Z.to_nat (Z.div2 z)).
-      apply Zodd_bool_iff in Heven.
-      move : (Zodd_div2 z Heven) => Hzodd.
-      rewrite ->Hzodd at 1.
-      rewrite Z2Nat.inj_add; try omega. rewrite  Z2Nat.inj_mul; try omega.
-      assert (Z.to_nat 2 = 2) as H2 by done; assert (Z.to_nat 1= 1) as H1 by done.
-      by rewrite H2 H1 Zdiv2_div -!Nats.addn_add -!Nats.muln_mul.
-      rewrite Hoddz.
-      assert ((Z.to_nat (Z.div2 z)) = Nat.div2 (Z.to_nat z)) as Htonat.
-      rewrite -!Z_N_nat -Nnat.N2Nat.inj_div2.
-      by rewrite Z2N.inj_div2.
-      by rewrite Htonat Nats.ssrdiv2_div2.
-      apply Z.le_ge; apply <-Z.div2_nonneg.
-      omega.
-Qed.
-
-Lemma toPosZ_lt n : forall (p1 p2: BITS n),
-    ltB p1 p2 -> ((toPosZ p1)< (toPosZ p2))%Z.
-Proof.
-  move => p1 p2.
-  rewrite !toPosZ_toNat. rewrite ltB_nat.
-  move => Hltb.
-  apply inj_lt.
-  apply/ltP.
-  done.
+  move=> z H. rewrite -BitsExtra.fromPosZ_fromNat (Z2Nat.id _ (Z.ge_le _ _ H)).
+  reflexivity.
 Qed.
 
 Lemma ltB_toZ_Pos :
