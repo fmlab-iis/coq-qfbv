@@ -114,7 +114,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
       | bvSgt w e1 e2 => BinInt.Z.gtb (toZ (eval_exp e1 s)) (toZ (eval_exp e2 s))
       | bvSge w e1 e2 => BinInt.Z.geb (toZ (eval_exp e1 s)) (toZ (eval_exp e2 s))
       | bvUaddo w e1 e2 => carry_addB (eval_exp e1 s) (eval_exp e2 s)
-      | bvUsubo w e1 e2 => true (* TODO *)
+      | bvUsubo w e1 e2 => carry_subB (eval_exp e1 s) (eval_exp e2 s)
       | bvUmulo w e1 e2 => true (* TODO *)
       | bvSaddo w e1 e2 => true (* TODO *)
       | bvSsubo w e1 e2 => true (* TODO *)

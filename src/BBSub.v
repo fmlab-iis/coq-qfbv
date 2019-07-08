@@ -89,6 +89,24 @@ Proof.
   case=> _ <- _ _ <-. exact: (mk_env_full_adder_newer_res Henv_add).
 Qed.
 
+Lemma mk_env_sbb_newer_bout :
+  forall w E g l_bin (ls1 ls2 : w.-tuple literal) E' g' cs l_bout lrs,
+    mk_env_sbb E g l_bin ls1 ls2 = (E', g', cs, l_bout, lrs) ->
+    newer_than_lit g l_bin ->
+    newer_than_lit g' l_bout.
+Proof.
+  move=> w E g l_bin ls1 ls2 E' g' cs l_bout lrs. rewrite /mk_env_sbb.
+  dcase (mk_env_not E g ls2) => [[[[E_not g_not] cs_not] lrs_not] Henv_not].
+  dcase (mk_env_full_adder E_not g_not (neg_lit l_bin) ls1 lrs_not) =>
+  [[[[[E_add g_add] cs_add] l_bout_add] lrs_add] Henv_add].
+  case=> _ <- _ <- _ => Hnew_glbin.
+  rewrite newer_than_lit_neg.
+  rewrite -newer_than_lit_neg in Hnew_glbin.
+  move: (mk_env_not_newer_gen Henv_not) => Hnew_ggnot.
+  move: (newer_than_lit_le_newer Hnew_glbin Hnew_ggnot) => tmp.
+  exact: (mk_env_full_adder_newer_cout Henv_add tmp).
+Qed.
+
 Lemma mk_env_sbb_newer_cnf :
   forall w E g l_bin (ls1 ls2 : w.-tuple literal) E' g' cs l_bout lrs,
     mk_env_sbb E g l_bin ls1 ls2 = (E', g', cs, l_bout, lrs) ->

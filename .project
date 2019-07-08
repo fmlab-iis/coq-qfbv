@@ -37,6 +37,7 @@ src/BBSle.v
 src/BBSgt.v
 src/BBSge.v
 src/BBUaddo.v
+src/BBUsubo.v
 src/BBLneg.v
 src/BBExport.v
 src/BitBlastingSimple.v
