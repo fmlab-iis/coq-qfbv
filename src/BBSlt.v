@@ -1,9 +1,9 @@
 
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple ssrfun.
-From BitBlasting Require Import QFBVSimple CNF BitsExtra BBCommon BBNot BBAdd.
+From BitBlasting Require Import QFBVSimple CNF BBCommon BBNot BBAdd.
 From ssrlib Require Import Var ZAriths Tuples Tactics.
-From Bits Require Import bits.
+From Bits Require Import bits extra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -219,7 +219,7 @@ Lemma fromPosZ_fromNat n:
     (z >= 0)%Z ->
     @fromPosZ n z = @fromNat n (Z.to_nat z).
 Proof.
-  move=> z H. rewrite -BitsExtra.fromPosZ_fromNat (Z2Nat.id _ (Z.ge_le _ _ H)).
+  move=> z H. rewrite -extra.fromPosZ_fromNat (Z2Nat.id _ (Z.ge_le _ _ H)).
   reflexivity.
 Qed.
 

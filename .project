@@ -1,7 +1,6 @@
 -Q lib/coq-bits/src Bits
 -Q lib/coq-ssrlib/src ssrlib
 -Q src BitBlasting
-src/BitsExtra.v
 src/QFBVSimple.v
 src/CNF.v
 src/BBCommon.v
