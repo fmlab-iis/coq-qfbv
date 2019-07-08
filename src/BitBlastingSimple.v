@@ -8327,7 +8327,7 @@ Proof.
       * rewrite/= div0n addn0 Nats.divn_div -(IHn n_tl d) shrBn_joinmsb0 toNat_joinmsb0.
         reflexivity.
 Qed.
-Print joinmsb.
+
 Fixpoint setLitAux {A: Type} {n} i b : n.-tuple A -> n.-tuple A :=
   if n is _.+1
   then fun p => let (p,oldb) := splitlsb p in
@@ -8366,7 +8366,7 @@ Fixpoint bit_blast_udiv_rec w wn (g:generator) :
 Definition bit_blast_udiv w (g: generator) (ls1 ls2:  w.-tuple literal) :generator * cnf * w.-tuple literal * w.-tuple literal:=
   bit_blast_udiv_rec g ls1 ls2 (copy w lit_ff) (copy w lit_ff) 0 .
 
-    
+(*    
 Lemma  bit_blast_udiv_rec_correct :
   forall w wn g (bs1 : BITS w) (bs2 : BITS wn) br bq i E (ls1:w.-tuple literal) (ls2 : wn.-tuple literal) lr lq g' cs lrs lrq,
     bit_blast_udiv_rec g ls1 ls2 lr lq i = (g', cs, lrs, lrq) ->
@@ -8417,7 +8417,7 @@ Proof.
       apply toNat_inj. rewrite toNat_subB.
       rewrite toNat_dropmsb toNat_joinlsb -muln2.*)
 Admitted.
-
+*)
 
 (* ===== bit_blast_sdiv ===== *)
 (*
