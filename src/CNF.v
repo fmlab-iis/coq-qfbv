@@ -722,6 +722,33 @@ Proof .
     by rewrite (tuple_eta ls) (tuple_eta bs) /last /= .
 Qed .
 
+Lemma enc_bits_rev:
+  forall w E (ls: w.-tuple literal) (bs: BITS w),
+    enc_bits E ls bs ->
+    enc_bits E (rev_tuple ls) (rev_tuple bs).
+Proof.
+  elim.
+  - done.
+  - move=> w IH E ls bs Henc.
+    case Hmsb1: (splitmsb ls) => [last1 prefix1].
+    case Hmsb2: (splitmsb bs) => [last2 prefix2].
+    move: (splitmsb_rev Hmsb1) (splitmsb_rev Hmsb2) => Hrev1 Hrev2 /=.
+    have ->: rev_tuple ls = cons_tuple last1 (rev_tuple prefix1).
+    {
+      apply: val_inj. rewrite /= Hrev1. reflexivity.
+    }
+    have ->: rev_tuple bs = cons_tuple last2 (rev_tuple prefix2).
+    {
+      apply: val_inj. rewrite /= Hrev2. reflexivity.
+    }
+    rewrite 2!theadCons 2!beheadCons /=.
+    move: (enc_bits_splitmsb bs E ls) => Henc_split.
+    rewrite Henc_split in Henc.
+    move /andP : Henc => [Henc_msb Henc_res].
+    rewrite Hmsb1 Hmsb2 /= in Henc_msb Henc_res.
+      by rewrite (IH _ _ _ Henc_res) andbT.
+Qed.
+
 Lemma enc_bit_env_upd_updated :
   forall E b l x y,
     x != var_of_lit b ->
@@ -1032,6 +1059,25 @@ Proof .
     move /andP => [Hlshd Hlstl] _ .
     by apply: (IH _ (behead_tuple ls) (thead ls) Hlstl) .
 Qed .
+
+Lemma newer_than_lits_rev:
+  forall w g (ls: w.-tuple literal),
+    newer_than_lits g ls ->
+    newer_than_lits g (rev_tuple ls).
+Proof.
+  elim.
+  - move=> g ls /=. rewrite tuple0. done.
+  - move=> w IH g ls Hnew.
+    case Hmsb1: (splitmsb ls) => [last1 prefix1].
+    move: (splitmsb_rev Hmsb1) => Hrev1.
+    have -> : rev_tuple ls = cons_tuple last1 (rev_tuple prefix1).
+    {
+      apply: val_inj. rewrite /= Hrev1. reflexivity.
+    }
+    rewrite /=.
+    move: (newer_than_lits_splitmsb Hnew Hmsb1) => /andP [-> H] /=.
+    exact: (IH _ _ H).
+Qed.
 
 Lemma newer_than_lits_enc_bits_env_upd :
   forall w E x b (ls : w.-tuple literal) bs,
