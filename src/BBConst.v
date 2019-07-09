@@ -35,7 +35,7 @@ Proof.
     apply: val_inj; rewrite /=. exact: Hls_tl.
 Qed.
 
-Lemma mk_env_const_is_bit_blast_env :
+Lemma mk_env_const_is_bit_blast_const :
   forall w E g (bv : BITS w) E' g' cs ls,
     mk_env_const E g bv = (E', g', cs, ls) ->
     bit_blast_const g bv = (g', cs, ls).
@@ -43,7 +43,7 @@ Proof.
   rewrite /mk_env_const /bit_blast_const; intros; dcase_hyps; subst; reflexivity.
 Qed.
 
-Lemma mk_env_cont_sat :
+Lemma mk_env_const_sat :
   forall w E g (bv : BITS w) E' g' cs lrs,
     mk_env_const E g bv = (E', g', cs, lrs) ->
     interp_cnf E' cs.
@@ -52,7 +52,7 @@ Proof.
   case=> <- _ <- _. done.
 Qed.
 
-Lemma mk_env_const_env_preserve :
+Lemma mk_env_const_preserve :
   forall w E g (bv : BITS w) E' g' cs lrs,
     mk_env_const E g bv = (E', g', cs, lrs) ->
     env_preserve E E' g.
@@ -80,4 +80,16 @@ Proof.
   - move=> w IH. case/tupleP=> [bs_hd bs_tl] /=. rewrite (IH _) andbT. case: bs_hd.
     + exact: Hnew_gtt.
     + exact: Hnew_gtt.
+Qed.
+
+Lemma mk_env_const_newer_cnf :
+  forall w E g (bs : BITS w) E' g' cs lrs,
+    mk_env_const E g bs = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_cnf g' cs.
+Proof.
+  move => w E g bs E' g' cs lrs.
+  rewrite /mk_env_const.
+  case => _ <- <- _.
+  done.
 Qed.
