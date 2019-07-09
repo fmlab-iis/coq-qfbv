@@ -212,7 +212,7 @@ Lemma bit_blast_mul_rec_correct :
     enc_bits E lrs (mulB bs1 (# (toNat bs2 * (2^i)))).
 Proof.
   elim.
-  - move => wn ig ibs1 ibs2 i E ils1 ils2 og cs olrs. 
+  - move => wn ig ibs1 ibs2 i E ils1 ils2 og cs olrs.
     case=> _ <- <- Henc1 Henc2 Hcnf.
     apply: (bit_blast_const_correct (g:=ig) _ Hcnf).
     apply: injective_projections => /=; first by reflexivity.
@@ -286,4 +286,105 @@ Proof.
   move => w g bs1 bs2 E ls1 ls2 g' cs lrs Hmul Henc_bs1 Henc_bs2 Hcnf.
   rewrite -(toNatK bs2). replace (toNat bs2) with (toNat bs2 * (2^ 0)) by ring.
   exact: (bit_blast_mul_rec_correct Hmul Henc_bs1 Henc_bs2 Hcnf).
+Qed.
+
+Lemma mk_env_mul_rec_preserve :
+  forall wn w E g (ls1 : w.-tuple literal) (ls2 : wn.-tuple literal) i E' g' cs lrs,
+    mk_env_mul_rec E g ls1 ls2 i = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  elim.
+  - move => w E g ls1 ls2 i E' g' cs lrs [] <- _ _ _. done.
+  - intros_tuple. dcase_hyps; subst.
+    move : (H _ _ _ _ _ _ _ _ _ _ H0) => HEE0g.
+    move : (mk_env_add_preserve H4) => HE3E4g3.
+    move : (mk_env_add_preserve H1) => HE1E2g1.
+    move : (mk_env_and_preserve H3) => HE1E3g1.
+    move : (mk_env_shl_int_preserve H2) => HE0E1g1.
+    move : (mk_env_mul_rec_newer_gen H0) => Hgg0.
+    move : (mk_env_shl_int_newer_gen H2) => Hg0g1.
+    move : (env_preserve_le HE1E2g1 (pos_leb_trans Hgg0 Hg0g1)) => HE1E2g.
+    move : (env_preserve_le HE0E1g1 Hgg0) => HE0E1g.
+    move : (env_preserve_le HE1E3g1 (pos_leb_trans Hgg0 Hg0g1)) => HE1E3g.
+    move : (mk_env_and_newer_gen H3) => Hg1g3.
+    move : (env_preserve_le HE3E4g3 (pos_leb_trans Hgg0 (pos_leb_trans Hg0g1 Hg1g3))) => HE3E4g.
+    move : (env_preserve_trans HEE0g (env_preserve_trans HE0E1g (env_preserve_trans HE1E3g HE3E4g))) => HEE4g.
+    move : (env_preserve_trans HEE0g (env_preserve_trans HE0E1g HE1E2g)) => HEE2g.
+    case (ls2 == lit_tt); case (ls2 == lit_ff);
+      move => [] <- _ _ _; try exact.
+Qed.
+
+Lemma mk_env_mul_preserve :
+  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_mul E g ls1 ls2 = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  move => w E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_mul. move => Hmk. exact (mk_env_mul_rec_preserve Hmk).
+Qed.
+
+Lemma mk_env_mul_rec_sat :
+  forall wn w E g (ls1 : w.-tuple literal) (ls2 : wn.-tuple literal) i E' g' cs lrs,
+    mk_env_mul_rec E g ls1 ls2 i = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls1 ->
+    newer_than_lits g ls2 ->
+    interp_cnf E' cs.
+Proof.
+  elim.
+  - move => w E g ls1 ls2 i E' g' cs lrs [] _ _ <- _ _ _ _. done.
+  - intros_tuple; dcase_hyps; subst.
+    move/andP : H3 => [Hgls2 Hgls0].
+    move : (H _ _ _ _ _ _ _ _ _ _ H0 H1 H2 Hgls0) => HE0cs0.
+    move : (mk_env_shl_int_preserve H5) => HE0E1g0.
+    move : (mk_env_mul_rec_newer_gen H0) => Hgg0.
+    move : (mk_env_add_preserve H4) => HE1E2g1.
+    move : (mk_env_shl_int_newer_gen H5) => Hg0g1.
+    move : (env_preserve_le HE1E2g1 Hg0g1) => HE1E2g0.
+    move : (env_preserve_trans HE0E1g0 HE1E2g0) => HE0E2g0.
+    move : (mk_env_mul_rec_newer_cnf H0 H1 H2 Hgls0) => Hcnfg0cs0.
+    move : (newer_than_cnf_le_newer Hcnfg0cs0 Hg0g1) => Hcnfg1cs0.
+    move : (mk_env_mul_rec_newer_res H0 H1) => Hg0ls.
+    move : (newer_than_lits_le_newer Hg0ls Hg0g1) => Hg1ls.
+    move : (mk_env_shl_int_newer_res (newer_than_lit_le_newer H1 Hgg0) (newer_than_lits_le_newer H2 Hgg0) H5) => Hg1ls3.
+    move : (mk_env_add_sat H4 (newer_than_lit_le_newer H1 (pos_leb_trans Hgg0 Hg0g1)) Hg1ls Hg1ls3) => HcnfE2cs2.
+    move : (mk_env_shl_int_sat H5 (newer_than_lits_le_newer H2 Hgg0)) => HcnfE1cs1.
+    move : (mk_env_shl_int_newer_cnf H5 (newer_than_lits_le_newer H2 Hgg0)) => Hg1cs1.
+    case (ls2 == lit_tt); case (ls2 == lit_ff);
+    move =>[] <- _ <- _; try rewrite !interp_cnf_append;
+    try (exact||
+         rewrite (env_preserve_cnf HE0E2g0 Hcnfg0cs0) HE0cs0 HcnfE2cs2 (env_preserve_cnf HE1E2g1 Hg1cs1) HcnfE1cs1; done).
+    move : (mk_env_and_newer_gen H6) => Hg1g3.
+    move : (mk_env_add_newer_gen H7) => Hg3g4.
+    move : (pos_leb_trans Hgg0 Hg0g1) => Hgg1.
+    move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
+    move : (newer_than_lits_le_newer Hg1ls Hg1g3) => Hg3ls.
+    move : (newer_than_lits_nseq_lit w Hgls2) => Hgcopyls2.
+    move : (mk_env_and_newer_res H6 (newer_than_lits_le_newer Hgcopyls2 Hgg1) Hg1ls3) => Hg3ls5.
+    move : (mk_env_add_sat H7 (newer_than_lit_le_newer H1 (pos_leb_trans Hgg1 Hg1g3)) Hg3ls Hg3ls5) => HE4cs4.
+    move : (mk_env_and_preserve H6) => HE1E3g1.
+    move : (mk_env_add_preserve H7) => HE3E4g3.
+    move : (env_preserve_le HE1E3g1 Hg0g1) => HE1E3g0.
+    move : (env_preserve_le HE3E4g3 (pos_leb_trans Hg0g1 Hg1g3)) => HE3E4g0.
+    move : (env_preserve_le HE3E4g3 Hg1g3) => HE3E4g1.
+    move : (env_preserve_trans HE0E1g0 (env_preserve_trans HE1E3g0 HE3E4g0)) => HE0E4g0.
+    rewrite (env_preserve_cnf HE0E4g0 Hcnfg0cs0) HE0cs0 /=.
+    move : (env_preserve_trans HE1E3g1 HE3E4g1) => HE1E4g1.
+    rewrite (env_preserve_cnf HE1E4g1 Hg1cs1) HcnfE1cs1 /=.
+    move : (mk_env_and_newer_cnf H6 (newer_than_lits_le_newer Hgcopyls2 Hgg1) Hg1ls3) => Hg3cs3.
+    rewrite (env_preserve_cnf HE3E4g3 Hg3cs3) (mk_env_and_sat H6 (newer_than_lits_le_newer Hgcopyls2 Hgg1) Hg1ls3) HE4cs4.
+    done.
+Qed.
+
+Lemma mk_env_mul_sat :
+  forall w E g (ls1 ls2: w.-tuple literal) E' g' cs lrs,
+    mk_env_mul E g ls1 ls2  = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls1 ->
+    newer_than_lits g ls2 ->
+    interp_cnf E' cs.
+Proof.
+  move => w E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_mul. move => Hmk Hgtt Hgls1 Hgls2.
+  exact : (mk_env_mul_rec_sat Hmk Hgtt Hgls1 Hgls2).
 Qed.
