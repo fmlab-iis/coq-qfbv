@@ -125,7 +125,14 @@ Module Make (V : SsrOrderedType) (A : Arch).
         let b_add := addB bs1 bs2 in
         let (sign_fa, u_fa) := eta_expand (splitmsb b_add) in
         (sign1 && sign2 && ~~sign_fa) || (~~sign1 && ~~sign2 && sign_fa)
-      | bvSsubo w e1 e2 => true (* TODO *)
+      | bvSsubo w e1 e2 =>
+        let bs1 := eval_exp e1 s in
+        let bs2 := eval_exp e2 s in
+        let (sign1, tbs1) := eta_expand (splitmsb bs1) in
+        let (sign2, tbs2) := eta_expand (splitmsb bs2) in
+        let b_sub := subB bs1 bs2 in
+        let (sign_sub, t_sub) := eta_expand (splitmsb b_sub) in
+        (~~sign1 && sign2 && sign_sub) || (sign1 && ~~sign2 && ~~sign_sub)
       | bvSmulo w e1 e2 => true (* TODO *)
       | bvLneg e => ~~ (eval_bexp e s)
       | bvConj e1 e2 => eval_bexp e1 s && eval_bexp e2 s
