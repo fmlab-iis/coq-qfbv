@@ -8,6 +8,287 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+Fixpoint bit_blast_umulo2_rec w (g: generator) : w.-tuple literal -> w.-tuple literal -> generator * cnf * literal * literal:=
+  if w is w'.+1 then
+    fun ls1 ls2 =>
+      let (g1, r_or) := gen g in
+      let (g2, r_and_or) := gen g1 in
+      let (ls1_hightl, ls1_low) := eta_expand (splitlsb ls1) in
+      let (ls2_high, ls2_lowtl) := eta_expand (splitmsb ls2) in
+      let '(g3, cs_tl, r_or_tl, r_and_or_tl) := bit_blast_umulo2_rec g2 ls1_hightl ls2_lowtl in
+      (* or sum  r_or <-> r_or_tl || ls1_low *)
+      let cs_prefix_or := [::
+                             [:: neg_lit r_or_tl; r_or];
+                             [:: r_or_tl; ls1_low; neg_lit r_or];
+                             [:: neg_lit ls1_low; r_or]
+                          ] in
+      (* and r_and_or <-> r_and_or_tl || (r_or && ls2_high) *)
+      let cs_and_or := [::
+                          [:: neg_lit r_or; neg_lit ls2_high; r_and_or];
+                          [:: r_or; r_and_or_tl; neg_lit r_and_or];
+                          [:: ls2_high; r_and_or_tl; neg_lit r_and_or];
+                          [:: neg_lit r_and_or_tl; r_and_or]
+                       ] in
+      (g3, cs_tl ++ cs_prefix_or ++ cs_and_or, r_or, r_and_or)
+  else
+    fun _ _ =>
+      (g, [::], lit_ff, lit_ff).
+
+Fixpoint orb_all w : BITS w -> bool :=
+  if w is w'.+1 then
+    fun ls =>
+    let (ls_hightl, ls_low) := eta_expand (splitlsb ls) in
+    let result_tl := orb_all ls_hightl in
+    orb result_tl ls_low
+  else
+    fun _ =>
+    false.
+
+Example test_orb:
+  orb_all [tuple false ; true ;true] = true.
+Proof. reflexivity. Qed.
+
+Example test_orb2:
+  orb_all [tuple false ; false ; false] = false.
+Proof. reflexivity. Qed.
+
+Lemma bit_blast_umulo2_rec_correct1 :
+  forall w g (bs1 bs2 : BITS w) E ls1 ls2 g' cs lr_or lr_and_or,
+    bit_blast_umulo2_rec g ls1 ls2 = (g', cs, lr_or, lr_and_or) ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    interp_cnf E (add_prelude cs) ->
+    enc_bit E lr_or (orb_all bs1).
+Proof.
+  elim.
+  - move=> g bs1 bs2 E ls1 ls2 g' cs lr_or lr_and_or.
+    rewrite (lock interp_cnf) /=. case=> _ _ <- _.
+    rewrite -lock. move=> _ _. exact: add_prelude_enc_bit_ff.
+  - move=> w IH g.
+    move=> /tupleP [bs1_hd bs1_tl] bs2 E.
+    move=> /tupleP [ls1_hd ls1_tl] ls2 g' cs lr_or lr_and_or.
+    rewrite /bit_blast_umulo2_rec -/bit_blast_umulo2_rec. rewrite (lock interp_cnf).
+    case Hmsb_ls2 : (splitmsb ls2) => [last_ls2 prefix_ls2].
+    case Hmsb_bs2 : (splitmsb bs2) => [last_bs2 prefix_bs2].
+    rewrite (lock enc_bits) /=.
+    rewrite !beheadCons !theadCons.
+    dcase (bit_blast_umulo2_rec (g+1+1)%positive ls1_tl prefix_ls2) => [[[[g3 cs_tl] r_or_tl] r_and_or_tl] Hblast].
+    case=> Hog <- Holr _ . rewrite -lock. move=> Henc1 Henc2.
+    rewrite /= !beheadCons !theadCons in Henc1.
+    move: Henc1 => /andP [Hels1_hd Hels1_tl].
+    rewrite enc_bits_splitmsb in Henc2.
+    rewrite !Hmsb_ls2 !Hmsb_bs2 /= in Henc2.
+    move: Henc2 => /andP [Hels2_hd Hels2_tl].
+    rewrite -lock.
+    rewrite !add_prelude_append. move/andP => [Hicnf_tl Hicnf].
+    rewrite /add_prelude !interp_cnf_cons !interp_clause_cons in Hicnf.
+    move: (add_prelude_tt Hicnf_tl) => Htt.
+    rewrite !Htt /= !orbF interp_lit_neg_lit in Hicnf.
+    move: (IH _ _ _ _ _ _ _ _ _ _ Hblast Hels1_tl Hels2_tl Hicnf_tl).
+    move=> Henc_tl. rewrite -Holr.
+    move: Hicnf Henc_tl Hels1_hd Hels1_tl Hels2_hd Hels2_tl.
+    rewrite /enc_bit !interp_lit_neg_lit.
+    rewrite /=.
+    by case (interp_lit E r_or_tl);
+      case (orb_all bs1_tl);
+      case (E g);
+      case (interp_lit E ls1_hd);
+      case (interp_lit E last_ls2);
+      case (interp_lit E r_and_or_tl);
+      case (E (g+1)%positive).
+Qed.
+
+
+Fixpoint andb_orb_all w : BITS w -> BITS w -> bool :=
+  if w is w'.+1 then
+    fun ls1 ls2 =>
+      let (ls1_hightl, ls1_low) := eta_expand (splitlsb ls1) in
+      let (ls2_high, ls2_low_tl) := eta_expand (splitmsb ls2) in
+      let result_tl := andb_orb_all ls1_hightl ls2_low_tl in
+      let result_or := orb_all ls1 in
+      orb result_tl (andb result_or ls2_high)
+  else
+    fun _ _ =>
+    false.
+
+Lemma bit_blast_umulo2_rec_correct2 :
+  forall w g (bs1 bs2 : BITS w) E ls1 ls2 g' cs lr_or lr_and_or,
+    bit_blast_umulo2_rec g ls1 ls2 = (g', cs, lr_or, lr_and_or) ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    interp_cnf E (add_prelude cs) ->
+    enc_bit E lr_and_or (andb_orb_all bs1 bs2).
+Proof.
+  elim.
+  - move=> g bs1 bs2 E ls1 ls2 g' cs lr_or lr_and_or.
+    rewrite (lock interp_cnf) /=. case=> _ _ _ <- .
+    rewrite -lock. move=> _ _. exact: add_prelude_enc_bit_ff.
+  - move=> w IH g.
+    move=> /tupleP [bs1_hd bs1_tl] bs2 E.
+    move=> /tupleP [ls1_hd ls1_tl] ls2 g' cs lr_or lr_and_or.
+    rewrite /bit_blast_umulo2_rec -/bit_blast_umulo2_rec. rewrite (lock interp_cnf).
+    case Hmsb_ls2 : (splitmsb ls2) => [last_ls2 prefix_ls2].
+    case Hmsb_bs2 : (splitmsb bs2) => [last_bs2 prefix_bs2].
+    rewrite (lock enc_bits) /=.
+    rewrite !beheadCons !theadCons.
+    dcase (bit_blast_umulo2_rec (g+1+1)%positive ls1_tl prefix_ls2) => [[[[g3 cs_tl] r_or_tl] r_and_or_tl] Hblast].
+    case=> Hog <- _ Holr_and_or . rewrite -lock. move=> Henc1 Henc2.
+    rewrite /= !beheadCons !theadCons in Henc1.
+    move: Henc1 => /andP [Hels1_hd Hels1_tl].
+    rewrite enc_bits_splitmsb in Henc2.
+    rewrite !Hmsb_ls2 !Hmsb_bs2 /= in Henc2.
+    move: Henc2 => /andP [Hels2_hd Hels2_tl].
+    rewrite  !Hmsb_bs2 /=.
+    rewrite -lock.
+    rewrite !add_prelude_append. move/andP => [Hicnf_tl Hicnf].
+    rewrite /add_prelude !interp_cnf_cons !interp_clause_cons in Hicnf.
+    move: (add_prelude_tt Hicnf_tl) => Htt.
+    rewrite !Htt /= !orbF interp_lit_neg_lit in Hicnf.
+    move: (IH _ _ _ _ _ _ _ _ _ _ Hblast Hels1_tl Hels2_tl Hicnf_tl).
+    move=> Henc_tl. rewrite -Holr_and_or.
+    move: (bit_blast_umulo2_rec_correct1 Hblast Hels1_tl Hels2_tl Hicnf_tl).
+    move: Hicnf Henc_tl Hels1_hd Hels1_tl Hels2_hd Hels2_tl.
+    rewrite /enc_bit !interp_lit_neg_lit.
+    rewrite /=.
+      case H1: (interp_lit E r_or_tl);
+      case H2: (interp_lit E r_and_or_tl);
+      case H3: (andb_orb_all bs1_tl prefix_bs2);
+      case H4: (E g);
+      case H5: (interp_lit E ls1_hd);
+      case H6: (interp_lit E last_ls2);
+      case H7: (orb_all bs1_tl);
+      case H8: (E (g+1)%positive).
+      all: try done; rewrite /=.
+      all: by move=> _ _ /eqP <- _ /eqP <- _ _ .
+Qed.
+
+
+Lemma bit_blast_umulo2_rec_correct :
+  forall w g (bs1 bs2 : BITS w) E ls1 ls2 g' cs lr_or lr_and_or,
+    bit_blast_umulo2_rec g ls1 ls2 = (g', cs, lr_or, lr_and_or) ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    interp_cnf E (add_prelude cs) ->
+    enc_bit E lr_or (orb_all bs1) /\
+    enc_bit E lr_and_or (andb_orb_all bs1 bs2).
+Proof.
+  move=> w g bs1 bs2 E ls1 ls2 g' cs lr_or lr_and_or.
+  move=> Hblast Henc1 Henc2 Hicnf.
+  split.
+  - exact: (bit_blast_umulo2_rec_correct1 Hblast Henc1 Henc2 Hicnf).
+  - exact: (bit_blast_umulo2_rec_correct2 Hblast Henc1 Henc2 Hicnf).
+Qed.
+
+
+(* r <-> ls1 * ls2  >= 2^w *)
+Definition bit_blast_umulo2 w (g: generator) : w.-tuple literal -> w.-tuple literal -> generator * cnf * literal:=
+  if w is w'.+1 then
+    fun ls1 ls2 =>
+      let (g_r, r) := gen g in
+      let (ls1_hightl, ls1_low) := eta_expand (splitlsb ls1) in
+      let (ls2_hightl, ls2_low) := eta_expand (splitlsb ls2) in
+      let '(g_wls1, cs_wls1, lrs_wls1) := bit_blast_zeroextend 1 g_r ls1 in
+      let '(g_wls2, cs_wls2, lrs_wls2) := bit_blast_zeroextend 1 g_wls1 ls2 in
+      let '(g_rec1, cs_rec1, r_or_rec1, r_or_and_rec1) := bit_blast_umulo2_rec g_wls2 ls1_hightl ls2_hightl in
+      let '(g_mul, cs_mul, lrs_mul) := bit_blast_mul g_rec1 lrs_wls1 lrs_wls2 in
+      (* let '(g_high, cs_high, lrs_high) := bit_blast_high g_mul lrs_mul in *)
+      let lrs_msb := last lit_ff lrs_mul in
+      let cs := [::
+                   [:: neg_lit r_or_and_rec1; r];
+                   [:: r_or_and_rec1; lrs_msb; neg_lit r];
+                   [:: neg_lit lrs_msb; r]
+          ] in
+      (g_mul, cs_rec1 ++ cs_wls1 ++ cs_wls2 ++ cs_mul ++ cs, r)
+  else
+    fun _ _ =>
+      (g, [::], lit_ff).
+
+Definition Umulo2 w : BITS w -> BITS w -> bool :=
+  if w is w'.+1 then
+    fun bs1 bs2 =>
+      let (bs1_hightl, bs1_low) := eta_expand (splitlsb bs1) in
+      let (bs2_hightl, bs2_low) := eta_expand (splitlsb bs2) in
+      let wbs1 := zeroExtend 1 bs1 in
+      let wbs2 := zeroExtend 1 bs2 in
+      let mul := mulB wbs1 wbs2 in
+      let mul_high := msb mul in
+      orb (andb_orb_all bs1_hightl bs2_hightl) mul_high
+  else
+    fun _ _ =>
+      false.
+
+Lemma bit_blast_umulo2_correct :
+  forall w g (bs1 bs2 : BITS w) E ls1 ls2 g' cs lr,
+    bit_blast_umulo2 g ls1 ls2 = (g', cs, lr) ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    interp_cnf E (add_prelude cs) ->
+    enc_bit E lr (Umulo2 bs1 bs2).
+Proof.
+  (* move=> w g bs1 bs2 E ls1 ls2 g' cs lr. *)
+  (* rewrite /bit_blast_umulo2 /gen. *)
+  elim.
+  - move=> g bs1 bs2 E ls1 ls2 g' cs lr.
+    rewrite /Umulo2. rewrite /bit_blast_umulo2.
+    case=> _ <- <-.
+    rewrite (tuple0 bs1) (tuple0 bs2).
+    move => _ _ Hicnf.
+    exact: add_prelude_enc_bit_ff Hicnf.
+  - move=> w IH g.
+    move=> bs1 bs2 E ls1 ls2 g' cs lr.
+    rewrite /bit_blast_umulo2 /gen.
+    dcase (bit_blast_zeroextend 1 (g+1)%positive ls1) => [[[g_wls1 cs_wls1] lrs_wls1] Hblast_wls1].
+    dcase (bit_blast_zeroextend 1 g_wls1 ls2) => [[[g_wls2 cs_wls2] lrs_wls2] Hblast_wls2].
+    move=> H Henc1 Henc2.
+    move: H.
+    rewrite (lock interp_cnf).
+    rewrite /Umulo2.
+    case Hls1 : (splitlsb ls1) => [ls1_hightl ls1_low].
+    case Hls2 : (splitlsb ls2) => [ls2_hightl ls2_low].
+    case Hbs1 : (splitlsb bs1) => [bs1_hightl bs1_low].
+    case Hbs2 : (splitlsb bs2) => [bs2_hightl bs2_low].
+    rewrite /=.
+    dcase (bit_blast_umulo2_rec g_wls2 ls1_hightl ls2_hightl) => [[[[g_rec cs_rec] r_or_rec] r_or_and_rec] Hblast_rec].
+    dcase (bit_blast_mul g_rec lrs_wls1 lrs_wls2) => [[[g_mul cs_mul] lrs_mul] Hblast_mul].
+    case=> _ <- <-.
+    rewrite -lock.
+    move: (Henc1) => Henc1'.
+    move: (Henc2) => Henc2'.
+    rewrite !enc_bits_splitlsb in Henc1' Henc2'.
+    rewrite !Hls1 !Hbs1 /= in Henc1'.
+    rewrite !Hls2 !Hbs2 /= in Henc2'.
+    move/andP: Henc1' => [Hels1_low Hels1_hightl].
+    move/andP: Henc2' => [Hels2_low Hels2_hightl].
+    rewrite !add_prelude_append.
+    move /andP => [Hicnf_rec /andP [Hicnf_wls1 /andP [Hicnf_wls2 /andP [Hicnf_mul Hicnf]]]].
+    rewrite /add_prelude in Hicnf. rewrite !interp_cnf_cons !interp_clause_cons in Hicnf.
+    rewrite /Umulo2.
+    move: (bit_blast_umulo2_rec_correct Hblast_rec Hels1_hightl Hels2_hightl Hicnf_rec) => [_ Handb_correct].
+    rewrite /enc_bit.
+    move: (@bit_blast_zeroextend_correct (w.+1) 1 bs1 E ls1 cs_wls1 Henc1 Hicnf_wls1).
+    move: (@bit_blast_zeroextend_correct (w.+1) 1 bs2 E ls2 cs_wls2 Henc2 Hicnf_wls2).
+    move=> Henc_ze2 Henc_ze1.
+    move: Hblast_wls1 Hblast_wls2.
+    rewrite /bit_blast_zeroextend.
+    case=> _ Hcs_wls1 Hlrs_wls1.
+    case=> _ Hcs_wls2 Hlrs_wls2.
+    rewrite -Hlrs_wls1 -Hlrs_wls2 in Hblast_mul.
+    move: (bit_blast_mul_correct Hblast_mul Henc_ze1 Henc_ze2 Hicnf_mul).
+    move=> Hmul_correct.
+    rewrite /msb.
+    move: (add_prelude_tt Hicnf_rec) => Htt.
+    rewrite Htt in Hicnf.
+    rewrite !interp_lit_neg_lit /= in Hicnf.
+    replace (interp_lit E (Pos g)) with (E g) by done.
+    move: (enc_bits_last false lit_ff Hmul_correct).
+    move: Handb_correct Hmul_correct Hicnf.
+    rewrite /enc_bit.
+    by case H1 :(interp_lit E r_or_and_rec);
+      case H2: (E g);
+      case H3: (interp_lit E (last lit_ff lrs_mul));
+      case H4: (andb_orb_all bs1_hightl bs2_hightl).
+Qed.
+
 Definition bit_blast_umulo w (g: generator) (ls1 ls2:  w.-tuple literal) :generator * cnf * literal:=
   let '(g_wls1, cs_wls1, lrs_wls1) := @bit_blast_zeroextend w w g ls1 in
   let '(g_wls2, cs_wls2, lrs_wls2) := @bit_blast_zeroextend w w g_wls1 ls2 in
@@ -119,7 +400,7 @@ Proof.
   dcase (mk_env_eq E_zero g_zero lrs_high lrs_zero) => [[[[E_safe g_safe] cs_safe] lr_safe] Henv_safe].
   case => _ <- _ <-.
   move: (mk_env_eq_newer_res Henv_safe).
-  by rewrite newer_than_lit_neg.
+    by rewrite newer_than_lit_neg.
 Qed.
 
 Lemma mk_env_umulo_newer_cnf :
@@ -177,7 +458,7 @@ Proof.
   move: (mk_env_high_newer_res Henv_high H2 H) => H5.
   move: (newer_than_lits_le_newer H5 H_highzero) => H6.
   move=> tmp.
-  by rewrite (tmp H6 H4).
+    by rewrite (tmp H6 H4).
 Qed.
 
 Lemma mk_env_umulo_preserve :
