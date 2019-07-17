@@ -933,6 +933,15 @@ Proof .
   by move /andP => [_ H] .
 Qed .
 
+Lemma newer_than_lits_thead :
+  forall w g (ls : (w.+1).-tuple literal),
+    newer_than_lits g ls -> newer_than_lit g (thead ls) .
+Proof .
+  move => w g ls .
+  rewrite (tuple_eta ls) /= .
+  by move /andP => [H _] .
+Qed .
+
 Lemma newer_than_lits_neq :
   forall g ls l,
     l \in ls ->
@@ -987,6 +996,20 @@ Proof .
     rewrite newer_than_lits_cons Hglit .
     done .
 Qed .
+
+Lemma newer_than_lits_splitlsb :
+  forall w g (lits : (w.+1).-tuple literal) others lsb,
+    newer_than_lits g lits ->
+    splitlsb lits = (others, lsb) ->
+    newer_than_lits g others && newer_than_lit g lsb .
+Proof .
+  move=> w g lits others lsb.
+  rewrite (tuple_eta lits) /=.
+  move=> /andP [H1 H2].
+  rewrite /splitlsb. rewrite !beheadCons !theadCons /=.
+  case=> <- <-.
+    by rewrite H1 H2.
+Qed.
 
 Lemma newer_than_lits_splitmsb :
   forall w g (lits : (w.+1).-tuple literal) msb others,
