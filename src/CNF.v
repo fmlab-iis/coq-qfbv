@@ -997,6 +997,12 @@ Proof .
     done .
 Qed .
 
+Lemma newer_than_lits_copy :
+  forall g n lit, newer_than_lit g lit -> newer_than_lits g (copy n lit) .
+Proof .
+  exact: (newer_than_lits_nseq_lit).
+Qed .
+
 Lemma newer_than_lits_splitlsb :
   forall w g (lits : (w.+1).-tuple literal) others lsb,
     newer_than_lits g lits ->
