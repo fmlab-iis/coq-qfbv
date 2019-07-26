@@ -2531,9 +2531,7 @@ Proof.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hblast2) Hcon) => Hcon'.
   move: (IH1 _ _ _ _ _ _ _ _ Hblast1 Hcon' Hcs1) => Henc1.
   move: (IH2 _ _ _ _ _ _ _ _ Hblast2 Hcon Hcs2) => Henc2.
-  remember (carry_subB (QFBV64.eval_exp e1 s) (QFBV64.eval_exp e2 s)) as br .
-  symmetry in Heqbr.
-  apply (bit_blast_usubo_correct Hblastusubo Henc1 Henc2 Heqbr Hcsusubo).
+  apply (bit_blast_usubo_correct Hblastusubo Henc1 Henc2 Hcsusubo).
 Qed.
 
 Lemma bit_blast_bexp_umulo :
