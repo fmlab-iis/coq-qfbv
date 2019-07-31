@@ -2,44 +2,45 @@
 \begin{figure*}
   \centering
   \begin{math}
-    \begin{array}{rclclclcl}
-      \multicolumn{9}{c}{
-      \begin{array}{rclrclrclrcl}
-      \mathit{Num} & ::= & \cdots \ |\ \mathsf{-2} \ |\ \mathsf{-1}
-                              \ |\ \mathsf{0} \ |\ \mathsf{1} \ |\
-                           \mathsf{2} \ |\  \cdots
-      &
+    \begin{array}{rclclcl}
+      \multicolumn{7}{c}{
+      \begin{array}{rclcrcl}
+        \mathit{Num} & ::= & \cdots \ |\ \mathsf{-2} \ |\ \mathsf{-1}
+                             \ |\ \mathsf{0} \ |\ \mathsf{1} \ |\
+                             \mathsf{2} \ |\  \cdots
+        & \hspace{1em} &
+        \mathit{Type} & ::= & \mathsf{uint32}\ |\ \mathsf{sint32}\ |\
+                              \mathsf{uint64}\ |\ \mathsf{sint64}\ |\ \cdots
+      \end{array}
+      }\\
+      \multicolumn{7}{c}{
+      \begin{array}{rclcrclcrcl}
       \mathit{Const} & ::= & \mathit{Num}\mathsf{@}\mathit{Type}
-      &
+      & \hspace{1em} &
       \mathit{Var} & ::= & \cdots\ |\ x \ |\ y \ |\ z \ |\ \cdots
-      &
+      & \hspace{1em} &
       \mathit{Atom} & ::= & \mathit{Var} \ |\ \mathit{Const}
       \end{array}
       }
       \\
-      \mathit{Exp} & ::= &
-            \mathit{Atom}
-      & | & \mathit{Exp}\ +\ \mathit{Exp}
-      & | & \mathit{Exp}\ -\ \mathit{Exp}
-      & | & \mathit{Exp}\ \times\ \mathit{Exp}
+      \multicolumn{7}{c}{
+      \begin{array}{rclclclcl}
+        \mathit{Exp} & ::= & \mathit{Atom}
+        & | & \mathit{Exp}\ +\ \mathit{Exp}
+        & | & \mathit{Exp}\ -\ \mathit{Exp}
+        & | & \mathit{Exp}\ \times\ \mathit{Exp}
+      \end{array}
+      }
       \\
       \mathit{APred} & ::= &
-      \multicolumn{3}{l}{
         \mathit{Exp} = \mathit{Exp}
-        \hspace{1.6ex} | \hspace{1.6ex}
-        \mathit{Exp} \equiv \mathit{Exp} \bmod \mathit{Exp}
-        \hspace{1.6ex} | \hspace{1.6ex}
-        \mathit{APred} \wedge \mathit{APred}
-      }
-      & &
-      \multicolumn{3}{l}{
-      \mathit{RPred}\hspace{2ex} ::=\hspace{2ex}
-            \mathit{Exp} = \mathit{Exp}
-            \hspace{1.6ex} | \hspace{1.6ex}
-            \mathit{Exp} < \mathit{Exp}
-            \hspace{1.6ex} | \hspace{1.6ex}
-            \mathit{RPred} \wedge \mathit{RPred}
-      }
+      & | & \mathit{Exp} \equiv \mathit{Exp} \bmod \mathit{Exp}
+      & | & \mathit{APred} \wedge \mathit{APred}
+      \\
+      \mathit{RPred} & ::= &
+        \mathit{Exp} = \mathit{Exp}
+      & | & \mathit{Exp} < \mathit{Exp}
+      & | & \mathit{RPred} \wedge \mathit{RPred}
       \\
       \mathit{Inst} & ::= &
             \clMov\ \mathit{Var}\ \mathit{Atom}
@@ -47,58 +48,58 @@
             \mathit{Atom}\ \mathit{Atom}
 %      & | & \clCast\ \mathit{Var}\mathsf{@}\mathit{Type}\ \mathit{Atom}
       & | & \clVPCast\ \mathit{Var}\mathsf{@}\mathit{Type}\ \mathit{Atom}\\
+      & | & \clUShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
       & | & \clUAdd\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clUAdds\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
+            \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clSShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
       & | & \clUAdc\ \mathit{Var}\ \mathit{Atom}\
             \mathit{Atom}\ \mathit{Atom}
       & | & \clUAdcs\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clUJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clSAdd\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clSAdds\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
+            \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clSJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clSAdc\ \mathit{Var}\ \mathit{Atom}\
             \mathit{Atom}\ \mathit{Atom}
       & | & \clSAdcs\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clUSplit\ \mathit{Var}\ \mathit{Var}\
+            \mathit{Atom}\ \mathit{Num}
       & | & \clUSub\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clUSubs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
+            \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clSSplit\ \mathit{Var}\ \mathit{Var}\
+            \mathit{Atom}\ \mathit{Num}
       & | & \clUSbb\ \mathit{Var}\ \mathit{Atom}\
             \mathit{Atom}\ \mathit{Atom}
       & | & \clUSbbs\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clAssert\ \mathit{APred} \clConj \mathit{RPred}
       & | & \clSSub\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clSSubs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
+            \mathit{Atom}\ \mathit{Atom}\\
+      & | & \clAssume\ \mathit{APred} \clConj \mathit{RPred}
       & | & \clSSbb\ \mathit{Var}\ \mathit{Atom}\
             \mathit{Atom}\ \mathit{Atom}
       & | & \clSSbbs\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
       & | & \clUMul\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSMul\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clUMull\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}
-      & | & \clSMull\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clUShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
-      & | & \clSShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
-      & | & \clUSplit\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Num}
       & | & \clUCShl\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Num}\\
-      & | & \clUJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clAssert\ \mathit{APred} \clConj \mathit{RPred}
-      & | & \clSSplit\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Num}
+      & | & \clSMul\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
+      & | & \clSMull\ \mathit{Var}\ \mathit{Var}\
+            \mathit{Atom}\ \mathit{Atom}
       & | & \clSCShl\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}\ \mathit{Num}\\
-                     & | & \clSJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clAssume\ \mathit{APred} \clConj \mathit{RPred}\\
       \mathit{Decl} & ::= &
-        \multicolumn{3}{l}{\mathit{Type}\ \mathit{Var}}
+        \multicolumn{2}{l}{\mathit{Type}\ \mathit{Var}}
       &&
-      \multicolumn{3}{l}{
+      \multicolumn{2}{l}{
          \mathit{Prog} \hspace{2ex} ::=\hspace{2ex}
          \mathit{Decl}^*\ \mathit{Inst}^*
       }
@@ -106,5 +107,16 @@
   \end{math}
   \caption{\cryptoline Syntax}
   \label{figure:cryptoline-syntax}
-% \vspace{-1.2em}
 \end{figure*}
+
+\cryptoline is a domain spceific language for the specification and
+verification of cryptographic assembly programs. In addition to
+arithmetic instructions, new instructions are added to model bitwise
+operations and facilitate efficient verification.
+Figure~\ref{figure:cryptoline-syntax} gives the syntax of \cryptoline.
+
+A constant in \cryptoline must specify its type to have bit-accurate
+semantics. For instance, $\mathsf{0@uint32}$ and $\mathsf{0@uint64}$
+represent different bit strings. It is ambiguious to write
+$\mathsf{0}$ for the constant $0$ in \cryptoline. An \emph{atom} is
+either a variable or a constant.
