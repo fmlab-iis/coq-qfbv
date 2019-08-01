@@ -57,7 +57,7 @@ Proof.
   case Hmknot : (mk_env_not E g ls) => [[[E_not g_not] cs_not] lrs_not].
   rewrite (mk_env_not_is_bit_blast_not Hmknot).
   case Hmkcon : (mk_env_const E_not g_not # (1)) => [[[E_con g_con] cs_con] lrs_con].
-  rewrite (mk_env_const_is_bit_blast_env Hmkcon).
+  rewrite (mk_env_const_is_bit_blast_const Hmkcon).
   case Hmkadd : (mk_env_add E_con g_con lrs_not lrs_con) => [[[E_add g_add] cs_add] lrs_add].
   rewrite (mk_env_add_is_bit_blast_add Hmkadd).
   by move => [] _ <- <- <-.
@@ -77,7 +77,7 @@ Proof.
   move => [] <-  _ <- _ Hnewtt Hnewls.
   rewrite !interp_cnf_append.
   move : (mk_env_not_sat Hmknot Hnewls) .
-  move : (mk_env_cont_sat Hmkcon) => Hcnfcon.
+  move : (mk_env_const_sat Hmkcon) => Hcnfcon.
   move : (mk_env_not_newer_gen Hmknot)=> Hggnot.
   move : (mk_env_const_newer_gen Hmkcon) => Hgnotgcon.
   move : (mk_env_not_newer_res Hmknot Hnewls) => Hnotres.
@@ -106,7 +106,7 @@ Proof.
   case Hmkadd : (mk_env_add E_con g_con lrs_not lrs_con) => [[[E_add g_add] cs_add] lrs_add].
   move => [] <- _ _ _.
   move : (mk_env_not_preserve Hmknot) => HEEnot.
-  move : (mk_env_const_env_preserve Hmkcon) => HEnotEcon.
+  move : (mk_env_const_preserve Hmkcon) => HEnotEcon.
   move : (mk_env_not_newer_gen Hmknot) => Hggnot.
   move : (mk_env_const_newer_gen Hmkcon) => Hgnotgcon.
   move : (mk_env_add_newer_gen Hmkadd) => Hgcongadd.

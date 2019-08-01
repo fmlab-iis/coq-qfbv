@@ -408,7 +408,7 @@ Lemma bit_blast_add_correct :
     interp_cnf E (add_prelude cs) ->
     enc_bits E lrs br.
 Proof.
-  elim; first by done. move=> n IH g bs1 bs2 E ls1 ls2 br g' cs lrs.
+  move=> n g bs1 bs2 E ls1 ls2 br g' cs lrs.
   rewrite /bit_blast_add. case HadcB: (adcB false bs1 bs2) => [obcout obrs].
   case Hblast: (bit_blast_full_adder g lit_ff ls1 ls2) => [[[og ocs] olcout] olrs].
   case=> _ <- <- => Henc1 Henc2 <- Hcs.

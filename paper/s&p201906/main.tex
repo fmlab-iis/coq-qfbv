@@ -22,44 +22,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}[theorem]{Lemma}
 
-
-% macros
-
-
-% cryotoline macros
-\newcommand{\cryptoline}{\textsc{CryptoLine}\xspace}
-\newcommand{\clNum}{\textit{Num}\xspace}
-\newcommand{\clVar}{\textit{Var}\xspace}
-\newcommand{\clVal}{\textit{Arg}\xspace}
-\newcommand{\clFlag}{\textit{clFlag}\xspace}
-\newcommand{\clFormula}{\textit{clFormula}\xspace}
-\newcommand{\clExp}{\textit{clExp}\xspace}
-\newcommand{\clEquation}{\textit{clEqn}\xspace}
-\newcommand{\clRange}{\textit{clRng}\xspace}
-\newcommand{\clmid}{\wedge\!\!\!\!\wedge}
-\newcommand{\clmod}{\textsf{mod}}
-\newcommand{\clSet}{\textsf{Set}\xspace}
-\newcommand{\clCset}{\textsf{Cset}\xspace}
-\newcommand{\clAdd}{\textsf{Add*}\xspace}
-\newcommand{\clAddC}{\textsf{Add}\xspace}
-\newcommand{\clAdc}{\textsf{Adc*}\xspace}
-\newcommand{\clAdcC}{\textsf{Adc}\xspace}
-\newcommand{\clSub}{\textsf{Sub*}\xspace}
-\newcommand{\clSubC}{\textsf{Sub}\xspace}
-\newcommand{\clSbb}{\textsf{Sbb*}\xspace}
-\newcommand{\clSbbC}{\textsf{Sbb}\xspace}
-\newcommand{\clMul}{\textsf{Mul}\xspace}
-\newcommand{\clMulf}{\textsf{Mulf}\xspace}
-\newcommand{\clSplit}{\textsf{Split}\xspace}
-\newcommand{\clAnd}{\textsf{And}\xspace}
-\newcommand{\clShl}{\textsf{Shl}\xspace}
-\newcommand{\clConcatShl}{\textsf{ConcatShl}\xspace}
-\newcommand{\clAssert}{\textsf{Assert}\xspace}
-\newcommand{\clAssume}{\textsf{Assume}\xspace}
-\newcommand{\clStmt}{\textit{clStmt}\xspace}
-\newcommand{\clProg}{\textit{clProg}\xspace}
-
-\newcommand{\hide}[1]{}
+\input{macros}
 
 \begin{document}
 
@@ -115,31 +78,33 @@
 %% \end{IEEEkeywords}
 
 \section{Introduction}
-\label{s:introduction}
+\label{section:introduction}
 
 \section{Preliminaries}
+\label{section:preliminaries}
 
+\section{\cryptoline}
+\label{section:cryptoline}
 
-\section{Construct bitblasting in Coq}
+\input{cryptoline}
 
+\section{Extended Quantifier-free Bit Vector Theory}
+\label{section:qfbv-semantics}
 
-\subsection{Types}
+\section{Bitblasting}
+\label{section:bitblasting}
 
-\subsection{Definitions}
+\section{Boolean Satisfiability}
+\label{section:sat}
 
-\section{The correctness of bitblasting}
+\section{Certified Verification}
+\label{section:certified-verification}
 
-\subsection{Projection}
-
-
-\subsection{Proofs}
-
-\section{Code Extraction}
-
-\section{Validation and results}
+\section{Experiments}
+\label{section:experiments}
 
 \section{Conclusion}
-}
+\label{section:conclusion}
 
 \bibliographystyle{IEEEtran}
 \bibliography{IEEEabrv,refs}

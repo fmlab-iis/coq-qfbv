@@ -1,4 +1,4 @@
-
+From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple.
 From BitBlasting Require Import QFBVSimple CNF BBCommon.
 From ssrlib Require Import Var ZAriths Tactics.
@@ -29,3 +29,71 @@ Proof.
   move: (enc_bits_nseq n (enc_bits_last false lit_ff Hlsbs)) => Hlastlsbs .
   exact: (enc_bits_concat Hlastlsbs Hlsbs) .
 Qed .
+
+Lemma mk_env_signextend_is_bit_blast_signextend :
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    bit_blast_signextend n g ls = (g', cs, lrs).
+Proof.
+  rewrite /mk_env_signextend /bit_blast_signextend.
+  intros; dcase_hyps.
+    by rewrite H0 H1 H2.
+Qed.
+
+Lemma mk_env_signextend_newer_gen:
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_signextend.
+  intros. dcase_hyps; subst.
+  exact /Pos.leb_refl.
+Qed.
+
+Lemma mk_env_signextend_newer_res :
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    newer_than_lits g' lrs.
+Proof.
+  intros. case :(H) => _ <- _ <- .
+  move:(H0).
+  rewrite -newer_than_lit_neg => Hg'ff .
+  rewrite newer_than_lits_append .
+  rewrite -[neg_lit lit_tt]/lit_ff in Hg'ff .
+  rewrite H1 /=.
+  apply newer_than_lits_nseq_lit.
+  by apply: newer_than_lits_last.
+Qed.
+
+Lemma mk_env_signextend_newer_cnf :
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    newer_than_cnf g' cs.
+Proof.
+  intros.
+    by case: H => _ <- <- _ .
+Qed.
+
+Lemma mk_env_signextend_preserve :
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  intros.
+    by case: H => <- _ _ _ .
+Qed.
+
+Lemma mk_env_signextend_sat :
+  forall w n E g E' g' (ls:(w.+1).-tuple literal) cs lrs,
+    mk_env_signextend n E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    interp_cnf E' cs.
+Proof.
+  intros.
+    by case: H => <- _ <- _ .
+Qed.

@@ -56,3 +56,65 @@ Proof .
     rewrite /splitlsb /= .
     by apply: newer_than_lits_behead .
 Qed .
+
+Lemma mk_env_high_is_bit_blast_high :
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    bit_blast_high  g ls = (g', cs, lrs).
+Proof.
+  rewrite /mk_env_high /bit_blast_high.
+  intros; dcase_hyps.
+    by rewrite H0 H1 H2.
+Qed.
+
+Lemma mk_env_high_newer_gen:
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_high.
+  intros. dcase_hyps; subst.
+  exact /Pos.leb_refl.
+Qed.
+
+Lemma mk_env_high_newer_res :
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    newer_than_lits g' lrs.
+Proof.
+  intros. case :(H) => _ <- _ <- .
+  exact: (newer_than_lits_get_high_aux).
+Qed.
+
+Lemma mk_env_high_newer_cnf :
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    newer_than_cnf g' cs.
+Proof.
+  intros.
+    by case: H => _ <- <- _ .
+Qed.
+
+Lemma mk_env_high_preserve :
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  intros.
+    by case: H => <- _ _ _ .
+Qed.
+
+Lemma mk_env_high_sat :
+  forall wh wl E g E' g' (ls:(wl + wh).-tuple literal) cs lrs,
+    mk_env_high E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt ->
+    newer_than_lits g ls ->
+    interp_cnf E' cs.
+Proof.
+  intros.
+    by case: H => <- _ <- _ .
+Qed.

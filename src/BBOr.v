@@ -135,7 +135,7 @@ Proof.
     rewrite (tval_eq Heq); reflexivity .
 Qed .
 
-Lemma mk_env_or1_newer :
+Lemma mk_env_or1_newer_gen :
   forall E g E' g' l1 l2 cs lr,
     mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
     (g <=? g')%positive.
@@ -159,17 +159,19 @@ Proof.
   - move=> E g ls1 ls2 E' g' cs lrs [] _ <- _ _ . exact: Pos.leb_refl.
   - intros_tuple. dcase_hyps; subst. move=> Hls.
     move: (H _ _ _ _ _ _ _ _ H2) => Hg1g. apply: (pos_leb_trans _ Hg1g).
-    apply: (mk_env_or1_newer H0).
+    apply: (mk_env_or1_newer_gen H0).
 Qed.
 
 Lemma mk_env_or1_newer_res :
   forall E g E' g' l1 l2 cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
     newer_than_lit g lit_tt ->
     newer_than_lit g l1 -> newer_than_lit g l2 ->
-    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
     newer_than_lit g' lr.
 Proof.
-  move => E g E' g' l1 l2 cs lr Hgtt Hgl1 Hgl2 . rewrite /mk_env_or1 .
+  rewrite /mk_env_or1.
+  move => E g E' g' l1 l2 cs lr H Hgtt Hgl1 Hgl2.
+  move: H.
   case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
   - case => _ <- _ <- . done .
   - case Ht1 : (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
@@ -181,24 +183,24 @@ Qed .
 
 Lemma mk_env_or_newer_res :
   forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
+    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 -> newer_than_lits g ls2 ->
-    mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
     newer_than_lits g' lrs.
 Proof.
   elim .
-  - move=> E g ls1 ls2 E' g' cs lrs _ _ _ [] _ <- _ <- . done .
+  - move=> E g ls1 ls2 E' g' cs lrs H _ _ _. case: H => _ <- _ <- . done .
   - intros_tuple. dcase_hyps; subst. move=> Hls .
     rewrite -(tval_eq Hls).
-    case :H1 => /andP [Hgls1 Hgls0] .
-    case :H2 => /andP [Hgls2 Hgls3] .
-    move: (mk_env_or1_newer H3) => Hgg0 .
-    move: (mk_env_or1_newer_res H0 Hgls1 Hgls2 H3) => {H3} Hg0lrs .
-    move: (newer_than_lit_le_newer H0 Hgg0) => {Hgls1 Hgls2} Hg0tt .
+    case :H2 => /andP [Hgls1 Hgls0] .
+    case :H3 => /andP [Hgls2 Hgls3] .
+    move: (mk_env_or1_newer_gen H0) => Hgg0 .
+    move: (mk_env_or1_newer_res H0 H1 Hgls1 Hgls2) => {H0} Hg0lrs .
+    move: (newer_than_lit_le_newer H1 Hgg0) => {Hgls1 Hgls2} Hg0tt .
     move: (newer_than_lits_le_newer Hgls0 Hgg0)
             (newer_than_lits_le_newer Hgls3 Hgg0) =>
     {Hgls0 Hgls3} Hg0ls0 Hg0ls3 .
-    move: (H _ _ _ _ _ _ _ _ Hg0tt Hg0ls0 Hg0ls3 H5) =>
+    move: (H _ _ _ _ _ _ _ _ H5 Hg0tt Hg0ls0 Hg0ls3) =>
     {Hg0tt Hg0ls0 Hg0ls3} Hg'ls .
     rewrite Hg'ls andbT .
     move: (mk_env_or_newer_gen H5) => {H5} Hg0g' .
@@ -240,7 +242,7 @@ Proof.
     move /andP: H2 => [Hgls2 Hgls3] .
     rewrite newer_than_cnf_append .
     (* newer_than_cnf g' cs1 *)
-    move: (mk_env_or1_newer H0) => Hgg0 .
+    move: (mk_env_or1_newer_gen H0) => Hgg0 .
     move: (newer_than_lits_le_newer Hgls0 Hgg0)
             (newer_than_lits_le_newer Hgls3 Hgg0)
     => Hg0ls0 Hg0ls3 .
@@ -252,6 +254,21 @@ Proof.
     exact: (newer_than_cnf_le_newer Hg0cs0 Hg0g') .
 Qed .
 
+Lemma mk_env_or1_preserve :
+  forall E g l1 l2 E' g' cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    env_preserve E E' g.
+Proof.
+  move=> E g l1 l2 E' g' cs lr.
+  rewrite /mk_env_or1.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => <- _ _ _. done.
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_upd_eq_preserve .
+Qed.
+
 Lemma mk_env_or_preserve :
   forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
     mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
@@ -260,7 +277,7 @@ Proof.
   elim .
   - move=> E g ls1 ls2 E' g' cs lrs /=. case=> <- _ _ _. exact: env_preserve_refl.
   - intros_tuple. dcase_hyps; intros; subst. move: (H _ _ _ _ _ _ _ _ H2) => Hpre.
-    move: (mk_env_or1_newer H0) => Hg0g' .
+    move: (mk_env_or1_newer_gen H0) => Hg0g' .
     move: (env_preserve_le Hpre Hg0g') => {Hpre} HE0E'g .
     apply: (env_preserve_trans _ HE0E'g) .
     move: H0; rewrite /mk_env_or1 .
@@ -271,6 +288,29 @@ Proof.
       * case => <- _ _ _; exact: env_preserve_refl .
       * case => <- _ _ _; exact: env_upd_eq_preserve .
 Qed .
+
+Lemma mk_env_or1_sat :
+  forall E g l1 l2 E' g' cs lr,
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 ->
+    newer_than_lit g l2 ->
+    interp_cnf E' cs.
+Proof.
+  move=> E g l1 l2 E' g' cs lr H Hgl1 Hgl2.
+  move: H.
+  rewrite /mk_env_or1.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => <- _ <- _. done.
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+      * by case => <- _ <- _.
+      * by case => <- _ <- _.
+      * case => <- _ <- _.
+        rewrite !interp_cnf_cons /interp_clause !interp_lit_neg_lit .
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgl1)).
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgl2)).
+        by case: (interp_lit E l1); case: (interp_lit E l2);
+        rewrite /interp_lit !env_upd_eq .
+Qed.
 
 Lemma mk_env_or_sat :
   forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
@@ -283,7 +323,7 @@ Proof.
   - intros_tuple. dcase_hyps; intros; subst. rewrite !interp_cnf_append .
     move /andP: H1 => [Hgls1 Hgls0] .
     move /andP: H2 => [Hgls2 Hgls3] .
-    move: (mk_env_or1_newer H0) => Hgg0 .
+    move: (mk_env_or1_newer_gen H0) => Hgg0 .
     move: (H _ _ _ _ _ _ _ _ H4 (newer_than_lits_le_newer Hgls0 Hgg0)
              (newer_than_lits_le_newer Hgls3 Hgg0))
     => {Hgls0 Hgls3} -> .
