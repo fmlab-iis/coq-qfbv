@@ -9,7 +9,8 @@
                              \ |\ \mathsf{0} \ |\ \mathsf{1} \ |\
                              \mathsf{2} \ |\  \cdots
         & \hspace{1em} &
-        \mathit{Type} & ::= & \mathsf{uint32}\ |\ \mathsf{sint32}\ |\
+        \mathit{Type} & ::= & \mathsf{bit}\ |\
+                              \mathsf{uint32}\ |\ \mathsf{sint32}\ |\
                               \mathsf{uint64}\ |\ \mathsf{sint64}\ |\ \cdots
       \end{array}
       }\\
@@ -38,8 +39,13 @@
       & | & \mathit{APred} \wedge \mathit{APred}
       \\
       \mathit{RPred} & ::= &
-        \mathit{Exp} = \mathit{Exp}
-      & | & \mathit{Exp} < \mathit{Exp}
+      \multicolumn{3}{l}{
+        \begin{array}{lclclcl}
+          \mathit{Exp} = \mathit{Exp}
+          & \hspace{2em}|\hspace{1em} & \mathit{Exp} < \mathit{Exp}
+          & \hspace{2em}|\hspace{1em} & \neg \mathit{RPred}
+        \end{array}
+      }
       & | & \mathit{RPred} \wedge \mathit{RPred}
       \\
       \mathit{Inst} & ::= &
@@ -118,5 +124,65 @@ Figure~\ref{figure:cryptoline-syntax} gives the syntax of \cryptoline.
 A constant in \cryptoline must specify its type to have bit-accurate
 semantics. For instance, $\mathsf{0@uint32}$ and $\mathsf{0@uint64}$
 represent different bit strings. It is ambiguious to write
-$\mathsf{0}$ for the constant $0$ in \cryptoline. An \emph{atom} is
-either a variable or a constant.
+$\mathsf{0}$ for the constant $0$ in \cryptoline. Variables in
+\cryptoline are also typed. An \emph{atom} is either a variable or a
+constant.
+
+The $\clMov\ r\ x$ instruction assigns $r$ the value of atom $x$ where
+$r$ and $x$ are of the same type. The conditional move instruction
+$\clCmov\ r\ c\ x\ y$ assigns $x$ or $y$ to $r$ if the bit variable
+$c$ is $1$ or $0$ respectively. Type coercion is explicit in
+\cryptoline. The $\clVPCast\ r\mathsf{@sint64}\ \mathsf{0@uint64}$
+converts the unsigned 64-bit constant $0$ to the signed 64-bit
+constant $0$ and assigns it to the variable $r$ of type $\mathsf{sint64}$.
+
+Most \cryptoline instructions have signed and unsigned variants. For
+instance, the $\clUAdd\ r\ x\ y$ instruction assigns the sum of
+of \emph{unsigned} atoms $x$ and $y$ to the \emph{unsigned} variable
+$r$. The $\clSAdd\ r\ x\ y$ on the other hand assigns the sum of the
+values of \emph{signed} atoms $x$ and $y$ to the \emph{signed}
+variable $r$. Carry flags are also explicit in \cryptoline. In
+addition to assigning $r$ the sum of unsigned atoms $x$ and $y$, the
+$\clUAdds\ c\ r\ x\ y$ instruction sets the carry bit $c$ to $1$ when
+carrying occurs. The unsigned addition with carry instruction
+$\clUAdc\ r\ x\ y\ d$ assigns the sum of unsigned atoms $x, y$ and the
+carry bit $d$ to $r$. Similarly, $\clUAdcs\ c\ r\ x\ y\ d$ is the
+unsigned carrying addition with carry instruction in \cryptoline.
+Corresponding subtraction instructions are allowed as well. For
+instance, the signed subtraction with borrow instruction $\clSSub\ r\
+x\ y\ d$ assigns the signed variable $r$ to $x - y - d$ with signed
+atoms $x$ and $y$. Signed and unsigned variants of full- and
+half-multiplication instructions are supported in \cryptoline. For
+instance, $\clSMul\ r\ x\ y$ assigns $r$ the lower half bits of the
+product of signed atoms $x$ and $y$.
+
+A handful of bitwise operations are added to \cryptoline to facilitate
+efficient verification. The $\clUShl\ r\ x\ n$ instruction shifts the
+unsigned atom $x$ to the left by $n$ bits and puts the result in
+$r$. The $\clUJoin\ r\ x\ y$ instruction assigns $r$ the concatenation
+of the bits of unsigned atoms $x$ and $y$. The $\clUSplit\
+\mathit{hi}\ \mathit{lo}\ x\ n$ instruction splits the bits of the
+unsigned atom $x$ into two: the low $n$ bits are put in the variable
+$\mathit{lo}$; and remaining higher bits are put in $\mathit{hi}$.
+The $\clUCShl\ \mathit{hi}\ \mathit{lo}\ x\ y\ n$ instruction first
+shifts the concatenation of bits of the unsigned atoms $x$ and $y$ to
+the left by $n$ bits. The shifted concatenation is then splitted into
+two halves. The higher half is put to $\mathit{hi}$. The lower half is
+shifted to the right by $n$ bits and then put to $\mathit{lo}$. Some
+of these instructions do not directly correspond to assembly
+instructions. Rather, they are widely used programming patterns found
+in cryptographic codes. \cryptoline supports these special
+instructions to simplify code specifications across different
+architectures.
+
+A couple of \cryptoline instructions are added for verification
+purposes. The $\clAssert\ p \clConj q$ instruction checks if the
+property $p \wedge q$ holds for all possible executions. It is an
+error if the property fails at any execution. The $\clAssume\ p
+\clConj q$ instruction on the other hand assumes $p \wedge q$ for all
+possible executions. The syntax $p \clConj q$ delimits the algebraic
+property $p$ and the range property $q$. An algebraic property is a
+conjunction of equations and modulo equations over expressions. A
+range property on the other hand is an arbitrary Boolean combination
+of equations and comparisons.
+
