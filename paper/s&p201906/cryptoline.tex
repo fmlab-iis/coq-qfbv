@@ -5,18 +5,18 @@
     \begin{array}{rclclcl}
       \multicolumn{7}{c}{
       \begin{array}{rclcrcl}
-        \mathit{Num} & ::= & \cdots \ |\ \mathsf{-2} \ |\ \mathsf{-1}
-                             \ |\ \mathsf{0} \ |\ \mathsf{1} \ |\
-                             \mathsf{2} \ |\  \cdots
+        \mathit{Num} & ::= & \cdots \ |\ \mytextsf{-2} \ |\ \mytextsf{-1}
+                             \ |\ \mytextsf{0} \ |\ \mytextsf{1} \ |\
+                             \mytextsf{2} \ |\  \cdots
         & \hspace{1em} &
-        \mathit{Type} & ::= & \mathsf{bit}\ |\
-                              \mathsf{uint32}\ |\ \mathsf{sint32}\ |\
-                              \mathsf{uint64}\ |\ \mathsf{sint64}\ |\ \cdots
+        \mathit{Type} & ::= & \mytextsf{bit}\ |\
+                              \mytextsf{uint32}\ |\ \mytextsf{sint32}\ |\
+                              \mytextsf{uint64}\ |\ \mytextsf{sint64}\ |\ \cdots
       \end{array}
       }\\
       \multicolumn{7}{c}{
       \begin{array}{rclcrclcrcl}
-      \mathit{Const} & ::= & \mathit{Num}\mathsf{@}\mathit{Type}
+      \mathit{Const} & ::= & \mathit{Num}\mytextsf{@}\mathit{Type}
       & \hspace{1em} &
       \mathit{Var} & ::= & \cdots\ |\ x \ |\ y \ |\ z \ |\ \cdots
       & \hspace{1em} &
@@ -52,8 +52,8 @@
             \clMov\ \mathit{Var}\ \mathit{Atom}
       & | & \clCmov\ \mathit{Var}\ \mathit{Var}\
             \mathit{Atom}\ \mathit{Atom}
-%      & | & \clCast\ \mathit{Var}\mathsf{@}\mathit{Type}\ \mathit{Atom}
-      & | & \clVPCast\ \mathit{Var}\mathsf{@}\mathit{Type}\ \mathit{Atom}\\
+%      & | & \clCast\ \mathit{Var}\mytextsf{@}\mathit{Type}\ \mathit{Atom}
+      & | & \clVPCast\ \mathit{Var}\mytextsf{@}\mathit{Type}\ \mathit{Atom}\\
       & | & \clUShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
       & | & \clUAdd\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
       & | & \clUAdds\ \mathit{Var}\ \mathit{Var}\
@@ -122,9 +122,9 @@ operations and facilitate efficient verification.
 Figure~\ref{figure:cryptoline-syntax} gives the syntax of \cryptoline.
 
 A constant in \cryptoline must specify its type to have bit-accurate
-semantics. For instance, $\mathsf{0@uint32}$ and $\mathsf{0@uint64}$
+semantics. For instance, $\mytextsf{0@uint32}$ and $\mytextsf{0@uint64}$
 represent different bit strings. It is ambiguious to write
-$\mathsf{0}$ for the constant $0$ in \cryptoline. Variables in
+$\mytextsf{0}$ for the constant $0$ in \cryptoline. Variables in
 \cryptoline are also typed. An \emph{atom} is either a variable or a
 constant.
 
@@ -132,9 +132,9 @@ The $\clMov\ r\ x$ instruction assigns $r$ the value of atom $x$ where
 $r$ and $x$ are of the same type. The conditional move instruction
 $\clCmov\ r\ c\ x\ y$ assigns $x$ or $y$ to $r$ if the bit variable
 $c$ is $1$ or $0$ respectively. Type coercion is explicit in
-\cryptoline. The $\clVPCast\ r\mathsf{@sint64}\ \mathsf{0@uint64}$
+\cryptoline. The $\clVPCast\ r\mytextsf{@sint64}\ \mytextsf{0@uint64}$
 converts the unsigned 64-bit constant $0$ to the signed 64-bit
-constant $0$ and assigns it to the variable $r$ of type $\mathsf{sint64}$.
+constant $0$ and assigns it to the variable $r$ of type $\mytextsf{sint64}$.
 
 Most \cryptoline instructions have signed and unsigned variants. For
 instance, the $\clUAdd\ r\ x\ y$ instruction assigns the sum of
