@@ -3,7 +3,7 @@ From Coq Require Import Arith OrderedType.
 From Coq Require Import Program Program.Equality.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype tuple.
 From Bits Require Export bits.
-From ssrlib Require Import Var Store SsrOrdered Nats Tactics.
+From ssrlib Require Import Types Var Store SsrOrdered Nats Tactics.
 
 
 Module Type Arch.
@@ -64,11 +64,12 @@ Module Make (V : SsrOrderedType) (A : Arch).
   | bvConj : bexp -> bexp -> bexp
   | bvDisj : bexp -> bexp -> bexp.
 
-  Module ValueType <: Equalities.Typ.
+  Module ValueType <: HasDefault.
     Definition t : Set := BITS wordsize.
+    Definition default : t := fromNat 0.
   End ValueType.
 
-  Module State := TStoreAdapter V ValueType.
+  Module State := RealizableTStoreAdapter V ValueType.
 
   Local Notation state := State.t.
 
@@ -147,6 +148,250 @@ Module Make (V : SsrOrderedType) (A : Arch).
   Definition valid (e : bexp) : Prop :=
     forall s, eval_bexp e s.
 
+  (* Syntax tree *)
+
+  Inductive esynt : Set :=
+  | sbvVar : esynt
+  | sbvConst : esynt
+  | sbvNot : esynt -> esynt
+  | sbvAnd : esynt -> esynt -> esynt
+  | sbvOr : esynt -> esynt -> esynt
+  | sbvXor : esynt -> esynt -> esynt
+  | sbvNeg : esynt -> esynt
+  | sbvAdd : esynt -> esynt -> esynt
+  | sbvSub : esynt -> esynt -> esynt
+  | sbvMul : esynt -> esynt -> esynt
+  | sbvMod : esynt -> esynt -> esynt
+  | sbvSrem : esynt -> esynt -> esynt
+  | sbvSmod : esynt -> esynt -> esynt
+  | sbvShl : esynt -> esynt -> esynt
+  | sbvLshr : esynt -> esynt -> esynt
+  | sbvAshr : esynt -> esynt -> esynt
+  | sbvConcat : esynt -> esynt -> esynt
+  | sbvExtract : esynt -> esynt
+  | sbvSlice : esynt -> esynt
+  | sbvHigh : esynt -> esynt
+  | sbvLow : esynt -> esynt
+  | sbvZeroExtend : esynt -> esynt
+  | sbvSignExtend : esynt -> esynt
+  | sbvIte : bsynt -> esynt -> esynt -> esynt
+  with
+  bsynt : Set :=
+  | sbvFalse : bsynt
+  | sbvTrue : bsynt
+  | sbvEq : esynt -> esynt -> bsynt
+  | sbvUlt : esynt -> esynt -> bsynt
+  | sbvUle : esynt -> esynt -> bsynt
+  | sbvUgt : esynt -> esynt -> bsynt
+  | sbvUge : esynt -> esynt -> bsynt
+  | sbvSlt : esynt -> esynt -> bsynt
+  | sbvSle : esynt -> esynt -> bsynt
+  | sbvSgt : esynt -> esynt -> bsynt
+  | sbvSge : esynt -> esynt -> bsynt
+  | sbvUaddo : esynt -> esynt -> bsynt
+  | sbvUsubo : esynt -> esynt -> bsynt
+  | sbvUmulo : esynt -> esynt -> bsynt
+  | sbvSaddo : esynt -> esynt -> bsynt
+  | sbvSsubo : esynt -> esynt -> bsynt
+  | sbvSmulo : esynt -> esynt -> bsynt
+  | sbvLneg : bsynt -> bsynt
+  | sbvConj : bsynt -> bsynt -> bsynt
+  | sbvDisj : bsynt -> bsynt -> bsynt.
+
+  Fixpoint abs_exp {w} (e : exp w) : esynt :=
+    match e with
+    | bvVar v => sbvVar
+    | bvConst _ n => sbvConst
+    | bvNot w e => sbvNot (abs_exp e)
+    | bvAnd w e1 e2 => sbvAnd (abs_exp e1) (abs_exp e2)
+    | bvOr w e1 e2 => sbvOr (abs_exp e1) (abs_exp e2)
+    | bvXor w e1 e2 => sbvXor (abs_exp e1) (abs_exp e2)
+    | bvNeg w e => sbvNeg (abs_exp e)
+    | bvAdd w e1 e2 => sbvAdd (abs_exp e1) (abs_exp e2)
+    | bvSub w e1 e2 => sbvSub (abs_exp e1) (abs_exp e2)
+    | bvMul w e1 e2 => sbvMul (abs_exp e1) (abs_exp e2)
+    | bvMod w e1 e2 => sbvMod (abs_exp e1) (abs_exp e2)
+    | bvSrem w e1 e2 => sbvSrem (abs_exp e1) (abs_exp e2)
+    | bvSmod w e1 e2 => sbvSmod (abs_exp e1) (abs_exp e2)
+    | bvShl w e1 e2 => sbvShl (abs_exp e1) (abs_exp e2)
+    | bvLshr w e1 e2 => sbvLshr (abs_exp e1) (abs_exp e2)
+    | bvAshr w e1 e2 => sbvAshr (abs_exp e1) (abs_exp e2)
+    | bvConcat w1 w2 e1 e2 => sbvConcat (abs_exp e1) (abs_exp e2)
+    | bvExtract w i j e => sbvExtract (abs_exp e)
+    | bvSlice w1 w2 w3 e => sbvSlice (abs_exp e)
+    | bvHigh wh wl e => sbvHigh (abs_exp e)
+    | bvLow wh wl e => sbvLow (abs_exp e)
+    | bvZeroExtend w n e => sbvZeroExtend (abs_exp e)
+    | bvSignExtend w n e => sbvSignExtend (abs_exp e)
+    | bvIte w b e1 e2 => sbvIte (abs_bexp b) (abs_exp e1) (abs_exp e2)
+    end
+  with
+  abs_bexp (e : bexp) : bsynt :=
+    match e with
+    | bvFalse => sbvFalse
+    | bvTrue => sbvTrue
+    | bvEq w e1 e2 => sbvEq (abs_exp e1) (abs_exp e2)
+    | bvUlt w e1 e2 => sbvUlt (abs_exp e1) (abs_exp e2)
+    | bvUle w e1 e2 => sbvUle (abs_exp e1) (abs_exp e2)
+    | bvUgt w e1 e2 => sbvUgt (abs_exp e1) (abs_exp e2)
+    | bvUge w e1 e2 => sbvUge (abs_exp e1) (abs_exp e2)
+    | bvSlt w e1 e2 => sbvSlt (abs_exp e1) (abs_exp e2)
+    | bvSle w e1 e2 => sbvSle (abs_exp e1) (abs_exp e2)
+    | bvSgt w e1 e2 => sbvSgt (abs_exp e1) (abs_exp e2)
+    | bvSge w e1 e2 => sbvSge (abs_exp e1) (abs_exp e2)
+    | bvUaddo w e1 e2 => sbvUaddo (abs_exp e1) (abs_exp e2)
+    | bvUsubo w e1 e2 => sbvUsubo (abs_exp e1) (abs_exp e2)
+    | bvUmulo w e1 e2 => sbvUmulo (abs_exp e1) (abs_exp e2)
+    | bvSaddo w e1 e2 => sbvSaddo (abs_exp e1) (abs_exp e2)
+    | bvSsubo w e1 e2 => sbvSsubo (abs_exp e1) (abs_exp e2)
+    | bvSmulo w e1 e2 => sbvSmulo (abs_exp e1) (abs_exp e2)
+    | bvLneg e => sbvLneg (abs_bexp e)
+    | bvConj e1 e2 => sbvConj (abs_bexp e1) (abs_bexp e2)
+    | bvDisj e1 e2 => sbvDisj (abs_bexp e1) (abs_bexp e2)
+    end.
+
+  (* Subexpression *)
+
+  Fixpoint subexp_of_exp {w1 w2} (c : exp w1) (p : exp w2) {struct p} :=
+    c ~= p \/ (
+      match p with
+      | bvVar v => False
+      | bvConst _ n => False
+      | bvNot w e => subexp_of_exp c e
+      | bvAnd w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvOr w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvXor w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvNeg w e => subexp_of_exp c e
+      | bvAdd w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvSub w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvMul w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvMod w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvSrem w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvSmod w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvShl w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvLshr w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvAshr w e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvConcat w1 w2 e1 e2 => subexp_of_exp c e1 \/ subexp_of_exp c e2
+      | bvExtract w i j e => subexp_of_exp c e
+      | bvSlice w1 w2 w3 e => subexp_of_exp c e
+      | bvHigh wh wl e => subexp_of_exp c e
+      | bvLow wh wl e => subexp_of_exp c e
+      | bvZeroExtend w n e => subexp_of_exp c e
+      | bvSignExtend w n e => subexp_of_exp c e
+      | bvIte w b e1 e2 => subexp_of_bexp c b \/ subexp_of_exp c e1 \/ subexp_of_exp c e2
+      end
+    )
+  with
+  subexp_of_bexp {w} (e : exp w) (b : bexp) {struct b} :=
+    match b with
+    | bvFalse => False
+    | bvTrue => False
+    | bvEq w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUlt w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUle w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUgt w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUge w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSlt w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSle w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSgt w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSge w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUaddo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUsubo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvUmulo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSaddo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSsubo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvSmulo w e1 e2 => subexp_of_exp e e1 \/ subexp_of_exp e e2
+    | bvLneg b => subexp_of_bexp e b
+    | bvConj b1 b2 => subexp_of_bexp e b1 \/ subexp_of_bexp e b2
+    | bvDisj b1 b2 => subexp_of_bexp e b1 \/ subexp_of_bexp e b2
+    end.
+
+  Fixpoint subbexp_of_bexp (c p : bexp) {struct p} :=
+    c = p \/
+    match p with
+    | bvFalse => False
+    | bvTrue => False
+    | bvEq w e1 e2 => False
+    | bvUlt w e1 e2 => False
+    | bvUle w e1 e2 => False
+    | bvUgt w e1 e2 => False
+    | bvUge w e1 e2 => False
+    | bvSlt w e1 e2 => False
+    | bvSle w e1 e2 => False
+    | bvSgt w e1 e2 => False
+    | bvSge w e1 e2 => False
+    | bvUaddo w e1 e2 => False
+    | bvUsubo w e1 e2 => False
+    | bvUmulo w e1 e2 => False
+    | bvSaddo w e1 e2 => False
+    | bvSsubo w e1 e2 => False
+    | bvSmulo w e1 e2 => False
+    | bvLneg b => subbexp_of_bexp c b
+    | bvConj b1 b2 => subbexp_of_bexp c b1 \/ subbexp_of_bexp c b2
+    | bvDisj b1 b2 => subbexp_of_bexp c b1 \/ subbexp_of_bexp c b2
+    end.
+
+  Lemma eq_subexp_of_exp :
+    forall {w1 w2} {e1 : exp w1} {e2 : exp w2}, e1 ~= e2 -> subexp_of_exp e1 e2.
+  Proof.
+    move=> w1 w2 e1; case => /=; tauto.
+  Qed.
+
+  Lemma subexp_of_exp_refl :
+    forall {w} (e : exp w), subexp_of_exp e e.
+  Proof.
+    move=> w [] /=; left; reflexivity.
+  Qed.
+
+  Lemma subbexp_of_bexp_refl :
+    forall (e : bexp), subbexp_of_bexp e e.
+  Proof.
+    move=> [] /=; left; reflexivity.
+  Qed.
+
+  Ltac remove_or_false :=
+    repeat (match goal with
+            | H : _ \/ False |- _ => case: H; last done; intro H
+            end).
+
+  Ltac exp_jmeq_discriminate :=
+    match goal with
+    | H : _ ~= _ |- _ =>
+      move: (JMeq_congr abs_exp H); simpl; clear H; intro H; discriminate
+    end.
+
+  Ltac exp_jmeq_injection H :=
+    match type of H with
+    | ?e1 ~= ?e2 =>
+      move: (JMeq_eq H); clear H; intro H; injection H; clear H; intros;
+      simpl_existTs
+    end.
+
+  Lemma subexp_of_exp_trans :
+    forall {w} {e1 e2 e3 : exp w},
+      subexp_of_exp e1 e2 -> subexp_of_exp e2 e3 -> subexp_of_exp e1 e3
+  with
+  subexp_of_bexp_trans :
+    forall {w} {e1 e2 : exp w} {b : bexp},
+      subexp_of_exp e1 e2 -> subexp_of_bexp e2 b -> subexp_of_bexp e1 b.
+  Proof.
+    (* subexp_of_exp_trans *)
+    dependent destruction e2; dependent destruction e3 => /=; intros; remove_or_false.
+    (* subexp_of_bexp_trans *)
+  Admitted.
+
+  Lemma eq_lnot_false :
+    forall w (e : exp w), ~ (bvNot w e = e).
+  Proof.
+    move=> w. elim=> {w} /=; intros; intro; try discriminate.
+    injection H0 => {H0} H0. simpl_existT. apply: H. assumption.
+  Qed.
+
+  Lemma subexp_of_exp_antisym :
+    forall {w1 w2} {c : exp w1} {p : exp w2},
+      subexp_of_exp c p -> subexp_of_exp p c -> c ~= p.
+  Proof.
+  Admitted.
 
   (* Non-dependent expressions *)
 

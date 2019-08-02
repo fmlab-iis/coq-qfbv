@@ -2,3 +2,5 @@
 *.glob
 *.vo
 *.aux
+src/extraction/*.ml
+src/extraction/*.mli

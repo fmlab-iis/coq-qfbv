@@ -13386,3 +13386,7 @@ Proof.
   rewrite /enc_bit => /eqP H. rewrite -H in He.
   rewrite He in Hlr. exact: not_false_is_true.
 Qed.
+
+Definition bexp_to_cnf e :=
+  let '(m', g', cs, lr) := bit_blast_bexp init_vm init_gen e in
+  add_prelude ([neg_lit lr]::cs).
