@@ -3,7 +3,7 @@ From Coq Require Import Arith OrderedType.
 From Coq Require Import Program Program.Equality.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype tuple.
 From Bits Require Export bits.
-From ssrlib Require Import Var Store SsrOrdered Nats Tactics.
+From ssrlib Require Import Types Var Store SsrOrdered Nats Tactics.
 
 
 Module Type Arch.
@@ -64,11 +64,12 @@ Module Make (V : SsrOrderedType) (A : Arch).
   | bvConj : bexp -> bexp -> bexp
   | bvDisj : bexp -> bexp -> bexp.
 
-  Module ValueType <: Equalities.Typ.
+  Module ValueType <: HasDefault.
     Definition t : Set := BITS wordsize.
+    Definition default : t := fromNat 0.
   End ValueType.
 
-  Module State := TStoreAdapter V ValueType.
+  Module State := RealizableTStoreAdapter V ValueType.
 
   Local Notation state := State.t.
 
