@@ -1,0 +1,72 @@
+
+
+
+\begin{figure*}
+  \centering
+  \begin{math}
+    \begin{array}{rclclclcl}
+      \bvExp & ::= &
+        \bvVar
+      & | & \bvConst
+      & | & \bvNot\ \bvExp
+      & | & \bvAnd\ \bvExp\ \bvExp
+      \\
+      & | & \bvOr\ \bvExp\ \bvExp
+      & | & \bvXor\ \bvExp\ \bvExp
+      & | & \bvNeg\ \bvExp
+      & | & \bvAdd\ \bvExp\ \bvExp
+      \\
+      & | & \bvSub\ \bvExp\ \bvExp
+      & | & \bvMul\ \bvExp\ \bvExp
+      & | & \bvMod\ \bvExp\ \bvExp
+      & | & \bvSrem\ \bvExp\ \bvExp
+      \\
+      & | & \bvSmod\ \bvExp\ \bvExp
+      & | & \bvShl\ \bvExp\ \bvNum
+      & | & \bvLshr\ \bvExp\ \bvNum
+      & | & \bvAshr\ \bvExp\ \bvNum
+      \\
+      & | & \bvConcat\ \bvExp\ \bvExp
+      & | & \bvExtract\ \bvExp\ \bvNum\ \bvNum
+      & | & \bvSlice\ \bvExp\ \bvNum\ \bvNum
+      & | & \bvHigh\ \bvExp\ \bvNum
+      \\
+      & | & \bvLow\ \bvExp\ \bvNum
+      & | & \bvZeroExtend\ \bvExp\ \bvNum
+      & | & \bvSignExtend\ \bvExp\ \bvNum
+      & | & \bvIte\ \bvBExp\ \bvExp\ \bvExp
+      \\
+      \bvBExp & ::= &
+        \bvFalse
+      & | & \bvTrue
+      & | & \bvEq\ \bvExp\ \bvExp
+      & | & \bvUlt\ \bvExp\ \bvExp
+      \\
+      & | & \bvUle\ \bvExp\ \bvExp
+      & | & \bvUgt\ \bvExp\ \bvExp
+      & | & \bvUge\ \bvExp\ \bvExp
+      & | & \bvSlt\ \bvExp\ \bvExp
+      \\
+      & | & \bvSle\ \bvExp\ \bvExp
+      & | & \bvSgt\ \bvExp\ \bvExp
+      & | & \bvSge\ \bvExp\ \bvExp
+      & | & \bvUaddo\ \bvExp\ \bvExp
+      \\
+      & | & \bvUsubo\ \bvExp\ \bvExp
+      & | & \bvUmulo\ \bvExp\ \bvExp
+      & | & \bvSaddo\ \bvExp\ \bvExp
+      & | & \bvSsubo\ \bvExp\ \bvExp
+      \\
+      & | & \bvSmulo\ \bvExp\ \bvExp
+      & | & \bvLneg\ \bvBExp
+      & | & \bvConj\ \bvBExp\ \bvBExp
+      & | & \bvDisj\ \bvBExp\ \bvBExp
+    \end{array}
+  \end{math}
+  \caption{Quantifier-free Bit Vector Theory Syntax}
+  \label{figure:qfbv-syntax}
+\end{figure*}
+
+% coq-bit formalization
+
+% example: add

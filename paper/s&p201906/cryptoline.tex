@@ -5,9 +5,9 @@
     \begin{array}{rclclcl}
       \multicolumn{7}{c}{
       \begin{array}{rclcrcl}
-        \mathit{Num} & ::= & \cdots \ |\ \mytextsf{-2} \ |\ \mytextsf{-1}
-                             \ |\ \mytextsf{0} \ |\ \mytextsf{1} \ |\
-                             \mytextsf{2} \ |\  \cdots
+        \clNum & ::= & \cdots \ |\ \mytextsf{-2} \ |\ \mytextsf{-1}
+                     \ |\ \mytextsf{0} \ |\ \mytextsf{1} \ |\
+                     \mytextsf{2} \ |\  \cdots
         & \hspace{1em} &
         \mathit{Type} & ::= & \mytextsf{bit}\ |\
                               \mytextsf{uint32}\ |\ \mytextsf{sint32}\ |\
@@ -16,94 +16,94 @@
       }\\
       \multicolumn{7}{c}{
       \begin{array}{rclcrclcrcl}
-      \mathit{Const} & ::= & \mathit{Num}\mytextsf{@}\mathit{Type}
+      \mathit{Const} & ::= & \clNum\mytextsf{@}\mathit{Type}
       & \hspace{1em} &
-      \mathit{Var} & ::= & \cdots\ |\ x \ |\ y \ |\ z \ |\ \cdots
+      \clVar & ::= & \cdots\ |\ x \ |\ y \ |\ z \ |\ \cdots
       & \hspace{1em} &
-      \mathit{Atom} & ::= & \mathit{Var} \ |\ \mathit{Const}
+      \clAtom & ::= & \clVar \ |\ \mathit{Const}
       \end{array}
       }
       \\
       \multicolumn{7}{c}{
       \begin{array}{rclclclcl}
-        \mathit{Exp} & ::= & \mathit{Atom}
-        & | & \mathit{Exp}\ +\ \mathit{Exp}
-        & | & \mathit{Exp}\ -\ \mathit{Exp}
-        & | & \mathit{Exp}\ \times\ \mathit{Exp}
+        \clExp & ::= & \clAtom
+        & | & \clExp\ +\ \clExp
+        & | & \clExp\ -\ \clExp
+        & | & \clExp\ \times\ \clExp
       \end{array}
       }
       \\
-      \mathit{APred} & ::= &
-        \mathit{Exp} = \mathit{Exp}
-      & | & \mathit{Exp} \equiv \mathit{Exp} \bmod \mathit{Exp}
-      & | & \mathit{APred} \wedge \mathit{APred}
+      \clAPred & ::= &
+        \clExp = \clExp
+      & | & \clExp \equiv \clExp \bmod \clExp
+      & | & \clAPred \wedge \clAPred
       \\
-      \mathit{RPred} & ::= &
+      \clRPred & ::= &
       \multicolumn{3}{l}{
         \begin{array}{lclclcl}
-          \mathit{Exp} = \mathit{Exp}
-          & \hspace{2em}|\hspace{1em} & \mathit{Exp} < \mathit{Exp}
-          & \hspace{2em}|\hspace{1em} & \neg \mathit{RPred}
+          \clExp = \clExp
+          & \hspace{2em}|\hspace{1em} & \clExp < \clExp
+          & \hspace{2em}|\hspace{1em} & \neg \clRPred
         \end{array}
       }
-      & | & \mathit{RPred} \wedge \mathit{RPred}
+      & | & \clRPred \wedge \clRPred
       \\
       \mathit{Inst} & ::= &
-            \clMov\ \mathit{Var}\ \mathit{Atom}
-      & | & \clCmov\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
-%      & | & \clCast\ \mathit{Var}\mytextsf{@}\mathit{Type}\ \mathit{Atom}
-      & | & \clVPCast\ \mathit{Var}\mytextsf{@}\mathit{Type}\ \mathit{Atom}\\
-      & | & \clUShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
-      & | & \clUAdd\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clUAdds\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clSShl\ \mathit{Var}\ \mathit{Atom}\ \mathit{Num}
-      & | & \clUAdc\ \mathit{Var}\ \mathit{Atom}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clUAdcs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clUJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSAdd\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSAdds\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clSJoin\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSAdc\ \mathit{Var}\ \mathit{Atom}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clSAdcs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clUSplit\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Num}
-      & | & \clUSub\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clUSubs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clSSplit\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Num}
-      & | & \clUSbb\ \mathit{Var}\ \mathit{Atom}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clUSbbs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clAssert\ \mathit{APred} \clConj \mathit{RPred}
-      & | & \clSSub\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSSubs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clAssume\ \mathit{APred} \clConj \mathit{RPred}
-      & | & \clSSbb\ \mathit{Var}\ \mathit{Atom}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clSSbbs\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Atom}\\
-      & | & \clUMul\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clUMull\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clUCShl\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Num}\\
-      & | & \clSMul\ \mathit{Var}\ \mathit{Atom}\ \mathit{Atom}
-      & | & \clSMull\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}
-      & | & \clSCShl\ \mathit{Var}\ \mathit{Var}\
-            \mathit{Atom}\ \mathit{Atom}\ \mathit{Num}\\
+            \clMov\ \clVar\ \clAtom
+      & | & \clCmov\ \clVar\ \clVar\
+            \clAtom\ \clAtom
+%      & | & \clCast\ \clVar\mytextsf{@}\mathit{Type}\ \clAtom
+      & | & \clVPCast\ \clVar\mytextsf{@}\mathit{Type}\ \clAtom\\
+      & | & \clUShl\ \clVar\ \clAtom\ \clNum
+      & | & \clUAdd\ \clVar\ \clAtom\ \clAtom
+      & | & \clUAdds\ \clVar\ \clVar\
+            \clAtom\ \clAtom\\
+      & | & \clSShl\ \clVar\ \clAtom\ \clNum
+      & | & \clUAdc\ \clVar\ \clAtom\
+            \clAtom\ \clAtom
+      & | & \clUAdcs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clAtom\\
+      & | & \clUJoin\ \clVar\ \clAtom\ \clAtom
+      & | & \clSAdd\ \clVar\ \clAtom\ \clAtom
+      & | & \clSAdds\ \clVar\ \clVar\
+            \clAtom\ \clAtom\\
+      & | & \clSJoin\ \clVar\ \clAtom\ \clAtom
+      & | & \clSAdc\ \clVar\ \clAtom\
+            \clAtom\ \clAtom
+      & | & \clSAdcs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clAtom\\
+      & | & \clUSplit\ \clVar\ \clVar\
+            \clAtom\ \clNum
+      & | & \clUSub\ \clVar\ \clAtom\ \clAtom
+      & | & \clUSubs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\\
+      & | & \clSSplit\ \clVar\ \clVar\
+            \clAtom\ \clNum
+      & | & \clUSbb\ \clVar\ \clAtom\
+            \clAtom\ \clAtom
+      & | & \clUSbbs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clAtom\\
+      & | & \clAssert\ \clAPred \clConj \clRPred
+      & | & \clSSub\ \clVar\ \clAtom\ \clAtom
+      & | & \clSSubs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\\
+      & | & \clAssume\ \clAPred \clConj \clRPred
+      & | & \clSSbb\ \clVar\ \clAtom\
+            \clAtom\ \clAtom
+      & | & \clSSbbs\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clAtom\\
+      & | & \clUMul\ \clVar\ \clAtom\ \clAtom
+      & | & \clUMull\ \clVar\ \clVar\
+            \clAtom\ \clAtom
+      & | & \clUCShl\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clNum\\
+      & | & \clSMul\ \clVar\ \clAtom\ \clAtom
+      & | & \clSMull\ \clVar\ \clVar\
+            \clAtom\ \clAtom
+      & | & \clSCShl\ \clVar\ \clVar\
+            \clAtom\ \clAtom\ \clNum\\
       \mathit{Decl} & ::= &
-        \multicolumn{2}{l}{\mathit{Type}\ \mathit{Var}}
+        \multicolumn{2}{l}{\mathit{Type}\ \clVar}
       &&
       \multicolumn{2}{l}{
          \mathit{Prog} \hspace{2ex} ::=\hspace{2ex}
@@ -185,4 +185,25 @@ property $p$ and the range property $q$. An algebraic property is a
 conjunction of equations and modulo equations over expressions. A
 range property on the other hand is an arbitrary Boolean combination
 of equations and comparisons.
+
+% example
+
+\begin{figure}
+  \centering
+  \begin{tabular}{l}
+    $\clUSubs$ b t in N;\\
+    $\clUSbbs$ dontcare mask 0$\mytextsf{@uint64}$ $\mytextsf{0@uint64}$ b;\\
+    $\clAnd$ r0$\mytextsf{@uint64}$ mask in;\\
+    $\clNot$ nmask$\mytextsf{@uint64}$ mask;\\
+    $\clAnd$ r1$\mytextsf{@uint64}$ nmask t;\\
+    $\clOr$ r$\mytextsf{@uint64}$ r0 r1;\\
+    $\clAssert$ $\clTrue$ $\clConj$ r = in $\wedge$ r = in - N;
+  \end{tabular}
+  \caption{Constant-time Selection}
+  \label{figure:cryptoline-example}
+\end{figure}
+
+Figure~\ref{figure:cryptoline-example} gives a.
+
+% verification condition generation
 
