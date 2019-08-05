@@ -1489,3 +1489,51 @@ Proof.
   move=> E cs. exact: (cnf_contains_eqsat E (@cnf_remove_duplicate_contains1 cs)
                                           (@cnf_remove_duplicate_contains2 cs)).
 Qed.
+
+
+
+(* Convert CNF to DIMACS format *)
+
+From Coq Require Import String DecimalString.
+Open Scope string_scope.
+
+Module PS := FSets.MakeTreeSet(PositiveOrder).
+
+Definition newline : string :=
+"
+".
+
+Definition vs_of_clause c :=
+  foldl (fun vs l => PS.add (var_of_lit l) vs) PS.empty c.
+
+Definition vs_of_cnf cs :=
+  foldl (fun vs c => PS.union (vs_of_clause c) vs) PS.empty cs.
+
+(* Do not use nat because the output CNF contains a huge number of variables. *)
+Definition num_vars (cs : cnf) : N :=
+  PS.fold (fun _ (n : N) => (n + 1)%num) (vs_of_cnf cs) 0%num.
+
+(* Do not use nat because the output CNF contains a huge number of clauses. *)
+Definition num_clauses (cs : cnf) : N :=
+  List.fold_left (fun n _ => (n + 1)%num) cs 0%num.
+
+Definition dimacs_header (cs : cnf) : string :=
+  "p cnf " ++ NilEmpty.string_of_uint (N.to_uint (num_vars cs)) ++ " " ++ NilEmpty.string_of_uint (N.to_uint (num_clauses cs)).
+
+Definition diamcs_var (v : var) : string :=
+  NilEmpty.string_of_uint (Pos.to_uint v).
+
+Definition diamcs_lit (l : literal) : string :=
+  match l with
+  | Pos v => diamcs_var v
+  | Neg v => "-" ++ diamcs_var v
+  end.
+
+Definition diamcs_clause (c : clause) : string :=
+  (foldl (fun left l => left ++ diamcs_lit l ++ " ") "" c) ++ " 0".
+
+Definition dimacs_cnf (cs : cnf) : string :=
+  foldl (fun left c => left ++ diamcs_clause c ++ newline) "" cs.
+
+Definition dimacs_cnf_with_header (cs : cnf) : string :=
+  dimacs_header cs ++ newline ++ dimacs_cnf cs.
