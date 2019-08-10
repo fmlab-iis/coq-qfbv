@@ -15,6 +15,6 @@ Extraction Language OCaml.
 Extraction Blacklist Nat Int List String.
 
 Cd "src/extraction".
-Separate Extraction seq.catrev toHex nat_of_int n_of_int int_of_nat int_of_n bexp_to_cnf num_vars num_clauses dimacs_cnf_with_header.
+Separate Extraction seq.catrev toHex nat_of_int n_of_int int_of_nat int_of_n bexp_to_cnf max_var_of_cnf num_clauses dimacs_cnf_with_header.
 Cd "../..".
 

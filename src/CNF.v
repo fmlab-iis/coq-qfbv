@@ -1513,9 +1513,15 @@ Definition vs_of_cnf cs :=
 Definition num_vars (cs : cnf) : N :=
   PS.fold (fun _ (n : N) => (n + 1)%num) (vs_of_cnf cs) 0%num.
 
+Definition max_var_of_clause c :=
+  foldl (fun m l => Pos.max m (var_of_lit l)) var_tt c.
+
+Definition max_var_of_cnf cs :=
+  foldl (fun m c => Pos.max m (max_var_of_clause c)) var_tt cs.
+
 (* Do not use nat because the output CNF contains a huge number of clauses. *)
 Definition num_clauses (cs : cnf) : N :=
-  List.fold_left (fun n _ => (n + 1)%num) cs 0%num.
+  foldl (fun n _ => (n + 1)%num) 0%num cs.
 
 Definition dimacs_header (cs : cnf) : string :=
   "p cnf " ++ NilEmpty.string_of_uint (N.to_uint (num_vars cs)) ++ " " ++ NilEmpty.string_of_uint (N.to_uint (num_clauses cs)).
