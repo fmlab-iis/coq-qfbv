@@ -64,7 +64,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
   | bvConj : bexp -> bexp -> bexp
   | bvDisj : bexp -> bexp -> bexp.
 
-  Module ValueType <: HasDefault.
+  Module ValueType <: HasDefaultTyp.
     Definition t : Set := BITS wordsize.
     Definition default : t := fromNat 0.
   End ValueType.
@@ -1570,7 +1570,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
       + by rewrite (eqP H) eqxx.
       + by rewrite H orbT.
     - move=> w1 b1; case: e2 => /=; try eauto. move=> w2 b2.
-      move: (eqb_ltn_gtn_cases w1 w2) => H. caseb_hyps.
+      move: (eqn_ltn_gtn_cases w1 w2) => H. caseb_hyps.
       + move: b1; rewrite (eqP a)=> b1. move: (eqb_ltB_gtB_cases b1 b2) => H.
         caseb_hyps.
         * by rewrite (eqP a0) eqxx.
@@ -1622,25 +1622,25 @@ Module Make (V : SsrOrderedType) (A : Arch).
       move: (nexp_eqb_ltb_gtb ne1 ne3) (nexp_eqb_ltb_gtb ne2 ne4) => H1 H2.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 i1 j1. case: e2 => /=; try eauto. move=> ne2 i2 j2.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases i1 i2)
-                                       (eqb_ltn_gtn_cases j1 j2)=> H1 H2 H3.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases i1 i2)
+                                       (eqn_ltn_gtn_cases j1 j2)=> H1 H2 H3.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 w1 w2 w3. case: e2 => /=; try eauto. move=> ne2 w4 w5 w6.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases w1 w4)
-                                       (eqb_ltn_gtn_cases w2 w5)
-                                       (eqb_ltn_gtn_cases w3 w6)=> H1 H2 H3 H4.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases w1 w4)
+                                       (eqn_ltn_gtn_cases w2 w5)
+                                       (eqn_ltn_gtn_cases w3 w6)=> H1 H2 H3 H4.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 w1. case: e2 => /=; try eauto. move=> ne2 w2.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases w1 w2)=> H1 H2.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases w1 w2)=> H1 H2.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 w1. case: e2 => /=; try eauto. move=> ne2 w2.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases w1 w2)=> H1 H2.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases w1 w2)=> H1 H2.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 w1. case: e2 => /=; try eauto. move=> ne2 w2.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases w1 w2)=> H1 H2.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases w1 w2)=> H1 H2.
       eqb_ltb_gtb_caseb_auto.
     - move=> ne1 w1. case: e2 => /=; try eauto. move=> ne2 w2.
-      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqb_ltn_gtn_cases w1 w2)=> H1 H2.
+      move: (nexp_eqb_ltb_gtb ne1 ne2) (eqn_ltn_gtn_cases w1 w2)=> H1 H2.
       eqb_ltb_gtb_caseb_auto.
     - move=> c1 ne1 ne2. case: e2 => /=; try eauto. move=> c2 ne3 ne4.
       move: (nbexp_eqb_ltb_gtb c1 c2) (nexp_eqb_ltb_gtb ne1 ne3)

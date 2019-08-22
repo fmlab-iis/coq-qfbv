@@ -1,4 +1,5 @@
 -Q lib/coq-bits/src Bits
 -Q lib/coq-ssrlib/src ssrlib
+-Q lib/coq-nbits/src nbits
 -Q src BitBlasting
 
