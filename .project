@@ -5,6 +5,7 @@
 src/Typ.v
 src/Var.v
 src/QFBV.v
+src/CNF.v
 src/QFBVSimple.v
 src/CNFSimple.v
 src/BBCommon.v
