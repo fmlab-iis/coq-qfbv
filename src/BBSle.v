@@ -3,7 +3,7 @@ From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple ssrfun.
 From ssrlib Require Import Var ZAriths Tactics.
 From Bits Require Import bits extra.
-From BitBlasting Require Import QFBVSimple CNF BBCommon BBEq BBDisj BBSlt.
+From BitBlasting Require Import QFBVSimple CNFSimple BBCommon BBEq BBDisj BBSlt.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

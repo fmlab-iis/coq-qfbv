@@ -1,6 +1,6 @@
 
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple.
-From BitBlasting Require Import QFBVSimple CNF BBCommon.
+From BitBlasting Require Import QFBVSimple CNFSimple BBCommon.
 From ssrlib Require Import Var.
 From Bits Require Import bits.
 

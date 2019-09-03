@@ -7,7 +7,7 @@ From Coq Require Import List.
 From mathcomp Require Import tuple.
 From Bits Require Import bits.
 From ssrlib Require Import Var.
-From BitBlasting Require Import CNF BBCommon BitBlastingSimple.
+From BitBlasting Require Import CNFSimple BBCommon BitBlastingSimple.
 
 Extraction Language OCaml.
 

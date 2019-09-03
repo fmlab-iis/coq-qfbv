@@ -1,6 +1,6 @@
 From Coq Require Import ZArith.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple ssrfun.
-From BitBlasting Require Import QFBVSimple CNF BBCommon BBNot BBAdd BBUlt.
+From BitBlasting Require Import QFBVSimple CNFSimple BBCommon BBNot BBAdd BBUlt.
 From ssrlib Require Import Var ZAriths Tuples Tactics.
 From Bits Require Import bits extra.
 
