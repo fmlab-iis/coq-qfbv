@@ -7,7 +7,7 @@
 
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import Var SsrOrdered ZAriths Seqs Lists Bools.
+From ssrlib Require Import SsrOrdered ZAriths Seqs Lists Bools FSets.
 From nbits Require Export NBits.
 
 Set Implicit Arguments.
@@ -16,11 +16,11 @@ Import Prenex Implicits.
 
 
 
-Definition var := positive.
+Definition bvar := positive.
 
 Inductive literal : Set :=
-| Pos of var
-| Neg of var.
+| Pos of bvar
+| Neg of bvar.
 
 Definition eq_lit l1 l2 :=
   match l1, l2 with
@@ -73,7 +73,7 @@ Definition clause : Set := seq literal.
 
 Definition cnf : Set := seq clause.
 
-Definition env : Set := var -> bool.
+Definition env : Set := bvar -> bool.
 
 Definition splitlsl (ls : word) := split_head lit_ff ls.
 Definition splitmsl (ls : word) := split_last lit_ff ls.
@@ -215,7 +215,7 @@ Qed.
 
 (* env_upd *)
 
-Definition env_upd (E : env) (x : var) v := fun y => if x == y then v else E y.
+Definition env_upd (E : env) (x : bvar) v := fun y => if x == y then v else E y.
 
 Lemma env_upd_eq E x v : (env_upd E x v) x = v.
 Proof. rewrite /env_upd. rewrite eqxx. reflexivity. Qed.
@@ -555,16 +555,15 @@ Proof.
   by rewrite (IH _ Htl) Hhd.
 Qed.
 
-Lemma enc_bit_env_upd_updated E b l x y :
-  x != var_of_lit b ->
-  enc_bit (env_upd E x y) b l = enc_bit E b l.
-Proof.
-  rewrite /enc_bit => Hne. rewrite (interp_lit_env_upd_neq _ _ Hne). reflexivity.
-Qed.
+Lemma enc_bit_env_upd_eq_pos E x b : enc_bit (env_upd E x b) (Pos x) b.
+Proof. rewrite /enc_bit /=. by rewrite env_upd_eq. Qed.
 
-Lemma enc_bit_env_upd_original E b l x y :
-  x != var_of_lit b ->
-  enc_bit (env_upd E x y) b l = enc_bit E b l.
+Lemma enc_bit_env_upd_eq_neg E x b : enc_bit (env_upd E x b) (Neg x) (~~b).
+Proof. rewrite /enc_bit /=. by rewrite env_upd_eq. Qed.
+
+Lemma enc_bit_env_upd_neq E l b x y :
+  x != var_of_lit l ->
+  enc_bit (env_upd E x y) l b = enc_bit E l b.
 Proof.
   rewrite /enc_bit => Hne. rewrite (interp_lit_env_upd_neq _ _ Hne). reflexivity.
 Qed.
@@ -894,7 +893,7 @@ Qed.
 (* env_preserve *)
 
 Definition env_preserve (E E' : env) g :=
-  forall v : var,
+  forall v : bvar,
     newer_than_var g v ->
     E' v = E v.
 
@@ -1138,7 +1137,7 @@ Definition num_clauses (cs : cnf) : N :=
 Definition dimacs_header (cs : cnf) : string :=
   "p cnf " ++ NilEmpty.string_of_uint (N.to_uint (num_vars cs)) ++ " " ++ NilEmpty.string_of_uint (N.to_uint (num_clauses cs)).
 
-Definition diamcs_var (v : var) : string :=
+Definition diamcs_var (v : bvar) : string :=
   NilEmpty.string_of_uint (Pos.to_uint v).
 
 Definition diamcs_lit (l : literal) : string :=

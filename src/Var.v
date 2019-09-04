@@ -14,6 +14,8 @@ Section Var.
 
   Record var : Set := mkVar { vname :> N; vtyp : typ }.
 
+  Definition vsize v := sizeof_typ (vtyp v).
+
   Definition var_eqn (x y : var) : bool := (vname x == vname y) && (vtyp x == vtyp y).
 
   Lemma var_eqn_eq (x y : var) : x = y <-> var_eqn x y.
