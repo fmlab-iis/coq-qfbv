@@ -7,7 +7,7 @@
 
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice div.
-From BitBlasting Require Import QFBVSimple CNFSimple BBExport.
+From BitBlasting Require Import QFBVSimple CNFSimple BBExportSimple.
 From ssrlib Require Import Bools Var Store SsrOrdered ZAriths Tuples Tactics.
 From Bits Require Export bits.
 
