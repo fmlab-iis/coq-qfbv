@@ -15,7 +15,8 @@ Definition cnf_lit_eq a1 a2 := [:: [:: neg_lit a1; a2]; [:: a1; neg_lit a2]].
 Lemma cnf_lit_not_negb E b l :
   enc_bit E l b -> (interp_cnf E (cnf_lit_not l)) = (~~ b).
 Proof.
-  rewrite /enc_bit /cnf_lit_not /=. rewrite interp_lit_neg_lit. by move/eqP => ->.
+  rewrite /enc_bit /cnf_lit_not /=. rewrite interp_lit_neg_lit orbF andbT.
+    by move/eqP => ->.
 Qed.
 
 Lemma cnf_lit_xor_neqb E b1 b2 l1 l2 :
@@ -32,6 +33,34 @@ Lemma cnf_lit_eq_eqb E b1 b2 l1 l2 :
 Proof.
   rewrite /enc_bit /cnf_lit_eq /=. rewrite !interp_lit_neg_lit.
   move=> /eqP -> /eqP ->. by case: b1; case: b2.
+Qed.
+
+
+
+(* ===== Word extension ===== *)
+
+Definition extzip_ff := extzip lit_ff lit_ff.
+
+Lemma enc_bits_unzip1_extzip E ls1 ls2 bs1 bs2 :
+  enc_bit E lit_tt b1 -> enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (unzip1 (extzip_ff ls1 ls2)) (unzip1 (extzip0 bs1 bs2)).
+Proof.
+  rewrite /extzip_ff /extzip0 !unzip1_extzip => Henc_tt Henc1 Henc2.
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2).
+  rewrite (enc_bits_cat Henc1); first reflexivity.
+  rewrite enc_bits_copy; first reflexivity.
+  rewrite enc_bit_not. exact: Henc_tt.
+Qed.
+
+Lemma enc_bits_unzip2_extzip E ls1 ls2 bs1 bs2 :
+  enc_bit E lit_tt b1 -> enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (unzip2 (extzip_ff ls1 ls2)) (unzip2 (extzip0 bs1 bs2)).
+Proof.
+  rewrite /extzip_ff /extzip0 !unzip2_extzip => Henc_tt Henc1 Henc2.
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2).
+  rewrite (enc_bits_cat Henc2); first reflexivity.
+  rewrite enc_bits_copy; first reflexivity.
+  rewrite enc_bit_not. exact: Henc_tt.
 Qed.
 
 
