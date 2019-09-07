@@ -53,6 +53,8 @@ Definition var_tt := 1%positive.
 Definition lit_tt : literal := Pos var_tt.
 Definition lit_ff : literal := Neg var_tt.
 
+Definition lit_of_bool b := if b then lit_tt else lit_ff.
+
 Definition var_of_lit l :=
   match l with
   | Pos v => v
@@ -325,6 +327,9 @@ Definition enc_bit E l b : bool := interp_lit E l == b.
 
 Definition enc_bits E (ls : word) (bs : bits) : bool := interp_word E ls == bs.
 
+Lemma enc_bit_tt_ff E : enc_bit E lit_tt true = enc_bit E lit_ff false.
+Proof. rewrite /enc_bit /=. by case: (E var_tt). Qed.
+
 Lemma enc_bit_change_lit E b l1 l2 :
   interp_lit E l1 = interp_lit E l2 -> enc_bit E l1 b = enc_bit E l2 b.
 Proof. move=> H. by rewrite /enc_bit H. Qed.
@@ -368,6 +373,9 @@ Proof. rewrite eq_sym. reflexivity. Qed.
 
 Lemma enc_bits_nil_r E ls : enc_bits E ls [::] = (ls == [::]).
 Proof. by case: ls. Qed.
+
+Lemma enc_bits_seq1 E l b : enc_bits E [:: l] [:: b] = enc_bit E l b.
+Proof. rewrite /enc_bits /enc_bit /=. by case: b; case: (interp_lit E l). Qed.
 
 Lemma enc_bits_cons E ls_hd (ls_tl : word) bs_hd (bs_tl : bits) :
   enc_bits E (cons ls_hd ls_tl) (cons bs_hd bs_tl) =
@@ -561,6 +569,25 @@ Qed.
 Lemma enc_bits_rev E ls bs : enc_bits E ls bs -> enc_bits E (rev ls) (rev bs).
 Proof. move=> H. rewrite /rev. by apply: (enc_bits_catrev H). Qed.
 
+Lemma enc_bit_lit_of_bool E b : enc_bit E (lit_of_bool b) b = enc_bit E lit_tt true.
+Proof. case: b => //=. by rewrite enc_bit_tt_ff. Qed.
+
+Lemma enc_bits_lit_of_bool E bs :
+  enc_bit E lit_tt true -> enc_bits E (map lit_of_bool bs) bs.
+Proof.
+  move=> Htt. elim: bs => [| hd tl IH] //=. rewrite enc_bits_cons.
+  by rewrite enc_bit_lit_of_bool Htt IH.
+Qed.
+
+Lemma enc_bits_map_lit_of_bool_nonempty E bs :
+  0 < size bs -> enc_bits E (map lit_of_bool bs) bs = enc_bit E lit_tt true.
+Proof.
+  elim: bs => [| hd [| tl_hd tl_tl] IH] _ //=.
+  - by rewrite enc_bits_seq1 enc_bit_lit_of_bool.
+  - rewrite enc_bits_cons. rewrite IH; last by done.
+    by rewrite enc_bit_lit_of_bool andb_diag.
+Qed.
+
 Lemma enc_bit_env_upd_eq_pos E x b : enc_bit (env_upd E x b) (Pos x) b.
 Proof. rewrite /enc_bit /=. by rewrite env_upd_eq. Qed.
 
@@ -682,6 +709,10 @@ Proof.
   rewrite (interp_lit_env_upd_neq _ _ Hneq). reflexivity.
 Qed.
 
+Lemma newer_than_lit_lit_of_bool g b :
+  newer_than_lit g (lit_of_bool b) = newer_than_lit g lit_tt.
+Proof. by case: b. Qed.
+
 Lemma newer_than_lits_cons g l ls :
   newer_than_lits g (l::ls) = newer_than_lit g l && newer_than_lits g ls.
 Proof. reflexivity. Qed.
@@ -706,6 +737,22 @@ Lemma newer_than_lits_catrev g ls1 ls2 :
 Proof.
   elim: ls1 ls2 => [| hd1 tl1 IH1] ls2 //=. rewrite IH1 newer_than_lits_cons.
   by rewrite andb_assoc (andb_comm _ (newer_than_lit g hd1)).
+Qed.
+
+Lemma newer_than_lits_lit_of_bool g bs :
+  newer_than_lit g lit_tt -> newer_than_lits g (map lit_of_bool bs).
+Proof.
+  move=> H. elim: bs => [| hd tl IH] //=. by rewrite newer_than_lit_lit_of_bool H IH.
+Qed.
+
+Lemma newer_than_lits_lit_of_bool_nonempty g bs :
+  0 < size bs ->
+  newer_than_lits g (map lit_of_bool bs) = newer_than_lit g lit_tt.
+Proof.
+  elim: bs => [| hd [| tl_hd tl_tl] IH] _ //.
+  - by rewrite /= newer_than_lit_lit_of_bool andbT.
+  - rewrite newer_than_lits_cons IH; last by done.
+      by rewrite newer_than_lit_lit_of_bool andb_diag.
 Qed.
 
 Lemma newer_than_lits_neq g ls l :
