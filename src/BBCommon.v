@@ -401,5 +401,5 @@ Ltac split_andb_hyps :=
 Ltac split_andb_goal :=
    repeat (match goal with
           | |- ?l /\ ?r => split
-          | |- is_true (andb ?l ?r) => apply /andP
+          | |- is_true (andb ?l ?r) => move /andP
           end).
