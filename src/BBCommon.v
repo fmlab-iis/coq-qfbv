@@ -137,6 +137,7 @@ Ltac t_preserve_hook :=
   | H : env_preserve _ ?E ?g |- env_preserve _ ?E ?g => apply: (env_preserve_trans _ H)
   | H : env_preserve ?E1 ?E2 ?g1 |- env_preserve ?E1 ?E2 ?g2 =>
     apply: (env_preserve_le H)
+  | |- env_preserve ?E (env_upd ?E ?g _) ?g => exact: env_upd_eq_preserve
   end.
 
 Ltac t_auto_preserve := t_auto with ltac:(fun _ => t_preserve_hook || t_newer_hook).
@@ -386,3 +387,19 @@ Ltac dite_hyps :=
     dcase c; case=> H1 H2; dite_hyps
   | |- _ => idtac
   end.
+
+
+(* split_andb *)
+Ltac split_andb_hyps :=
+  repeat (match goal with
+          | H : is_true (andb ?l ?r) |- _ => move/andP: H;
+                                             let H1 := fresh in
+                                             let H2 := fresh in
+                                             move=> [H1 H2]
+          end).
+
+Ltac split_andb_goal :=
+   repeat (match goal with
+          | |- ?l /\ ?r => split
+          | |- is_true (andb ?l ?r) => apply /andP
+          end).
