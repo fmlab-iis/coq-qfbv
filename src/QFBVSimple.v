@@ -1050,7 +1050,7 @@ Module Make (V : SsrOrderedType) (A : Arch).
 
   Fixpoint nexp_ltb (e1 e2 : nexp) : bool :=
     match e1, e2 with
-    | nbvVar v1, nbvVar v2 => V.ltb v1 v2
+    | nbvVar v1, nbvVar v2 => V.ltn v1 v2
     | nbvConst w1 n1, nbvConst w2 n2 => const_ltb n1 n2
     | nbvNot e1, nbvNot e2 => nexp_ltb e1 e2
     | nbvAnd e1 e2, nbvAnd e3 e4 => (nexp_ltb e1 e3) || ((e1 == e3) && nexp_ltb e2 e4)
@@ -1724,34 +1724,34 @@ Module Make (V : SsrOrderedType) (A : Arch).
 
   Module NexpOrderedMinimal <: SsrOrderedTypeMinimal.
     Definition t := nexp_eqType.
-    Definition eq (e1 e2 : t) : bool := e1 == e2.
-    Definition lt (e1 e2 : t) : bool := nexp_ltb e1 e2.
-    Lemma lt_trans : forall (e1 e2 e3 : t), lt e1 e2 -> lt e2 e3 -> lt e1 e3.
+    Definition eqn (e1 e2 : t) : bool := e1 == e2.
+    Definition ltn (e1 e2 : t) : bool := nexp_ltb e1 e2.
+    Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
     Proof.
       exact: nexp_ltb_trans.
     Qed.
-    Lemma lt_not_eq (e1 e2 : t) : lt e1 e2 -> e1 != e2.
+    Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
     Proof.
       exact: nexp_ltb_not_eqb.
     Qed.
-    Definition compare (e1 e2 : t) : Compare lt eq e1 e2 := nexp_compare e1 e2.
+    Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := nexp_compare e1 e2.
   End NexpOrderedMinimal.
 
   Module NexpOrdered := MakeSsrOrderedType NexpOrderedMinimal.
 
   Module NbexpOrderedMinimal <: SsrOrderedTypeMinimal.
     Definition t := nbexp_eqType.
-    Definition eq (e1 e2 : t) : bool := e1 == e2.
-    Definition lt (e1 e2 : t) : bool := nbexp_ltb e1 e2.
-    Lemma lt_trans : forall (e1 e2 e3 : t), lt e1 e2 -> lt e2 e3 -> lt e1 e3.
+    Definition eqn (e1 e2 : t) : bool := e1 == e2.
+    Definition ltn (e1 e2 : t) : bool := nbexp_ltb e1 e2.
+    Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
     Proof.
       exact: nbexp_ltb_trans.
     Qed.
-    Lemma lt_not_eq (e1 e2 : t) : lt e1 e2 -> e1 != e2.
+    Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
     Proof.
       exact: nbexp_ltb_not_eqb.
     Qed.
-    Definition compare (e1 e2 : t) : Compare lt eq e1 e2 := nbexp_compare e1 e2.
+    Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := nbexp_compare e1 e2.
   End NbexpOrderedMinimal.
 
   Module NbexpOrdered := MakeSsrOrderedType NbexpOrderedMinimal.

@@ -14,7 +14,7 @@ Module ValueType <: HasDefaultTyp.
   Definition default : t := [::].
 End ValueType.
 
-Module State := RealizableTStoreAdapter NOrder ValueType.
+Module State := RealizableTStoreAdapter UVarOrder ValueType.
 
 Section QFBV.
 
@@ -607,10 +607,10 @@ Section QFBV.
     move=> Hlt; apply/eqP => Heq. rewrite Heq bexp_ltnn in Hlt. discriminate.
   Qed.
 
-  Lemma exp_ltn_not_eqb (e1 e2 : exp) : exp_ltn e1 e2 -> e1 != e2.
+  Lemma exp_ltn_not_eqn (e1 e2 : exp) : exp_ltn e1 e2 -> e1 != e2.
   Proof. move=> H. rewrite (exp_ltn_eqF H). reflexivity. Qed.
 
-  Lemma bexp_ltn_not_eqb (e1 e2 : bexp) : bexp_ltn e1 e2 -> e1 != e2.
+  Lemma bexp_ltn_not_eqn (e1 e2 : bexp) : bexp_ltn e1 e2 -> e1 != e2.
   Proof. move=> H. rewrite (bexp_ltn_eqF H). reflexivity. Qed.
 
   Ltac t_auto_hook ::=
@@ -739,26 +739,26 @@ End QFBV.
 
 Module ExpOrderedMinimal <: SsrOrderedTypeMinimal.
   Definition t := exp_eqType.
-  Definition eq (e1 e2 : t) : bool := e1 == e2.
-  Definition lt (e1 e2 : t) : bool := exp_ltn e1 e2.
-  Lemma lt_trans : forall (e1 e2 e3 : t), lt e1 e2 -> lt e2 e3 -> lt e1 e3.
+  Definition eqn (e1 e2 : t) : bool := e1 == e2.
+  Definition ltn (e1 e2 : t) : bool := exp_ltn e1 e2.
+  Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
   Proof. exact: exp_ltn_trans. Qed.
-  Lemma lt_not_eq (e1 e2 : t) : lt e1 e2 -> e1 != e2.
-  Proof. exact: exp_ltn_not_eqb. Qed.
-  Definition compare (e1 e2 : t) : Compare lt eq e1 e2 := exp_compare e1 e2.
+  Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
+  Proof. exact: exp_ltn_not_eqn. Qed.
+  Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := exp_compare e1 e2.
 End ExpOrderedMinimal.
 
-Module ExpOrdered := MakeSsrOrderedType ExpOrderedMinimal.
+Module ExpOrdered <: SsrOrderedTypeWithFacts := MakeSsrOrderedType ExpOrderedMinimal.
 
 Module BexpOrderedMinimal <: SsrOrderedTypeMinimal.
   Definition t := bexp_eqType.
-  Definition eq (e1 e2 : t) : bool := e1 == e2.
-  Definition lt (e1 e2 : t) : bool := bexp_ltn e1 e2.
-  Lemma lt_trans : forall (e1 e2 e3 : t), lt e1 e2 -> lt e2 e3 -> lt e1 e3.
+  Definition eqn (e1 e2 : t) : bool := e1 == e2.
+  Definition ltn (e1 e2 : t) : bool := bexp_ltn e1 e2.
+  Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
   Proof. exact: bexp_ltn_trans. Qed.
-  Lemma lt_not_eq (e1 e2 : t) : lt e1 e2 -> e1 != e2.
-  Proof. exact: bexp_ltn_not_eqb. Qed.
-  Definition compare (e1 e2 : t) : Compare lt eq e1 e2 := bexp_compare e1 e2.
+  Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
+  Proof. exact: bexp_ltn_not_eqn. Qed.
+  Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := bexp_compare e1 e2.
 End BexpOrderedMinimal.
 
 Module BexpOrdered := MakeSsrOrderedType BexpOrderedMinimal.

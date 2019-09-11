@@ -1094,11 +1094,11 @@ Qed.
 
 Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
   Definition t := lit_eqType.
-  Definition eq (x y : t) := x == y.
-  Definition lt (x y : t) := lit_lt x y.
-  Definition lt_trans := lit_lt_trans.
-  Definition lt_not_eq := lit_lt_not_eq.
-  Definition compare (x y : t) : Compare lt eq x y.
+  Definition eqn (x y : t) := x == y.
+  Definition ltn (x y : t) := lit_lt x y.
+  Definition ltn_trans := lit_lt_trans.
+  Definition ltn_not_eqn := lit_lt_not_eq.
+  Definition compare (x y : t) : Compare ltn eqn x y.
   Proof.
     case Heq: (x == y).
     - exact: (EQ Heq).
@@ -1110,8 +1110,8 @@ Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
         apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
   Defined.
 End LiteralOrderedMinimal.
-Module LiteralOrdered := MakeSsrOrderedType LiteralOrderedMinimal.
-Module ClauseOrdered := SeqOrdered LiteralOrdered.
+Module LiteralOrdered <: SsrOrderedTypeWithFacts := MakeSsrOrderedType LiteralOrderedMinimal.
+Module ClauseOrdered <: SsrOrderedTypeWithFacts := SeqOrdered LiteralOrdered.
 Module ClauseSet := FSets.MakeTreeSet ClauseOrdered.
 
 Definition cnf_imp_each E (cs1 cs2 : cnf) :=
