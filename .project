@@ -10,6 +10,10 @@ src/BBCommon.v
 src/BBVar.v
 src/BBConst.v
 src/BBAnd.v
+src/BBEq.v
+src/BBConj.v
+src/BBDisj.v
+src/BBLneg.v
 src/QFBVSimple.v
 src/CNFSimple.v
 src/BBCommonSimple.v

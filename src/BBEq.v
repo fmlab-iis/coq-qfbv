@@ -14,9 +14,9 @@ Fixpoint bit_blast_eq_eq_zip r lsp : cnf :=
   match lsp with
   | [::] => [::]
   | (l1, l2)::tl =>
-      let cs_hd := List.map (fun cs => neg_lit r::cs) (cnf_lit_eq l1 l2) in
-      let cs_tl := bit_blast_eq_eq_zip r tl in
-      catrev cs_hd cs_tl
+    let cs_hd := List.map (fun cs => neg_lit r::cs) (cnf_lit_eq l1 l2) in
+    let cs_tl := bit_blast_eq_eq_zip r tl in
+    catrev cs_hd cs_tl
   end.
 
 Definition bit_blast_eq_choice r (auxs: word) : cnf :=
@@ -26,28 +26,28 @@ Fixpoint bit_blast_eq_neq_zip g lsp : generator * cnf * word :=
   match lsp with
   | [::] => (g, [::], [::])
   | (l1, l2)::tl =>
-      let (g_hd, auxs_hd) := gen g in
-      let cs_hd := [:: [:: neg_lit auxs_hd; l1; l2];
-                      [:: neg_lit auxs_hd; neg_lit l1; neg_lit l2];
-                      [:: auxs_hd; neg_lit l1; l2];
-                      [:: auxs_hd; l1; neg_lit l2] ] in
-      let '(g_tl, cs_tl, auxs_tl) := bit_blast_eq_neq_zip g_hd tl in
-      (g_tl, catrev cs_hd cs_tl, auxs_hd :: auxs_tl)
+    let (g_hd, auxs_hd) := gen g in
+    let cs_hd := [:: [:: neg_lit auxs_hd; l1; l2];
+                    [:: neg_lit auxs_hd; neg_lit l1; neg_lit l2];
+                    [:: auxs_hd; neg_lit l1; l2];
+                    [:: auxs_hd; l1; neg_lit l2] ] in
+    let '(g_tl, cs_tl, auxs_tl) := bit_blast_eq_neq_zip g_hd tl in
+    (g_tl, catrev cs_hd cs_tl, auxs_hd :: auxs_tl)
   end.
 
 Fixpoint mk_env_eq_neq_zip E g lsp : env * generator * cnf * word :=
   match lsp with
   | [::] => (E, g, [::], [::])
   | (l1, l2)::tl =>
-      let (g_hd, auxs_hd) := gen g in
-      let E' := env_upd E (var_of_lit auxs_hd)
-                        (xorb (interp_lit E l1) (interp_lit E l2)) in
-      let cs_hd := [:: [:: neg_lit auxs_hd; l1; l2];
-                      [:: neg_lit auxs_hd; neg_lit l1; neg_lit l2];
-                      [:: auxs_hd; neg_lit l1; l2];
-                      [:: auxs_hd; l1; neg_lit l2] ] in
-      let '(E_tl, g_tl, cs_tl, auxs_tl) := mk_env_eq_neq_zip E' g_hd tl in
-      (E_tl, g_tl, catrev cs_hd cs_tl, auxs_hd :: auxs_tl)
+    let (g_hd, auxs_hd) := gen g in
+    let E' := env_upd E (var_of_lit auxs_hd)
+                      (xorb (interp_lit E l1) (interp_lit E l2)) in
+    let cs_hd := [:: [:: neg_lit auxs_hd; l1; l2];
+                    [:: neg_lit auxs_hd; neg_lit l1; neg_lit l2];
+                    [:: auxs_hd; neg_lit l1; l2];
+                    [:: auxs_hd; l1; neg_lit l2] ] in
+    let '(E_tl, g_tl, cs_tl, auxs_tl) := mk_env_eq_neq_zip E' g_hd tl in
+    (E_tl, g_tl, catrev cs_hd cs_tl, auxs_hd :: auxs_tl)
   end.
 
 Definition bit_blast_eq_zip (g : generator) lsp : generator * cnf * literal :=
@@ -78,7 +78,7 @@ Lemma bit_blast_eq_eq_zip_correct E bsp lsp lr:
 Proof.
   elim: lsp E bsp lr => [| [ls1_hd ls2_hd] lsp_tl IH] E bsp lr.
   - rewrite !enc_bits_nil_l unzip1_l_nil.
-    by case/eqP => ->.
+      by case/eqP => ->.
   - rewrite /=.
     case: bsp => [| [bsp_hd1 bsp_hd2] bsp_tl] //=.
     rewrite !enc_bits_cons. move=> /andP [Henc1hd Henc1tl] /andP [Henc2hd Henc2tl].
@@ -123,7 +123,7 @@ Proof.
       rewrite !interp_lit_neg_lit in Hcnf. rewrite Haux /= !orbF in Hcnf. split_andb_hyps.
       move=> Heq. injection Heq => Heqtl Heqhd. move: H0 H1.
       move: (enc_bit_eq_lit Heqhd Henc1hd Henc2hd) => ->.
-      by case: (interp_lit E ls2_hd).
+        by case: (interp_lit E ls2_hd).
     + move=> Hin.
       have Hexists: (exists laux : literal,
                         laux \in auxs_tl /\ interp_lit E laux).
@@ -163,11 +163,11 @@ Proof.
 Qed.
 
 Lemma bit_blast_eq_zip_correct E g bsp lsp g' cs lr:
-    bit_blast_eq_zip g lsp = (g', cs, lr) ->
-    enc_bits E (unzip1 lsp) (unzip1 bsp) ->
-    enc_bits E (unzip2 lsp) (unzip2 bsp) ->
-    interp_cnf E (add_prelude cs) ->
-    enc_bit E lr (unzip1 bsp == unzip2 bsp).
+  bit_blast_eq_zip g lsp = (g', cs, lr) ->
+  enc_bits E (unzip1 lsp) (unzip1 bsp) ->
+  enc_bits E (unzip2 lsp) (unzip2 bsp) ->
+  interp_cnf E (add_prelude cs) ->
+  enc_bit E lr (unzip1 bsp == unzip2 bsp).
 Proof.
   rewrite /bit_blast_eq_zip.
   rewrite /gen. case Hneq: (bit_blast_eq_neq_zip (g+1)%positive lsp) =>
@@ -185,260 +185,262 @@ Qed.
 
 Lemma bit_blast_eq_correct g bs1 bs2 E ls1 ls2 g' cs lr :
   bit_blast_eq g ls1 ls2 = (g', cs, lr) ->
+  size ls1 = size ls2 ->
   enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 -> interp_cnf E (add_prelude cs) ->
   enc_bit E lr (bs1 == bs2).
 Proof.
-  rewrite /bit_blast_eq => Hbb Henc1 Henc2 Hcs.
+  rewrite /bit_blast_eq => Hbb Hsz Henc1 Henc2 Hcs.
   move: (enc_bits_size Henc1) (enc_bits_size Henc2) => Hs1 Hs2.
   move: (add_prelude_enc_bit_tt Hcs) => Henctt.
   move: (bit_blast_eq_zip_correct Hbb
-                                    (enc_bits_unzip1_extzip Henctt Henc1 Henc2)
-                                    (enc_bits_unzip2_extzip Henctt Henc1 Henc2) Hcs).
-Abort.
+                                  (enc_bits_unzip1_extzip Henctt Henc1 Henc2)
+                                  (enc_bits_unzip2_extzip Henctt Henc1 Henc2) Hcs).
 
-
-(*
-Lemma bit_blast_eq_correct :
-  forall w g (bs1 bs2 : bits) E g' ls1 ls2 cs lr,
-    size bs1 = w ->
-    size bs2 = w ->
-    bit_blast_eq g ls1 ls2 = (g', cs, lr) ->
-    enc_bits E ls1 bs1 ->
-    enc_bits E ls2 bs2 ->
-    interp_cnf E (add_prelude cs) ->
-    enc_bit E lr (bs1 == bs2).
-Proof.
-  move=> w ig ibs1 ibs2 E og ils1 ils2 cs olr Hszb1 Hszb2.
-  rewrite /bit_blast_eq.
-  rewrite /gen. case Hneq: (bit_blast_eq_neq w (ig+1)%positive ils1 ils2) =>
-                [[g_aux cs_neq] auxs]. set r := Pos ig.
-  case=> _ <- <- Henc1 Henc2 Hcnf.
-  rewrite add_prelude_catrev add_prelude_cons in Hcnf.
-  move/andP: Hcnf=> [Hcnf_neq Hcnf]. move/andP: Hcnf=> [Hcnf_auxs Hcnf_eq].
-  rewrite /enc_bit. case Hr: (interp_lit E r).
-  - apply/eqP; symmetry. apply/eqP.
-    exact: (bit_blast_eq_eq_correct Hszb1 Hszb2 Henc1 Henc2 Hcnf_eq Hr).
-  - move: (bit_blast_eq_choice_correct Hcnf_auxs). rewrite Hr.
-    case => H; first by elim H. apply/eqP; symmetry. apply/eqP.
-    exact: (bit_blast_eq_neq_correct Hszb1 Hszb2 Hneq Henc1 Henc2 Hcnf_neq H).
+  have H1: (size bs2 <= size bs1) by rewrite -Hs1 -Hs2 Hsz.
+  have H2: (size bs1 <= size bs2) by rewrite -Hs1 -Hs2 Hsz.
+  rewrite /extzip0.
+  rewrite (unzip1_extzip_ll b0 b0 H1).
+  rewrite (unzip2_extzip_rl b0 b0 H2).
+  done.
 Qed.
 
-Lemma mk_env_eq_neq_is_bit_blast_eq_neq :
-  forall w E g ls1 ls2 E' g' cs lrs,
-    mk_env_eq_neq w E g ls1 ls2 = (E', g', cs, lrs) ->
-    bit_blast_eq_neq w g ls1 ls2 = (g', cs, lrs).
+Lemma mk_env_eq_neq_zip_is_bit_blast_eq_neq_zip E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
+  bit_blast_eq_neq_zip g lsp = (g', cs, lr).
 Proof.
-  elim.
-  - rewrite /=; intros; dcase_hyps; subst; reflexivity.
-  - move=> w IH E g ls1 ls2 E' g' cs lrs.
-    rewrite /=.
-    dcase (mk_env_eq_neq w
-      (env_upd E g
-         (xorb (interp_lit E (head lit_ff ls1))
-            (interp_lit E (head lit_ff ls2)))) (g + 1)%positive
-      (behead ls1) (behead ls2) ) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
-    rewrite (IH _ _ _ _ _ _ _ _ Henv_tl).
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH ]E g E' g' cs lr //=.
+  - intros; dcase_hyps; subst; reflexivity.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    rewrite (IH _ _ _ _ _ _ Henv_tl).
+      by case=> _ <- <- <-.
+Qed.
+
+Lemma mk_env_eq_zip_is_bit_blast_eq_zip E g lsp E' g' cs lrs:
+  mk_env_eq_zip E g lsp = (E', g', cs, lrs) ->
+  bit_blast_eq_zip g lsp = (g', cs, lrs).
+Proof.
+  rewrite /mk_env_eq_zip /bit_blast_eq_zip /=; intros; dcase_hyps; subst.
+  move: H.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[? ?] ?] ?] H].
+  rewrite (mk_env_eq_neq_zip_is_bit_blast_eq_neq_zip H).
     by case=> _ <- <- <-.
 Qed.
 
-Lemma mk_env_eq_is_bit_blast_eq :
-  forall w E g ls1 ls2  E' g' cs lrs,
-    mk_env_eq w E g ls1 ls2 = (E', g', cs, lrs) ->
-    bit_blast_eq w g ls1 ls2 = (g', cs, lrs).
+Lemma mk_env_eq_is_bit_blast_eq E g ls1 ls2 E' g' cs lr:
+  mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
+  bit_blast_eq g ls1 ls2 = (g', cs, lr).
 Proof.
-  rewrite /mk_env_eq /bit_blast_eq /=; intros; dcase_hyps; subst.
-  move: H.
-  dcase (mk_env_eq_neq w (env_upd E g (interp_word E ls1 == interp_word E ls2))
-      (g + 1)%positive ls1 ls2 ) => [[[[E_aux g_aux] cs_neq] auxs] Henv].
-  rewrite (mk_env_eq_neq_is_bit_blast_eq_neq Henv).
-  by case=> _ <- <- <-.
+  exact: mk_env_eq_zip_is_bit_blast_eq_zip.
 Qed.
 
-Lemma mk_env_eq_neq_newer_gen :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-  mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lr) ->
+Lemma mk_env_eq_neq_zip_newer_gen E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
   (g <=? g')%positive.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lr /=. case=> _ <- _ _. exact: Pos.leb_refl.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl]. rewrite /= !theadE !beheadCons.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> _ <- _ _ _. move: (IH _ _ _ _ _ _ _ _ Henv) => H.
-    apply: (pos_leb_trans _ H). exact: pos_leb_add_diag_r.
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g E' g' cs lr /=.
+  - case; t_auto_newer.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    case=> _ <- _ _.
+    move: (IH _ _ _ _ _ _ Henv_tl) => H.
+    t_auto_newer.
 Qed.
 
-Lemma mk_env_eq_newer_gen :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
+Lemma mk_env_eq_zip_newer_gen E g lsp E' g' cs lrs:
+  mk_env_eq_zip E g lsp = (E', g', cs, lrs) ->
+  (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_eq_zip /gen /=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[? ?] ?] ?] H].
+  case=> _ <- _ _.
+  move: (mk_env_eq_neq_zip_newer_gen H).
+  by t_auto_newer.
+Qed.
+
+Lemma mk_env_eq_newer_gen E g ls1 ls2 E' g' cs lr:
   mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
   (g <=? g')%positive.
 Proof.
-  move=> w E g ls1 ls2 E' g' cs lr. rewrite /mk_env_eq /gen.
-  case Hneq: (mk_env_eq_neq
-                (env_upd E (var_of_lit (Pos g))
-                         (interp_lits E ls1 == interp_lits E ls2))
-                (g + 1)%positive ls1 ls2)=> [[[E_aux g_aux] cs_neq] auxs].
-  case=> _ <- _ _. move: (mk_env_eq_neq_newer_gen Hneq) => H.
-  apply: (pos_leb_trans _ H). exact: pos_leb_add_diag_r.
+  exact: mk_env_eq_zip_newer_gen.
 Qed.
 
-Lemma mk_env_eq_neq_newer_res :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-  mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lr) ->
+Lemma mk_env_eq_neq_zip_newer_res E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
   newer_than_lits g' lr.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lr /=. case=> _ <- _ <-. done.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl]. rewrite /= !theadE !beheadCons.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> _ <- _ <- <-. rewrite (IH _ _ _ _ _ _ _ _ Henv) andbT.
-    move: (mk_env_eq_neq_newer_gen Henv) => H.
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g E' g' cs lr /=.
+  - by case=> _ <- _ <-.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    case=> _ <- _ <-.
+    move: (IH _ _ _ _ _ _ Henv_tl) => H.
+    move: (mk_env_eq_neq_zip_newer_gen Henv_tl) => H2.
+    t_auto_newer.
     rewrite /newer_than_lit /newer_than_var /=.
-    exact: (pos_ltb_leb_trans (pos_ltb_add_diag_r g 1) H).
+    by t_auto_newer.
 Qed.
 
-Lemma mk_env_eq_newer_res :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
+Lemma mk_env_eq_zip_newer_res E g lsp E' g' cs lr:
+  mk_env_eq_zip E g lsp = (E', g', cs, lr) ->
+  newer_than_lit g' lr.
+Proof.
+  rewrite /mk_env_eq_zip /gen /=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[E_aux g_aux] cs_neq] auxs] H].
+  case=> _ <- _ <-.
+  move: (mk_env_eq_neq_zip_newer_gen H).
+  t_auto_newer.
+    rewrite /newer_than_lit /newer_than_var /=.
+  by t_auto_newer.
+Qed.
+
+Lemma mk_env_eq_newer_res E g ls1 ls2 E' g' cs lr:
   mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
   newer_than_lit g' lr.
 Proof.
-  move=> w E g ls1 ls2 E' g' cs lr. rewrite /mk_env_eq /gen.
-  case Henv: (mk_env_eq_neq
-                (env_upd E (var_of_lit (Pos g))
-                         (interp_lits E ls1 == interp_lits E ls2))
-                (g + 1)%positive ls1 ls2)=> [[[E_aux g_aux] cs_neq] auxs].
-  case=> _ <- _ <-. move: (mk_env_eq_neq_newer_gen Henv) => H.
-  apply: (newer_than_lit_le_newer _ H). exact: newer_than_lit_add_diag_r.
+  exact: mk_env_eq_zip_newer_res.
 Qed.
 
-Lemma bit_blast_eq_eq_newer_cnf :
-forall w g g' (ls1 ls2 : w.-tuple literal),
+Lemma bit_blast_eq_eq_zip_newer_cnf g lsp g':
   (g <? g')%positive ->
-  newer_than_lits g ls1 -> newer_than_lits g ls2 ->
-  newer_than_cnf g' (bit_blast_eq_eq (Pos g) ls1 ls2).
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
+  newer_than_cnf g' (bit_blast_eq_eq_zip (Pos g) lsp).
 Proof.
-  elim.
-  - move=> g g' ls1 ls2 H_gg' Hnew_gls1 Hnew_gls2 /=. done.
-  - move=> w IH g g'. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    rewrite /= !theadE !beheadCons. move=> Hgg' /andP [Hnew_gls1hd Hnew_gls1tl].
-    move/andP=> [Hnew_gls2hd Hnew_gls2tl]. rewrite !newer_than_lit_neg.
-    move: (pos_ltb_leb_incl Hgg') => Hgg'_le.
-    rewrite (newer_than_lit_le_newer Hnew_gls1hd Hgg'_le).
-    rewrite (newer_than_lit_le_newer Hnew_gls2hd Hgg'_le).
-    rewrite (IH _ _ _ _ Hgg' Hnew_gls1tl Hnew_gls2tl).
-    rewrite /newer_than_lit /newer_than_var /=. by rewrite Hgg'.
+  elim: lsp g g' => [| [ls1_hd ls2_hd] lsp_tl IH] g g' //=.
+  move=> Hgg' /andP [Hnew_gls1hd Hnew_gls1tl] /andP [Hnew_gls2hd Hnew_gls2tl].
+  rewrite !newer_than_lit_neg.
+  split_andb_goal; t_auto_newer.
+  by apply: IH.
 Qed.
 
-Lemma mk_env_eq_neq_newer_cnf :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-  mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lr) ->
-  newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+Lemma mk_env_eq_neq_zip_newer_cnf E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
   newer_than_cnf g' cs.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lr /=. case=> _ <- <- _ Hnew_gls1 Hnew_gls2.
-    done.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl]. rewrite /= !theadE !beheadCons.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> _ <- <- _ _. move/andP=> [Hnew_gls1_hd Hnew_gls1_tl].
-    move/andP=> [Hnew_gls2_hd Hnew_gls2_tl]. rewrite /=.
-    move: (mk_env_eq_neq_newer_gen Henv) => H_gp1gtl.
-    move: (pos_leb_add_diag_r g 1) => H_ggp1.
-    move: (pos_leb_trans H_ggp1 H_gp1gtl) => H_ggtl.
-    rewrite !newer_than_lit_neg.
-    move: (newer_than_lit_le_newer Hnew_gls1_hd H_ggtl) => ->.
-    move: (newer_than_lit_le_newer Hnew_gls2_hd H_ggtl) => ->.
-    move: (IH _ _ _ _ _ _ _ _ Henv
-              (newer_than_lits_le_newer Hnew_gls1_tl H_ggp1)
-              (newer_than_lits_le_newer Hnew_gls2_tl H_ggp1)) => ->.
-    rewrite /newer_than_lit /newer_than_var /=.
-    rewrite (pos_ltb_leb_trans (pos_ltb_add_diag_r g 1) H_gp1gtl). done.
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g  E' g' cs lr //=.
+  - by case=> _ <- <- _.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    case=> _ <- <- _.
+    move: (IH _ _ _ _ _ _ Henv_tl) => H.
+    move: (mk_env_eq_neq_zip_newer_gen Henv_tl) => H2.
+    move=> /andP [Hnew_gls1hd Hnew_gls1tl] /andP [Hnew_gls2hd Hnew_gls2tl].
+    rewrite /= !newer_than_lit_neg.
+    split_andb_goal; t_auto_newer.
+    all:  rewrite /newer_than_lit /newer_than_var /=; t_auto_newer.
+      by apply: H; t_auto_newer.
 Qed.
 
-Lemma mk_env_eq_newer_cnf :
-forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
+Lemma mk_env_eq_zip_newer_cnf E g lsp E' g' cs lr:
+  mk_env_eq_zip E g lsp = (E', g', cs, lr) ->
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
+  newer_than_cnf g' cs.
+Proof.
+  rewrite /mk_env_eq_zip /gen /=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[E_aux g_aux] cs_neq] auxs] H].
+  case=> _ <- <- _.
+  move: (mk_env_eq_neq_zip_newer_gen H) => Hg1gg Hnew_gls1 Hnew_gls2.
+  move: (mk_env_eq_neq_zip_newer_res H) => Hnres_eq_neq.
+  move: (mk_env_eq_neq_zip_newer_cnf H) => Hncnf_eq_neq.
+  have Hggaux: (g <? g_aux)%positive by t_auto_newer.
+  move: (bit_blast_eq_eq_zip_newer_cnf Hggaux Hnew_gls1 Hnew_gls2) => Hncnf_eq_eq.
+  t_auto_newer.
+  by apply: Hncnf_eq_neq; t_auto_newer.
+Qed.
+
+Lemma mk_env_eq_newer_cnf E g ls1 ls2 E' g' cs lr:
   mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
+  newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   newer_than_cnf g' cs.
 Proof.
-  move=> w E g ls1 ls2 E' g' cs lr. rewrite /mk_env_eq /gen.
-  case Hneq: (mk_env_eq_neq
-                (env_upd E (var_of_lit (Pos g))
-                         (interp_lits E ls1 == interp_lits E ls2))
-                (g + 1)%positive ls1 ls2)=> [[[E_aux g_aux] cs_neq] auxs].
-  case=> _ <- <- _. move=> Hnew_gls1 Hnew_gls2 /=.
-  rewrite newer_than_cnf_append /=. move: (pos_leb_add_diag_r g 1) => Hggp1.
-  move: (newer_than_lits_le_newer Hnew_gls1 Hggp1) => Hnew_gp1ls1.
-  move: (newer_than_lits_le_newer Hnew_gls2 Hggp1) => Hnew_gp1ls2.
-  move: (mk_env_eq_neq_newer_cnf Hneq Hnew_gp1ls1 Hnew_gp1ls2) => ->.
-  move: (mk_env_eq_neq_newer_res Hneq) => ->.
-  move: (mk_env_eq_neq_newer_gen Hneq) => H_gp1gaux.
-  rewrite /newer_than_lit /newer_than_var /=.
-  move: (pos_ltb_leb_trans (pos_ltb_add_diag_r g 1) H_gp1gaux)=> H_ggaux.
-  rewrite H_ggaux. exact: (bit_blast_eq_eq_newer_cnf H_ggaux Hnew_gls1 Hnew_gls2).
+  rewrite /mk_env_eq.
+  move=> Hzip.
+  move: (mk_env_eq_zip_newer_cnf Hzip) => Hncnf_zip.
+  move=> Hgtt Hgls1 Hgls2.
+    by apply: Hncnf_zip; t_auto_newer.
 Qed.
 
-Lemma mk_env_eq_neq_preserve :
-  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-    mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lr) ->
-    env_preserve E E' g.
+Lemma mk_env_eq_neq_zip_preserve E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
+  env_preserve E E' g.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lr /=. case=> <- _ _ _. exact: env_preserve_refl.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl]. rewrite /= !theadE !beheadCons.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> <- _ _ _ _. move: (IH _ _ _ _ _ _ _ _ Henv) => Hpre.
-    exact: (env_preserve_env_upd_succ Hpre).
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g  E' g' cs lr //=.
+  - by case=> <- _ _ _.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    case=> <- _ _ _.
+    move: (IH _ _ _ _ _ _ Henv_tl) => H.
+    have H2: (env_preserve
+        (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+        E_tl (g)
+) by t_auto_preserve.
+    by t_auto_preserve.
 Qed.
 
-Lemma mk_env_eq_preserve :
-  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-    mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
-    env_preserve E E' g.
+Lemma mk_env_eq_zip_preserve E g lsp E' g' cs lr:
+  mk_env_eq_zip E g lsp = (E', g', cs, lr) ->
+  env_preserve E E' g.
 Proof.
-  move=> w E g ls1 ls2 E' g' cs lr. rewrite /mk_env_eq /gen.
-  case Hneq: (mk_env_eq_neq
-                (env_upd E (var_of_lit (Pos g))
-                         (interp_lits E ls1 == interp_lits E ls2))
-                (g + 1)%positive ls1 ls2)=> [[[E_aux g_aux] cs_neq] auxs].
-  case=> <- _ _ _. exact: (env_preserve_env_upd_succ (mk_env_eq_neq_preserve Hneq)).
+  rewrite /mk_env_eq_zip /gen /=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[E_aux g_aux] cs_neq] auxs] H].
+  case=> <- _ _ _.
+  move: (mk_env_eq_neq_zip_preserve H) => Hpre_eq_neq.
+  eapply env_preserve_env_upd_succ.
+  exact: Hpre_eq_neq.
 Qed.
 
-Lemma mk_env_eq_neq_sat :
-  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-    mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lr) ->
-    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
-    interp_cnf E' cs.
+Lemma mk_env_eq_preserve E g ls1 ls2 E' g' cs lr:
+  mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
+  env_preserve E E' g.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lr /=. case=> <- _ <- _ Hnew_gls1 Hnew_gls2. done.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl]. rewrite /= !theadE !beheadCons.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> <- Hg <- H1 H2. move=> /andP [Hnew_gls1hd Hnew_gls1tl].
-    move=> /andP [Hnew_gls2hd Hnew_gls2tl]. rewrite !interp_cnf_cons.
-    move: (pos_leb_add_diag_r g 1) => H_gg1.
-    move: (newer_than_lit_le_newer Hnew_gls1hd H_gg1) => Hnew_g1ls1hd.
-    move: (newer_than_lit_le_newer Hnew_gls2hd H_gg1) => Hnew_g1ls2hd.
-    move: (newer_than_lits_le_newer Hnew_gls1tl H_gg1) => Hnew_g1ls1tl.
-    move: (newer_than_lits_le_newer Hnew_gls2tl H_gg1) => Hnew_g1ls2tl.
-    rewrite (IH _ _ _ _ _ _ _ _ Henv Hnew_g1ls1tl Hnew_g1ls2tl) /=.
-    rewrite !interp_lit_neg_lit. move: (mk_env_eq_neq_preserve Henv) => Hpre.
+  exact: mk_env_eq_zip_preserve.
+Qed.
+
+Lemma mk_env_eq_neq_zip_sat E g lsp E' g' cs lr:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lr) ->
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
+  interp_cnf E' cs.
+Proof.
+  elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g  E' g' cs lr //=.
+  - by case=> <- _ <- _.
+  - dcase (mk_env_eq_neq_zip
+             (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+             (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+    case=> <- _ <- _.
+    move: (IH _ _ _ _ _ _ Henv_tl) => IHH.
+    move: (mk_env_eq_neq_zip_newer_gen Henv_tl) => H2.
+    move=> /andP [Hnew_gls1hd Hnew_gls1tl] /andP [Hnew_gls2hd Hnew_gls2tl].
+    rewrite /=.
+    have -> : (interp_cnf E_tl cs_tl) by apply: IHH; t_auto_newer.
+    rewrite /= !interp_lit_neg_lit.
+    move: (mk_env_eq_neq_zip_preserve Henv_tl) => Hpre.
     move: (env_preserve_lit Hpre (newer_than_lit_add_diag_r (Pos g) 1))=> /= H_etlg.
-    rewrite env_upd_eq in H_etlg. rewrite H_etlg => {H_etlg}.
+    rewrite env_upd_eq in H_etlg.
+    rewrite H_etlg.
+    have Hnew_g1ls1hd: (newer_than_lit (g+1) ls1_hd) by t_auto_newer.
+    have Hnew_g1ls2hd: (newer_than_lit (g+1) ls2_hd) by t_auto_newer.
     move: (env_preserve_lit Hpre Hnew_g1ls1hd) (env_preserve_lit Hpre Hnew_g1ls2hd).
     rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew_gls1hd)).
     rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew_gls2hd)).
@@ -446,168 +448,107 @@ Proof.
     by case: (interp_lit E ls1_hd); case: (interp_lit E ls2_hd).
 Qed.
 
-Lemma bit_blast_eq_eq_sat_eq :
-  forall w (E : env) g (ls1 ls2 : w.-tuple literal),
+Lemma bit_blast_eq_eq_zip_sat_eq (E:env) g lsp:
   E g ->
-  interp_lits E ls1 == interp_lits E ls2 ->
-  interp_cnf E (bit_blast_eq_eq (Pos g) ls1 ls2).
+  interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp) ->
+  interp_cnf E (bit_blast_eq_eq_zip (Pos g) lsp).
 Proof.
-  elim.
-  - move=> E g ls1 ls2 Heg Heq /=. done.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> Heg. rewrite 2!interp_lits_cons. move/eqP=> Heq.
-    move: (splitTuple Heq) => {Heq} [/eqP Heq_hd /eqP Heq_tl].
-    rewrite /bit_blast_eq_eq -/bit_blast_eq_eq.
-    rewrite List.map_cons !interp_cnf_cons.
-    replace (splitlsb [tuple of ls1_hd :: ls1_tl]).1 with ls1_tl;
-      last by rewrite /= beheadCons; reflexivity.
-    replace (splitlsb [tuple of ls2_hd :: ls2_tl]).1 with ls2_tl;
-      last by rewrite /= beheadCons; reflexivity.
-    rewrite (IH E _ _ _ Heg Heq_tl) /=.
-    rewrite !theadE !interp_lit_neg_lit. rewrite (eqP Heq_hd) Heg /=.
-    by case: (interp_lit E ls2_hd).
+  elim: lsp E g => [| [ls1_hd ls2_hd] lsp_tl IH] E g //=.
+  move=> Heg.
+  move/eqP => Heq_tl.
+  inversion Heq_tl.
+  move/eqP: H1 => H1.
+  rewrite (IH E _  Heg H1).
+  rewrite !interp_lit_neg_lit.
+  by rewrite Heg -H0; case: (interp_lit E ls1_hd).
 Qed.
 
-Lemma bit_blast_eq_eq_sat_neq :
-  forall w (E : env) g (ls1 ls2 : w.-tuple literal),
-  ~~ (E g) ->
-  interp_cnf E (bit_blast_eq_eq (Pos g) ls1 ls2).
+Lemma bit_blast_eq_eq_zip_sat_neq (E:env) g lsp:
+  ~~ E g ->
+  interp_cnf E (bit_blast_eq_eq_zip (Pos g) lsp).
 Proof.
-  elim.
-  - move=> E g ls1 ls2 Heg /=. done.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> Heg. rewrite /bit_blast_eq_eq -/bit_blast_eq_eq.
-    replace ((splitlsb [tuple of ls1_hd :: ls1_tl]).1) with ls1_tl;
-      last by rewrite /= beheadCons.
-    replace ((splitlsb [tuple of ls2_hd :: ls2_tl]).1) with ls2_tl;
-      last by rewrite /= beheadCons.
-    rewrite List.map_cons !interp_cnf_cons. rewrite (IH _ _ _ _ Heg) /=.
-    by rewrite Heg.
+  elim: lsp E g => [| [ls1_hd ls2_hd] lsp_tl IH] E g //=.
+  move=> Heg.
+  rewrite (IH E _  Heg).
+  rewrite !interp_lit_neg_lit.
+  by rewrite Heg.
 Qed.
 
-Lemma mk_env_eq_neq_sat_neq :
-  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lrs,
-    mk_env_eq_neq E g ls1 ls2 = (E', g', cs, lrs) ->
-    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
-    interp_lits E' ls1 != interp_lits E' ls2 ->
-    interp_clause E' lrs.
+Lemma mk_env_eq_neq_zip_sat_neq E g lsp E' g' cs lrs:
+  mk_env_eq_neq_zip E g lsp = (E', g', cs, lrs) ->
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
+  interp_word E' (unzip1 lsp) != interp_word E' (unzip2 lsp) ->
+  interp_clause E' lrs.
 Proof.
-  elim.
-  - move=> E g ls1 ls2 E' g' cs lrs /=. case=> <- _ _ <- Hnew_gls1 Hnew_gls2 Hne.
-    apply: False_ind. apply: (negP Hne). rewrite tuple0. apply/eqP. symmetry.
-    rewrite tuple0. reflexivity.
-  - move=> w IH E g. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    move=> E' g' cs. case/tupleP=> [lr_hd lr_tl].
-    rewrite (lock interp_clause) /= !theadE !beheadCons -lock.
-    case Henv: (mk_env_eq_neq
-                  (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
-                  (g + 1)%positive ls1_tl ls2_tl) => [[[E_tl g_tl] cs_tl] auxs_tl].
-    case=> <- _ _ <- <-. move/andP=> [Hnew_gls1hd Hnew_gls1tl].
-    move/andP=> [Hnew_gls2hd Hnew_gls2tl]. move=> Hne. rewrite interp_clause_cons.
-    rewrite 2!interp_lits_cons in Hne. rewrite cons_tuple_neq_case in Hne.
-    case/orP: Hne.
-    + move=> Hne_hd. move: (mk_env_eq_neq_preserve Henv) => Hpre.
-      move: (env_preserve_lit Hpre (newer_than_lit_add_diag_r (Pos g) 1)) => /=.
-      rewrite env_upd_eq. move: (env_preserve_env_upd_succ Hpre) => {Hpre} Hpre.
-      rewrite -(env_preserve_lit Hpre Hnew_gls1hd)
-              -(env_preserve_lit Hpre Hnew_gls2hd).
-      move: Hne_hd.
-        by case: (E_tl g);
-          case: (interp_lit E_tl ls1_hd); case: (interp_lit E_tl ls2_hd).
-    + move=> Hne_tl. move: (pos_leb_add_diag_r g 1) => Hgg1.
-      move: (newer_than_lits_le_newer Hnew_gls1tl Hgg1) => Hnew_g1ls1tl.
-      move: (newer_than_lits_le_newer Hnew_gls2tl Hgg1) => Hnew_g1ls2tl.
-      rewrite (IH _ _ _ _ _ _ _ _ Henv Hnew_g1ls1tl Hnew_g1ls2tl Hne_tl).
-        by rewrite orbT.
+  elim: lsp E g E' g' cs lrs => [| [ls1_hd ls2_hd] lsp_tl IH] E g  E' g' cs lrs //=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd)))
+           (g + 1)%positive lsp_tl) => [[[[E_tl g_tl] cs_tl] auxs_tl] Henv_tl].
+  case=> <- _ _ <-.
+  move: (IH _ _ _ _ _ _ Henv_tl) => IHH.
+  move: (mk_env_eq_neq_zip_newer_gen Henv_tl) => H2.
+  move=> /andP [Hnew_gls1hd Hnew_gls1tl] /andP [Hnew_gls2hd Hnew_gls2tl].
+  rewrite /=.
+  move=> Hneq.
+  rewrite seq_neq_split in Hneq.
+  case/orP: Hneq => Hneq.
+  - move: (mk_env_eq_neq_zip_preserve Henv_tl) => Hpre.
+    move: (env_preserve_lit Hpre (newer_than_lit_add_diag_r (Pos g) 1))=> /= H_etlg.
+    rewrite env_upd_eq in H_etlg.
+    rewrite H_etlg.
+    have Hpre2: (env_preserve (env_upd E g (xorb (interp_lit E ls1_hd) (interp_lit E ls2_hd))) E_tl g) by t_auto_preserve.
+    have Hpre3: (env_preserve E E_tl g) by t_auto_preserve.
+    move: (env_preserve_lit Hpre3 Hnew_gls1hd) (env_preserve_lit Hpre3 Hnew_gls2hd).
+    move=> <- <-.
+      by move: Hneq; case: (interp_lit E_tl ls1_hd); case: (interp_lit E_tl ls2_hd).
+  - apply /orP; right.
+    by apply IHH; t_auto_newer.
 Qed.
 
-Lemma mk_env_eq_sat :
-  forall w E g (ls1 ls2 : w.-tuple literal) E' g' cs lr,
-    mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
-    newer_than_lits g ls1 -> newer_than_lits g ls2 ->
-    interp_cnf E' cs.
+Lemma mk_env_eq_zip_sat E g lsp E' g' cs lr:
+  mk_env_eq_zip E g lsp = (E', g', cs, lr) ->
+  newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
+  interp_cnf E' cs.
 Proof.
-  move=> w E g ls1 ls2 E' g' cs lr. rewrite /mk_env_eq /gen.
-  case Henv: (mk_env_eq_neq
-                (env_upd E (var_of_lit (Pos g))
-                         (interp_lits E ls1 == interp_lits E ls2))
-                (g + 1)%positive ls1 ls2)=> [[[E_aux g_aux] cs_neq] auxs].
+  rewrite /mk_env_eq_zip /gen /=.
+  dcase (mk_env_eq_neq_zip
+           (env_upd E g
+                    (interp_word E (unzip1 lsp) == interp_word E (unzip2 lsp)))
+           (g + 1)%positive lsp) => [[[[E_aux g_aux] cs_neq] auxs] H].
   case=> <- _ <- _ Hnew_gls1 Hnew_gls2.
-  rewrite interp_cnf_append interp_cnf_cons interp_clause_cons.
-  move: (pos_leb_add_diag_r g 1) => H_gg1.
-  move: (newer_than_lits_le_newer Hnew_gls1 H_gg1) => Hnew_g1ls1.
-  move: (newer_than_lits_le_newer Hnew_gls2 H_gg1) => Hnew_g1ls2.
-  rewrite (mk_env_eq_neq_sat Henv Hnew_g1ls1 Hnew_g1ls2) andTb.
-  move: (mk_env_eq_neq_preserve Henv) => Hpre.
-  move: (env_preserve_lit Hpre (newer_than_lit_add_diag_r (Pos g) 1)) => /=.
-  rewrite env_upd_eq. move: (env_preserve_env_upd_succ Hpre) => /= {Hpre} Hpre.
-  rewrite -(env_preserve_lits Hpre Hnew_gls1) -(env_preserve_lits Hpre Hnew_gls2).
+  move: (mk_env_eq_neq_zip_newer_gen H) => Hg1gg.
+  move: (mk_env_eq_neq_zip_newer_res H) => Hnres_eq_neq.
+  move: (mk_env_eq_neq_zip_newer_cnf H) => Hncnf_eq_neq.
+  move: (mk_env_eq_neq_zip_sat H) => Hsat_eq_neq.
+  have Hggaux: (g <? g_aux)%positive by t_auto_newer.
+  rewrite interp_cnf_catrev interp_cnf_cons.
+  have -> : interp_cnf E_aux cs_neq by apply Hsat_eq_neq; t_auto_newer.
+  rewrite andTb.
+  rewrite interp_clause_cons.
+  move: (mk_env_eq_neq_zip_preserve H) => Hpre.
+  move: (env_preserve_lit Hpre (newer_than_lit_add_diag_r (Pos g) 1))=> /= H_etlg.
+  rewrite env_upd_eq in H_etlg.
+  move: H_etlg.
+  move: (env_preserve_env_upd_succ Hpre) => Hpre2.
+  rewrite -(env_preserve_word Hpre2 Hnew_gls1) -(env_preserve_word Hpre2 Hnew_gls2).
   case Heg: (E_aux g).
   - rewrite /=. move=> Heq. move: (Logic.eq_sym Heq) => {Heq} Heq.
-    exact: (bit_blast_eq_eq_sat_eq Heg Heq).
+    exact: (bit_blast_eq_eq_zip_sat_eq Heg Heq).
   - rewrite /=. move=> Hne. move: (Logic.eq_sym Hne) => {Hne} Hne.
     move/idP/negP: Hne => Hne. move/idP/negP: Heg => Heg.
-    rewrite (bit_blast_eq_eq_sat_neq _ _ Heg) andbT.
-    exact: (mk_env_eq_neq_sat_neq Henv Hnew_g1ls1 Hnew_g1ls2 Hne).
+    rewrite (bit_blast_eq_eq_zip_sat_neq lsp Heg) andbT.
+    by apply: (mk_env_eq_neq_zip_sat_neq H _ _ Hne); t_auto_newer.
 Qed.
 
-Lemma splitlsb_cons w bs bs_hd bs_tl:
-  size bs = w.+1 ->
-  splitlsb bs = (bs_hd, bs_tl) ->
-  bs = bs_hd :: bs_tl.
+Lemma mk_env_eq_sat E g ls1 ls2 E' g' cs lr:
+  mk_env_eq E g ls1 ls2 = (E', g', cs, lr) ->
+  newer_than_lit g lit_tt ->
+  newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+  interp_cnf E' cs.
 Proof.
-  case: bs.
-  - discriminate.
-  - move=> a l Hsz Hsplit.
-  rewrite /splitlsb /split_head in Hsplit.
-  inversion Hsplit.
-  done.
+  rewrite /mk_env_eq.
+  move=> Hzip.
+  move: (mk_env_eq_zip_sat Hzip) => Hsat_zip.
+  move=> Hgtt Hgls1 Hgls2.
+    by apply: Hsat_zip; t_auto_newer.
 Qed.
-
-Lemma splitlsl_cons w ls ls_hd ls_tl:
-  size ls = w.+1 ->
-  splitlsl ls = (ls_hd, ls_tl) ->
-  ls = ls_hd :: ls_tl.
-Proof.
-  case: ls.
-  - discriminate.
-  - move=> a l Hsz Hsplit.
-  rewrite /splitlsb /split_head in Hsplit.
-  inversion Hsplit.
-  done.
-Qed.
-
-
-Lemma size_splitlsl ls : size (snd (splitlsl ls)) = size ls - 1.
-Proof.
-  destruct ls => /=.
-  - reflexivity.
-  - rewrite subn1 -pred_Sn. reflexivity.
-Qed.
-
-Lemma bit_blast_eq_neq_size:
-  forall w g g' ls1 ls2 cs lauxs,
-    size ls1 = w ->
-    size ls2 = w ->
-    bit_blast_eq_neq w g ls1 ls2 = (g', cs, lauxs) ->
-    size lauxs = w.
-Proof.
-  elim.
-  - by rewrite /bit_blast_eq_neq; move=> _ _ _ _ _ _ _ _ [_ _ <-].
-  - move=> w IH g g' ls1 ls2 cs lauxs Hsz1 Hsz2.
-    case Hls1: (splitlsl ls1) => [ls1_hd ls1_tl].
-    case Hls2: (splitlsl ls2) => [ls2_hd ls2_tl].
-    rewrite /=.
-    move: (size_splitlsl ls1).
-    rewrite Hls1 Hsz1 subn1 /= => Hsz1tl.
-    move: (size_splitlsl ls2).
-    rewrite Hls2 Hsz2 subn1 /= => Hsz2tl.
-    move: (splitlsl_cons Hsz1 Hls1) => Hls1_split.
-    move: (splitlsl_cons Hsz2 Hls2) => Hls2_split.
-    rewrite Hls1_split Hls2_split /=.
-    dcase (bit_blast_eq_neq w (g + 1)%positive ls1_tl ls2_tl) => [[[g_tl cs_tl] aux_tl] Hblast].
-    case=> _ _ <-.
-    rewrite /=.
-      by rewrite (IH _ _ _ _ _ _ Hsz1tl Hsz2tl Hblast).
-Qed.
-*)

@@ -75,7 +75,15 @@ Ltac t_newer_hook :=
     => assumption
   | |- is_true (newer_than_lit (?g + _) (Pos ?g)) => exact: newer_than_lit_add_diag_r
   | |- is_true (newer_than_lit (?g + _) (Neg ?g)) => exact: newer_than_lit_add_diag_r
+  | |- is_true (?g <=? ?g)%positive => exact: Pos.leb_refl
   | |- is_true (?g <=? ?g + _)%positive => exact: pos_leb_add_diag_r
+  | |- is_true (?g <? ?g + _)%positive => exact: pos_ltb_add_diag_r
+  | H: is_true (?g1 <? ?g)%positive |- is_true (?g1 <=? ?g)%positive
+    => exact: (pos_ltb_leb_incl H)
+  | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <=? ?g)%positive
+    => apply: (pos_leb_trans _ H)
+  | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <? ?g)%positive
+    => apply: (pos_ltb_leb_trans _ H)
   | H : is_true (newer_than_lit ?g1 ?l) |- is_true (newer_than_lit ?g2 ?l)
     => apply: (newer_than_lit_le_newer H)
   | H : is_true (newer_than_lits ?g1 ?l) |- is_true (newer_than_lits ?g2 ?l)
@@ -401,5 +409,5 @@ Ltac split_andb_hyps :=
 Ltac split_andb_goal :=
    repeat (match goal with
           | |- ?l /\ ?r => split
-          | |- is_true (andb ?l ?r) => move /andP
+          | |- is_true (andb ?l ?r) => apply /andP
           end).
