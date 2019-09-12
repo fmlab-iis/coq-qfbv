@@ -3,18 +3,11 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrdered Nats ZAriths Env Store Tactics.
-From BitBlasting Require Import Typ Var.
+From BitBlasting Require Import Typ Var State.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
-
-Module ValueType <: HasDefaultTyp.
-  Definition t := bits.
-  Definition default : t := [::].
-End ValueType.
-
-Module State := RealizableTStoreAdapter UVarOrder ValueType.
 
 Section QFBV.
 

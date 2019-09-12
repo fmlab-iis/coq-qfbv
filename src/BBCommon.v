@@ -1,7 +1,7 @@
 
 From Coq Require Import List ZArith.
 From mathcomp Require Import ssreflect ssrnat ssrbool eqtype seq tuple.
-From BitBlasting Require Import Var QFBV CNF.
+From BitBlasting Require Import Var State QFBV CNF.
 From ssrlib Require Import SsrOrdered ZAriths Tactics.
 
 Set Implicit Arguments.
@@ -190,7 +190,7 @@ Qed.
 Definition consistent1 m E s v : Prop :=
     match UVM.find v m with
     | None => True
-    | Some rs => enc_bits E rs (QFBV.State.acc v s)
+    | Some rs => enc_bits E rs (State.acc v s)
     end.
 Definition consistent m E s := forall v, consistent1 m E s v.
 
