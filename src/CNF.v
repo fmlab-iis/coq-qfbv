@@ -1,14 +1,14 @@
 
 (*
  * Require the following libraries:
- * - coq-bit from https://github.com/mht208/coq-bits
+ * - coq-bit from https://github.com/mht208/coq-nbits
  * - ssrlib from https://github.com/mht208/coq-ssrlib.git
  *)
 
-From Coq Require Import ZArith OrderedType.
+From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import Var SsrOrdered ZAriths Seqs Lists.
-From Bits Require Export bits ssrextra.tuple.
+From ssrlib Require Import SsrOrdered ZAriths Seqs Lists Bools FSets.
+From nbits Require Export NBits.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -16,11 +16,11 @@ Import Prenex Implicits.
 
 
 
-Definition var := positive.
+Definition bvar := positive.
 
 Inductive literal : Set :=
-| Pos of var
-| Neg of var.
+| Pos of bvar
+| Neg of bvar.
 
 Definition eq_lit l1 l2 :=
   match l1, l2 with
@@ -29,9 +29,9 @@ Definition eq_lit l1 l2 :=
   | _, _ => false
   end.
 
-Lemma lit_eqP : forall l1 l2, reflect (l1 = l2) (eq_lit l1 l2).
+Lemma lit_eqP l1 l2 : reflect (l1 = l2) (eq_lit l1 l2).
 Proof.
-  move=> l1 l2. case H: (eq_lit l1 l2).
+  case H: (eq_lit l1 l2).
   - apply: ReflectT. move: H. elim: l1; elim: l2 => /=.
     + move=> v1 v2 H. move/eqP: H => ->. reflexivity.
     + discriminate.
@@ -52,6 +52,9 @@ Canonical lit_eqType := Eval hnf in EqType literal lit_eqMixin.
 Definition var_tt := 1%positive.
 Definition lit_tt : literal := Pos var_tt.
 Definition lit_ff : literal := Neg var_tt.
+
+Definition lit_of_bool b := if b then lit_tt else lit_ff.
+
 Definition var_of_lit l :=
   match l with
   | Pos v => v
@@ -64,20 +67,26 @@ Definition neg_lit lit :=
   | Neg v => Pos v
   end.
 
+(* A word is a sequence of literals that represent a bit-vector.
+   The LSB is at the head of the literal sequence. *)
+Definition word : Set := seq literal.
+
 Definition clause : Set := seq literal.
 
 Definition cnf : Set := seq clause.
 
-Definition env : Set := var -> bool.
+Definition env : Set := bvar -> bool.
 
-Fixpoint lits_as_cnf (ls : seq literal) :=
-  match ls with
-  | [::] => [::]
-  | hd::tl => [::hd]::(lits_as_cnf tl)
-  end.
+Definition splitlsl (ls : word) := split_head lit_ff ls.
+Definition splitmsl (ls : word) := split_last lit_ff ls.
+Definition droplsl (ls : word) : word := (splitlsl ls).2.
+Definition dropmsl (ls : word) : word := (splitmsl ls).1.
+Definition joinlsl := @cons.
+Definition joinmsl := @rcons.
+Definition lsl (ls : word) : literal := (splitlsl ls).1.
+Definition msl (ls : word) : literal := (splitmsl ls).2.
 
-Definition tuple_as_cnf w (ls : w.-tuple literal) :=
-  lits_as_cnf (tval ls).
+Definition word_as_cnf (ls : word) := map (fun l => [::l]) ls.
 
 Definition interp_lit (E : env) (l : literal) : bool :=
   match l with
@@ -85,22 +94,12 @@ Definition interp_lit (E : env) (l : literal) : bool :=
   | Neg v => negb (E v)
   end.
 
-Definition interp_lits w (E : env) (ls : w.-tuple literal) : BITS w :=
-  map_tuple (fun l => interp_lit E l) ls.
+Definition interp_word (E : env) (ls : word) : bits :=
+  map (fun l => interp_lit E l) ls.
 
-Fixpoint interp_clause (E : env) (c : clause) : bool :=
-  match c with
-  | [::] => false
-  | [::hd] => interp_lit E hd
-  | hd::tl => interp_lit E hd || interp_clause E tl
-  end.
+Definition interp_clause (E : env) (c : clause) : bool := has (interp_lit E) c.
 
-Fixpoint interp_cnf (E : env) (f : cnf) : bool :=
-  match f with
-  | [::] => true
-  | [::hd] => interp_clause E hd
-  | hd::tl => interp_clause E hd && interp_cnf E tl
-  end.
+Definition interp_cnf (E : env) (cs : cnf) : bool := all (interp_clause E) cs.
 
 Definition sat (f : cnf) := exists (E : env), interp_cnf E f.
 
@@ -110,164 +109,115 @@ Definition valid (f : cnf) := forall (E : env), interp_cnf E f.
 
 (* interp_lit *)
 
-Lemma interp_lit_neg_involutive :
-  forall E a,
-    interp_lit E (neg_lit (neg_lit a)) = interp_lit E a.
+Lemma interp_lit_neg_involutive E a :
+  interp_lit E (neg_lit (neg_lit a)) = interp_lit E a.
+Proof. rewrite /interp_lit. case: a => /=; reflexivity. Qed.
+
+Lemma interp_lit_neg_lit E a : interp_lit E (neg_lit a) = ~~ (interp_lit E a).
 Proof.
-  move=> E a. rewrite /interp_lit.
-  case: a => /=; reflexivity.
+  rewrite /interp_lit. case: a => /=; first by reflexivity.
+  move=> x. rewrite negb_involutive. reflexivity.
 Qed.
 
-Lemma interp_lit_neg_lit :
-  forall E a,
-    interp_lit E (neg_lit a) = ~~ (interp_lit E a).
+Lemma interp_lit_pos_lit E a : interp_lit E a = ~~ (interp_lit E (neg_lit a)).
 Proof.
-  move=> E a. rewrite /interp_lit.
-  case: a => /=; first by reflexivity.
-  move=> x. rewrite Bool.negb_involutive. reflexivity.
-Qed.
-
-Lemma interp_lit_pos_lit :
-  forall E a,
-    interp_lit E a = ~~ (interp_lit E (neg_lit a)).
-Proof.
-  move=> E a. rewrite -interp_lit_neg_lit. rewrite -interp_lit_neg_involutive.
-  reflexivity.
+  rewrite -interp_lit_neg_lit. rewrite -interp_lit_neg_involutive. reflexivity.
 Qed.
 
 
 
-(* interp_lits *)
+(* interp_word *)
 
-Lemma interp_lits_cons :
-  forall w E l (ls : w.-tuple literal),
-    interp_lits E (cons_tuple l ls) = cons_tuple (interp_lit E l) (interp_lits E ls).
-Proof.
-  move=> w E l ls. rewrite /interp_lits. rewrite mapCons. reflexivity.
-Qed.
+Lemma interp_word_cons E l (ls : word) :
+  interp_word E (l::ls) = (interp_lit E l)::(interp_word E ls).
+Proof. rewrite /interp_word. rewrite map_cons. reflexivity. Qed.
 
-Lemma interp_lits_split :
-  forall w E (ls : (w.+1).-tuple literal),
-    interp_lits E ls = cons_tuple (interp_lit E (thead ls))
-                                  (interp_lits E (behead_tuple ls)).
-Proof.
-  move=> w E. case/tupleP=> [ls_hd ls_tl] /=. rewrite theadE beheadCons.
-  exact: interp_lits_cons.
-Qed.
+Lemma interp_word_split E (ls : word) :
+  0 < size ls ->
+  interp_word E ls = (interp_lit E (lsl ls))::(interp_word E (droplsl ls)).
+Proof. by case: ls => [|ls_hd ls_tl] //=. Qed.
 
 
 
 (* interp_clause *)
 
-Lemma interp_clause_cons :
-  forall E l ls, interp_clause E (l::ls) = interp_lit E l || interp_clause E ls.
-Proof.
-  move=> E l ls. rewrite /interp_clause /= -/(interp_clause E ls). case: ls.
-  - rewrite /= Bool.orb_false_r. reflexivity.
-  - reflexivity.
-Qed.
+Lemma interp_clause_cons E l c :
+  interp_clause E (l::c) = interp_lit E l || interp_clause E c.
+Proof. reflexivity. Qed.
 
-Lemma interp_clause_append :
-  forall E ls1 ls2,
-    interp_clause E (ls1++ls2) = interp_clause E ls1 || interp_clause E ls2.
-Proof.
-  move=> E. elim.
-  - move=> ls2 /=. reflexivity.
-  - move=> ls1_hd ls1_tl IH ls2. rewrite cat_cons 2!interp_clause_cons.
-    case: (interp_lit E ls1_hd) => /=; first by reflexivity. exact: IH.
-Qed.
+Lemma interp_clause_cat E c1 c2 :
+  interp_clause E (c1++c2) = interp_clause E c1 || interp_clause E c2.
+Proof. by rewrite /interp_clause has_cat. Qed.
 
-Lemma interp_clause_in :
-  forall E ls, interp_clause E ls -> exists l, l \in ls /\ interp_lit E l.
-Proof.
-  move=> E. elim.
-  - move=> H; by elim H.
-  - move=> hd tl IH. rewrite interp_clause_cons. case/orP => H.
-    + exists hd. rewrite mem_head H. done.
-    + move: (IH H) => [l [Hin Hinterp]]. exists l. split; last by assumption.
-      rewrite in_cons Hin. rewrite Bool.orb_true_r. done.
-Qed.
+Lemma interp_clause_mem E c :
+  interp_clause E c -> exists2 l, (l \in c) & (interp_lit E l).
+Proof. by move/hasP. Qed.
 
-Lemma interp_clause_mem :
-  forall E c,
-    interp_clause E c -> exists l : literal, (l \in c) && interp_lit E l.
-Proof.
-  move=> E. elim; first by done.
-  move=> hd tl IH. rewrite interp_clause_cons. case/orP.
-  - move=> H; exists hd. by rewrite mem_head H.
-  - move=> H; move: (IH H)=> {H} [l /andP [H1 H2]]. exists l.
-    by rewrite in_cons H1 H2 andbT orbT.
-Qed.
+Lemma interp_clause_rcons_cons E l c :
+  interp_clause E (rcons c l) = interp_clause E (l::c).
+Proof. by rewrite /interp_clause has_rcons /=. Qed.
+
+Lemma interp_clause_catrev_cat E c1 c2 :
+  interp_clause E (catrev c1 c2) = interp_clause E (c1 ++ c2).
+Proof. by rewrite /interp_clause has_catrev has_cat. Qed.
+
+Lemma interp_clause_catrev E c1 c2 :
+  interp_clause E (catrev c1 c2) = interp_clause E c1 || interp_clause E c2.
+Proof. by rewrite interp_clause_catrev_cat interp_clause_cat. Qed.
 
 
 
 (* interp_cnf *)
 
-Lemma interp_cnf_cons :
-  forall E c cs, interp_cnf E (c::cs) = interp_clause E c && interp_cnf E cs.
-Proof.
-  move=> E c cs. rewrite /interp_cnf /= -/(interp_cnf E cs). case: cs.
-  - rewrite /= Bool.andb_true_r. reflexivity.
-  - reflexivity.
-Qed.
+Lemma interp_cnf_cons E c cs :
+  interp_cnf E (c::cs) = interp_clause E c && interp_cnf E cs.
+Proof. reflexivity. Qed.
 
-Lemma interp_cnf_append :
-  forall E cs1 cs2,
-    interp_cnf E (cs1++cs2) = interp_cnf E cs1 && interp_cnf E cs2.
-Proof.
-  move=> E. elim.
-  - move=> cs2 /=. reflexivity.
-  - move=> cs1_hd cs1_tl IH cs2. rewrite cat_cons interp_cnf_cons.
-    rewrite (@interp_cnf_cons E cs1_hd cs1_tl).
-    rewrite IH. rewrite andbA. reflexivity.
-Qed.
+Lemma interp_cnf_cat E cs1 cs2 :
+  interp_cnf E (cs1++cs2) = interp_cnf E cs1 && interp_cnf E cs2.
+Proof. by rewrite /interp_cnf all_cat. Qed.
 
-Lemma interp_cnf_mem :
-  forall E c cs,
-    interp_cnf E cs -> c \in cs -> interp_clause E c.
-Proof.
-  move=> E c. elim; first by done.
-  move=> hd tl IH. rewrite interp_cnf_cons => /andP [H1 H2].
-  rewrite in_cons. case/orP.
-  - move/eqP=> ->. exact: H1.
-  - exact: (IH H2).
-Qed.
+Lemma interp_cnf_mem E c cs : interp_cnf E cs -> c \in cs -> interp_clause E c.
+Proof. rewrite /interp_cnf. move/allP => H Hin. exact: (H _ Hin). Qed.
+
+Lemma interp_cnf_rcons_cons E cs c :
+  interp_cnf E (rcons cs c) = interp_cnf E (c::cs).
+Proof. by rewrite /interp_cnf all_rcons. Qed.
+
+Lemma interp_cnf_rcons E cs c :
+  interp_cnf E (rcons cs c) = interp_clause E c && interp_cnf E cs.
+Proof. by rewrite interp_cnf_rcons_cons interp_cnf_cons. Qed.
+
+Lemma interp_cnf_catrev_cat E cs1 cs2 :
+  interp_cnf E (catrev cs1 cs2) = interp_cnf E (cs1 ++ cs2).
+Proof. by rewrite /interp_cnf all_catrev all_cat. Qed.
+
+Lemma interp_cnf_catrev E cs1 cs2 :
+  interp_cnf E (catrev cs1 cs2) = interp_cnf E cs1 && interp_cnf E cs2.
+Proof. by rewrite interp_cnf_catrev_cat interp_cnf_cat. Qed.
 
 
 
 (* env_upd *)
 
-Definition env_upd (E : env) (x : var) v := fun y => if x == y then v else E y.
+Definition env_upd (E : env) (x : bvar) v := fun y => if x == y then v else E y.
 
-Lemma env_upd_eq :
-  forall E x v, (env_upd E x v) x = v.
-Proof.
-  rewrite /env_upd => E x y. rewrite eqxx. reflexivity.
-Qed.
+Lemma env_upd_eq E x v : (env_upd E x v) x = v.
+Proof. rewrite /env_upd. rewrite eqxx. reflexivity. Qed.
 
-Lemma env_upd_neq :
-  forall E x v y, x != y -> (env_upd E x v) y = E y.
-Proof.
-  rewrite /env_upd => E x v y Hne. rewrite (negPf Hne). reflexivity.
-Qed.
+Lemma env_upd_neq E x v y : x != y -> (env_upd E x v) y = E y.
+Proof. rewrite /env_upd => Hne. rewrite (negPf Hne). reflexivity. Qed.
 
-Lemma interp_lit_env_upd_eq_pos :
-  forall E x v, interp_lit (env_upd E x v) (Pos x) = v.
-Proof.
-  rewrite /interp_lit /env_upd => E x v. by rewrite (eqxx x).
-Qed.
+Lemma interp_lit_env_upd_eq_pos E x v : interp_lit (env_upd E x v) (Pos x) = v.
+Proof. by rewrite /interp_lit /env_upd eqxx. Qed.
 
-Lemma interp_lit_env_upd_eq_neg :
-  forall E x v, interp_lit (env_upd E x v) (Neg x) = ~~ v.
-Proof.
-  rewrite /interp_lit /env_upd => E x v. by rewrite (eqxx x).
-Qed.
+Lemma interp_lit_env_upd_eq_neg E x v : interp_lit (env_upd E x v) (Neg x) = ~~ v.
+Proof. by rewrite /interp_lit /env_upd eqxx. Qed.
 
-Lemma interp_lit_env_upd_neq :
-  forall E x v y,
-    x != var_of_lit y -> interp_lit (env_upd E x v) y = interp_lit E y.
+Lemma interp_lit_env_upd_neq E x v y :
+  x != var_of_lit y -> interp_lit (env_upd E x v) y = interp_lit E y.
 Proof.
-  rewrite /interp_lit /env_upd => E x v y. case: y;
+  rewrite /interp_lit /env_upd. case: y;
   move=> y /= Hne; rewrite (negPf Hne); reflexivity.
 Qed.
 
@@ -275,106 +225,99 @@ Qed.
 
 (* add_prelude *)
 
-Definition add_prelude cnf := [::lit_tt]::cnf.
+Definition add_prelude cs := [::lit_tt]::cs.
 
-Lemma add_prelude_tt :
-  forall E cs, interp_cnf E (add_prelude cs) -> interp_lit E lit_tt.
+Lemma add_prelude_to (E : env) cs :
+  E var_tt -> interp_cnf E cs -> interp_cnf E (add_prelude cs).
+Proof. rewrite /add_prelude /= orbF. by move=> -> ->. Qed.
+
+Lemma add_prelude_tt E cs : interp_cnf E (add_prelude cs) -> interp_lit E lit_tt.
+Proof. rewrite /interp_cnf /=. rewrite orbF=> /andP [H _]; assumption. Qed.
+
+Lemma add_prelude_ff E cs : interp_cnf E (add_prelude cs) -> ~~ interp_lit E lit_ff.
+Proof. rewrite interp_cnf_cons /=. rewrite orbF=> /andP [H _]. by apply/negPn. Qed.
+
+Lemma add_prelude_neg_ff E cs :
+  interp_cnf E (add_prelude cs) -> interp_lit E (neg_lit lit_ff).
+Proof. move=> H. rewrite interp_lit_neg_lit. by rewrite (add_prelude_ff H). Qed.
+
+Lemma add_prelude_empty E : interp_cnf E (add_prelude [::]) = interp_lit E lit_tt.
+Proof. by rewrite /= orbF andbT. Qed.
+
+Lemma add_prelude_singleton E c :
+  interp_cnf E (add_prelude [::c]) = interp_lit E lit_tt && interp_clause E c.
+Proof. by rewrite /= orbF andbT. Qed.
+
+Lemma add_prelude_cons E c cs :
+  interp_cnf E (add_prelude (c::cs)) =
+  interp_cnf E (add_prelude [::c]) && interp_cnf E (add_prelude cs).
 Proof.
-  move=> E cs /=. case: cs.
-  - by apply.
-  - move=> cs_hd cs_tl. move/andP => [H _]. exact: H.
+  rewrite /= orbF andbT. rewrite !andb_assoc. rewrite -(andb_assoc _ _ (E var_tt)).
+  rewrite (andb_comm _ (E var_tt)) andb_assoc andb_diag. reflexivity.
 Qed.
 
-Lemma add_prelude_ff :
-  forall E cs, interp_cnf E (add_prelude cs) -> ~~ interp_lit E lit_ff.
+Lemma add_prelude_rcons E cs c :
+  interp_cnf E (add_prelude (rcons cs c)) =
+  interp_cnf E (add_prelude [::c]) && interp_cnf E (add_prelude cs).
 Proof.
-  move=> E cs /=. case: cs.
-  - rewrite Bool.negb_involutive. by apply.
-  - move=> cs_hd cs_tl. move/andP => [H _]. rewrite Bool.negb_involutive. exact: H.
+  rewrite /= orbF andbT. rewrite interp_cnf_rcons. rewrite !andb_assoc.
+  rewrite -(andb_assoc _ _ (E var_tt)).
+  rewrite (andb_comm _ (E var_tt)) andb_assoc andb_diag. reflexivity.
 Qed.
 
-Lemma add_prelude_neg_ff :
-  forall E cs, interp_cnf E (add_prelude cs) -> interp_lit E (neg_lit lit_ff).
-Proof.
-  move=> E cs H. rewrite interp_lit_neg_lit. by rewrite (add_prelude_ff H).
-Qed.
+Lemma add_prelude_expand E cs :
+  interp_cnf E (add_prelude cs) = interp_lit E lit_tt && interp_cnf E cs.
+Proof. by rewrite /interp_cnf /= orbF. Qed.
 
-Lemma add_prelude_empty :
-  forall E, interp_cnf E (add_prelude [::]) = interp_lit E lit_tt.
+Lemma add_prelude_idem E cs :
+  interp_cnf E (add_prelude (add_prelude cs)) = interp_cnf E (add_prelude cs).
+Proof. by rewrite /interp_cnf /= orbF andb_assoc andb_diag. Qed.
+
+Lemma add_prelude_cat E cs1 cs2 :
+  interp_cnf E (add_prelude (cs1++cs2)) =
+  interp_cnf E (add_prelude cs1) && interp_cnf E (add_prelude cs2).
 Proof.
+  rewrite /interp_cnf /= orbF all_cat !andb_assoc.
+  rewrite -(andb_assoc _ _ (E var_tt)) (andb_comm _ (E var_tt)) andb_assoc andb_diag.
   reflexivity.
 Qed.
 
-Lemma add_prelude_singleton :
-  forall E c, interp_cnf E (add_prelude [::c]) = interp_lit E lit_tt && interp_clause E c.
+Lemma add_prelude_catrev E cs1 cs2 :
+  interp_cnf E (add_prelude (catrev cs1 cs2)) =
+  interp_cnf E (add_prelude cs1) && interp_cnf E (add_prelude cs2).
 Proof.
-  reflexivity.
-Qed.
-
-Lemma add_prelude_cons :
-  forall E c cs,
-    interp_cnf E (add_prelude (c::cs)) =
-    interp_cnf E (add_prelude [::c]) && interp_cnf E (add_prelude cs).
-Proof.
-  move=> E c cs. rewrite /add_prelude /=. case: (E var_tt) => //=. case: cs.
-  - rewrite Bool.andb_true_r. reflexivity.
-  - move=> cs_hd cs_tl. reflexivity.
-Qed.
-
-Lemma add_prelude_expand :
-  forall E cs, interp_cnf E (add_prelude cs) = interp_lit E lit_tt && interp_cnf E cs.
-Proof.
-  move=> E. elim.
-  - rewrite /=. rewrite andbT. reflexivity.
-  - move=> c cs IH. rewrite add_prelude_cons. rewrite (interp_cnf_cons E c cs).
-    rewrite IH. rewrite add_prelude_singleton. by case: (interp_lit E lit_tt).
-Qed.
-
-Lemma add_prelude_idem :
-  forall E cs,
-    interp_cnf E (add_prelude (add_prelude cs)) = interp_cnf E (add_prelude cs).
-Proof.
-  move=> E cs /=. case: (E var_tt); first by reflexivity.
-  by case: cs.
-Qed.
-
-Lemma add_prelude_append :
-  forall E cs1 cs2,
-    interp_cnf E (add_prelude (cs1++cs2)) =
-    interp_cnf E (add_prelude cs1) && interp_cnf E (add_prelude cs2).
-Proof.
-  move=> E. elim.
-  - move=> cs2. rewrite cat0s. rewrite add_prelude_empty.
-    rewrite -{1}(add_prelude_idem). rewrite {1}/add_prelude. reflexivity.
-  - move=> cs1_hd cs1_tl IH cs2. rewrite cat_cons {1}add_prelude_cons.
-    rewrite (add_prelude_cons E cs1_hd cs1_tl).
-    case: (interp_cnf E (add_prelude [::cs1_hd])); last by done.
-    rewrite 2!Bool.andb_true_l. exact: IH.
+  rewrite {1}/add_prelude. rewrite interp_cnf_cons interp_cnf_catrev.
+  rewrite -interp_cnf_cat -add_prelude_cat. reflexivity.
 Qed.
 
 
 
-(* lits_equiv *)
+(* word_equiv *)
 
-Fixpoint lits_equiv E ls1 ls2 :=
+Fixpoint word_equiv E (ls1 ls2 : word) :=
   match ls1, ls2 with
   | [::], [::] => true
   | hd1::tl1, hd2::tl2 =>
-    (interp_lit E hd1 == interp_lit E hd2) && lits_equiv E tl1 tl2
+    (interp_lit E hd1 == interp_lit E hd2) && word_equiv E tl1 tl2
   | _, _ => false
   end.
 
-Lemma interp_lits_lits_equiv :
-  forall w E (ls1 ls2 : w.-tuple literal),
-    interp_lits E ls1 = interp_lits E ls2 ->
-    lits_equiv E ls1 ls2.
+Lemma word_equiv_interp_eq E (ls1 ls2 : word) :
+  word_equiv E ls1 ls2 = (interp_word E ls1 == interp_word E ls2).
 Proof.
-  elim.
-  - move=> E ls1 ls2 H. rewrite tuple0 /= tuple0 /=. by trivial.
-  - move=> w IH E. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    rewrite /= 2!interp_lits_cons. move=> H. move: (splitTuple H) => [Hhd Htl].
-    rewrite Hhd eqxx /=. exact: (IH E ls1_tl ls2_tl Htl).
+  elim: ls1 ls2 => [| hd1 tl1 IH] [| hd2 tl2] //=. rewrite eqseq_cons IH. reflexivity.
 Qed.
+
+Lemma word_equiv_size E ls1 ls2 : word_equiv E ls1 ls2 -> size ls1 = size ls2.
+Proof.
+  elim: ls1 ls2 => [| hd1 tl1 IH] [| hd2 tl2] //=. move/andP => [_ H].
+  rewrite (IH _ H). reflexivity.
+Qed.
+
+Lemma word_equiv_cons E l1 ls1 l2 ls2 :
+  word_equiv E (l1::ls1) (l2::ls2) =
+  (interp_lit E l1 == interp_lit E l2) && word_equiv E ls1 ls2.
+Proof. reflexivity. Qed.
 
 
 
@@ -382,403 +325,288 @@ Qed.
 
 Definition enc_bit E l b : bool := interp_lit E l == b.
 
-Fixpoint enc_bits E w : w.-tuple literal -> BITS w -> bool :=
-  if w is _.+1 then
-    fun ls bv =>
-      let (ls_tl, ls_hd) := eta_expand (splitlsb ls) in
-      let (bv_tl, bv_hd) := eta_expand (splitlsb bv) in
-      enc_bit E ls_hd bv_hd && enc_bits E ls_tl bv_tl
-  else
-    fun _ _ => true.
+Definition enc_bits E (ls : word) (bs : bits) : bool := interp_word E ls == bs.
 
-Lemma enc_bit_change_lit :
-  forall E b l1 l2,
-    interp_lit E l1 = interp_lit E l2 ->
-    enc_bit E l1 b ->
-    enc_bit E l2 b.
+Lemma enc_bit_tt_ff E : enc_bit E lit_tt true = enc_bit E lit_ff false.
+Proof. rewrite /enc_bit /=. by case: (E var_tt). Qed.
+
+Lemma enc_bit_change_lit E b l1 l2 :
+  interp_lit E l1 = interp_lit E l2 -> enc_bit E l1 b = enc_bit E l2 b.
+Proof. move=> H. by rewrite /enc_bit H. Qed.
+
+Lemma enc_bit_not E b l : enc_bit E l b = enc_bit E (neg_lit l) (~~ b).
+Proof. rewrite /enc_bit interp_lit_neg_lit neg_eq. reflexivity. Qed.
+
+Lemma enc_bit_eq_bit E b1 b2 l1 l2 :
+  interp_lit E l1 = interp_lit E l2 -> enc_bit E l1 b1 -> enc_bit E l2 b2 -> b1 = b2.
+Proof. rewrite /enc_bit. move=> -> /eqP -> /eqP. by apply. Qed.
+
+Lemma enc_bit_eq_lit E b1 b2 l1 l2 :
+  b1 = b2 -> enc_bit E l1 b1 -> enc_bit E l2 b2 -> interp_lit E l1 = interp_lit E l2.
+Proof. rewrite /enc_bit. move=> -> /eqP -> /eqP ->. reflexivity. Qed.
+
+Lemma add_prelude_enc_bit_tt E cs :
+  interp_cnf E (add_prelude cs) -> enc_bit E lit_tt true.
+Proof. rewrite /enc_bit => H. apply/eqP. exact: (add_prelude_tt H). Qed.
+
+Lemma add_prelude_enc_bit_true E cs b :
+  interp_cnf E (add_prelude cs) -> enc_bit E lit_tt b = b.
+Proof. rewrite /enc_bit => H. by rewrite (add_prelude_tt H). Qed.
+
+Lemma add_prelude_enc_bit_ff E cs :
+  interp_cnf E (add_prelude cs) -> enc_bit E lit_ff false.
+Proof. rewrite /enc_bit => H. apply/eqP/negPn. exact: (add_prelude_tt H). Qed.
+
+Lemma add_prelude_enc_bit_is_not_true E cs b :
+  interp_cnf E (add_prelude cs) -> enc_bit E lit_ff b = ~~ b.
+Proof. rewrite /enc_bit => H. by rewrite (negPf (add_prelude_ff H)). Qed.
+
+Lemma add_prelude_enc_bit_is_false E cs b :
+  interp_cnf E (add_prelude cs) -> (enc_bit E lit_ff b) = (b == false).
+Proof. move=> H. rewrite (add_prelude_enc_bit_is_not_true _ H). by case: b. Qed.
+
+Lemma enc_bits_nil E : enc_bits E [::] [::].
+Proof. reflexivity. Qed.
+
+Lemma enc_bits_nil_l E bs : enc_bits E [::] bs = (bs == [::]).
+Proof. rewrite eq_sym. reflexivity. Qed.
+
+Lemma enc_bits_nil_r E ls : enc_bits E ls [::] = (ls == [::]).
+Proof. by case: ls. Qed.
+
+Lemma enc_bits_seq1 E l b : enc_bits E [:: l] [:: b] = enc_bit E l b.
+Proof. rewrite /enc_bits /enc_bit /=. by case: b; case: (interp_lit E l). Qed.
+
+Lemma enc_bits_cons E ls_hd (ls_tl : word) bs_hd (bs_tl : bits) :
+  enc_bits E (cons ls_hd ls_tl) (cons bs_hd bs_tl) =
+  (enc_bit E ls_hd bs_hd && enc_bits E ls_tl bs_tl).
+Proof. rewrite /enc_bit /enc_bits /=. rewrite eqseq_cons. reflexivity. Qed.
+
+Lemma enc_bits_split E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  enc_bits E ls bs ->
+  (enc_bit E (lsl ls) (lsb bs) && enc_bits E (droplsl ls) (droplsb bs)).
 Proof.
-  move=> E b l1 l2 H. rewrite /enc_bit H. by apply.
+  case: ls => [|ls_hd ls_tl]; case: bs => [|bs_hd bs_tl] //=.
+  rewrite /enc_bits /enc_bit /lsb /droplsb /=. by move=> ->.
 Qed.
 
-Lemma enc_bit_not :
-  forall E b l,
-    enc_bit E l b = enc_bit E (neg_lit l) (~~ b).
+Lemma enc_bits_split_ss E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  size ls = size bs ->
+  enc_bits E ls bs =
+  (enc_bit E (lsl ls) (lsb bs) && enc_bits E (droplsl ls) (droplsb bs)).
 Proof.
-  move=> E b l. rewrite /enc_bit. rewrite interp_lit_neg_lit.
-  by case: (interp_lit E l); case: b.
+  case: ls => [|ls_hd ls_tl]; case: bs => [|bs_hd bs_tl] //=.
+  rewrite /enc_bits /enc_bit /lsb /droplsb /=. by move=> ->.
 Qed.
 
-Lemma enc_bit_eq_bit :
-  forall E b1 b2 l1 l2,
-    interp_lit E l1 = interp_lit E l2 ->
-    enc_bit E l1 b1 -> enc_bit E l2 b2 ->
-    b1 = b2.
+Lemma enc_bits_split_nonempty E (ls : word) (bs : bits) :
+  0 < size ls -> 0 < size bs ->
+  enc_bits E ls bs =
+  (enc_bit E (lsl ls) (lsb bs) && enc_bits E (droplsl ls) (droplsb bs)).
+Proof. by case: ls => [|ls_hd ls_tl]; case: bs => [|bs_hd bs_tl] //=. Qed.
+
+Lemma enc_bits_change_word E (bs : bits) (ls1 ls2 : word) :
+  word_equiv E ls1 ls2 -> enc_bits E ls1 bs = enc_bits E ls2 bs.
 Proof.
-  move=> E b1 b2 l1 l2. rewrite /enc_bit. move=> -> /eqP -> /eqP. by apply.
+  elim: bs ls1 ls2 => [| bs_hd bs_tl IH] ls1 ls2 /=.
+  - rewrite !enc_bits_nil_r. move=> H; move: (word_equiv_size H) => {H}.
+    by case: ls1; case: ls2.
+  - case: ls1 => [|hd1 tl1]; case: ls2 => [| hd2 tl2] //=.
+    move/andP => [Hhd Htl]. rewrite !enc_bits_cons (IH _ _ Htl).
+    rewrite (enc_bit_change_lit _ (eqP Hhd)). reflexivity.
 Qed.
 
-Lemma enc_bit_eq_lit :
-  forall E b1 b2 l1 l2,
-    b1 = b2 ->
-    enc_bit E l1 b1 -> enc_bit E l2 b2 ->
-    interp_lit E l1 = interp_lit E l2.
+Lemma enc_bits_size E ls bs : enc_bits E ls bs -> size ls = size bs.
 Proof.
-  move=> E b1 b2 l1 l2. rewrite /enc_bit. move=> -> /eqP -> /eqP ->. reflexivity.
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=.
+  rewrite enc_bits_cons => /andP [Hhd Htl]. rewrite (IH _ Htl). reflexivity.
 Qed.
 
-Lemma add_prelude_enc_bit_tt :
-  forall E cs, interp_cnf E (add_prelude cs) -> enc_bit E lit_tt true.
+Lemma enc_bits_lsl E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  enc_bits E ls bs -> enc_bit E (lsl ls) (lsb bs).
+Proof. move=> Htt Henc. move: (enc_bits_split Htt Henc). by case/andP. Qed.
+
+Lemma enc_bits_droplsl E (ls : word) (bs : bits) :
+  enc_bits E ls bs -> enc_bits E (droplsl ls) (droplsb bs).
 Proof.
-  rewrite /enc_bit => E cs H. apply/eqP. exact: (add_prelude_tt H).
+  case: ls => [|ls_hd ls_tl]; case: bs => [|bs_hd bs_tl] //=.
+  rewrite enc_bits_cons /droplsb /=. by move/andP => [_ H].
 Qed.
 
-Lemma add_prelude_enc_bit_true :
-  forall E cs b,
-    interp_cnf E (add_prelude cs) -> enc_bit E lit_tt b = b.
+Lemma enc_bits_copy E (l : literal) (b : bool) n :
+  enc_bit E l b -> enc_bits E (copy n l) (copy n b).
+Proof. move=> H. elim: n => [| n IHn] //=. by rewrite enc_bits_cons H IHn. Qed.
+
+Lemma enc_bits_splitlsb E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  enc_bits E ls bs ->
+  enc_bit E (splitlsl ls).1 (splitlsb bs).1 &&
+          enc_bits E (splitlsl ls).2 (splitlsb bs).2.
+Proof. move=> Htt Henc. exact: (enc_bits_split Htt Henc). Qed.
+
+Lemma enc_bits_splitlsb_ss E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  size ls = size bs ->
+  enc_bits E ls bs =
+  enc_bit E (splitlsl ls).1 (splitlsb bs).1 &&
+          enc_bits E (splitlsl ls).2 (splitlsb bs).2.
+Proof. move=> Htt Hs. exact: (enc_bits_split_ss Htt Hs). Qed.
+
+Lemma enc_bits_splitlsb_nonempty E (ls : word) (bs : bits) :
+  0 < size ls -> 0 < size bs ->
+  enc_bits E ls bs =
+  (enc_bit E (splitlsl ls).1 (splitlsb bs).1 &&
+           enc_bits E (splitlsl ls).2 (splitlsb bs).2).
+Proof. move=> Hs1 Hs2. exact: (enc_bits_split_nonempty E Hs1 Hs2). Qed.
+
+Lemma enc_bits_joinlsb E ls_hd (ls_tl : word) bs_hd (bs_tl : bits) :
+  enc_bits E (joinlsl ls_hd ls_tl) (joinlsb bs_hd bs_tl) =
+  (enc_bit E ls_hd bs_hd && enc_bits E ls_tl bs_tl).
+Proof. exact: enc_bits_cons. Qed.
+
+Lemma enc_bits_droplsb E (ls : word) (bs : bits) :
+  interp_lit E lit_tt -> enc_bits E ls bs -> enc_bits E (droplsl ls) (droplsb bs).
+Proof. move=> Htt Henc. by case/andP: (enc_bits_splitlsb Htt Henc). Qed.
+
+Lemma enc_bits_droplsb_nonempty E (ls : word) (bs : bits) :
+  0 < size ls -> 0 < size bs ->
+  enc_bits E ls bs -> enc_bits E (droplsl ls) (droplsb bs).
 Proof.
-  rewrite /enc_bit => E cs b Hcs. rewrite (add_prelude_tt Hcs). done.
+  move=> Hs1 Hs2. rewrite (enc_bits_splitlsb_nonempty E Hs1 Hs2).
+  by move/andP => [_ H].
 Qed.
 
-Lemma add_prelude_enc_bit_ff :
-  forall E cs, interp_cnf E (add_prelude cs) -> enc_bit E lit_ff false.
+Lemma enc_bits_splitmsb E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  enc_bits E ls bs ->
+  enc_bits E (splitmsl ls).1 (splitmsb bs).1 &&
+           enc_bit E (splitmsl ls).2 (splitmsb bs).2.
 Proof.
-  rewrite /enc_bit => E cs H. move/negPf: (add_prelude_ff H). move/eqP. by apply.
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=.
+  - rewrite /enc_bits /enc_bit /=. by move=> ->.
+  - rewrite enc_bits_cons => Htt /andP [Hhd Htl]. move: (IH _ Htt Htl).
+    rewrite /splitmsl /splitmsb /=. move: (enc_bits_size Htl) => {Htl IH}.
+    case: ls_tl; case: bs_tl => //=.
+    move=> b_hd b_tl l_hd l_tl Hs /andP [H1 H2]. by rewrite enc_bits_cons Hhd H1 H2.
 Qed.
 
-Lemma add_prelude_enc_bit_is_not_true :
-  forall E cs b, interp_cnf E (add_prelude cs) -> enc_bit E lit_ff b = ~~ b.
+Lemma enc_bits_splitmsb_ss E (ls : word) (bs : bits) :
+  interp_lit E lit_tt ->
+  size ls = size bs ->
+  enc_bits E ls bs =
+  enc_bits E (splitmsl ls).1 (splitmsb bs).1 &&
+           enc_bit E (splitmsl ls).2 (splitmsb bs).2.
 Proof.
-  rewrite /enc_bit => E cs b Hcs. rewrite (negPf (add_prelude_ff Hcs)). done.
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=.
+  - rewrite /enc_bits /enc_bit /=. by move=> ->.
+  - rewrite enc_bits_cons => Htt Hs. move: (eq_add_S _ _ Hs) => {Hs} Hs.
+    rewrite (IH _ Htt Hs) => {IH}. rewrite /splitmsl /splitmsb /=. move: Hs.
+    case: ls_tl; case: bs_tl => //=.
+    + rewrite {2}/enc_bit /=. rewrite Htt andbT. reflexivity.
+    + move=> b_hd b_tl l_hd l_tl Hs. rewrite enc_bits_cons.
+      rewrite andb_assoc (andb_comm (enc_bit E ls_hd bs_hd)) -andb_assoc. reflexivity.
 Qed.
 
-Lemma add_prelude_enc_bit_is_false :
-  forall E cs b,
-    interp_cnf E (add_prelude cs) -> (enc_bit E lit_ff b) = (b == false).
+Lemma enc_bits_splitmsb_nonempty E (ls : word) (bs : bits) :
+  0 < size ls -> 0 < size bs ->
+  enc_bits E ls bs =
+  enc_bits E (splitmsl ls).1 (splitmsb bs).1 &&
+           enc_bit E (splitmsl ls).2 (splitmsb bs).2.
 Proof.
-  rewrite /enc_bit => E cs b Hcs. rewrite (negPf (add_prelude_ff Hcs)). done.
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=. move: IH.
+  case: ls_tl bs_tl => [|ls_tlhd ls_tltl] [|bs_tlhd bs_tltl] /=.
+  - move=> _ _ _. rewrite /enc_bits /enc_bit /=.
+    by rewrite singleton_eq.
+  - move=> IH _ _. rewrite /enc_bit /enc_bits /=. apply/negP => /eqP H. discriminate.
+  - move=> IH _ _. rewrite /enc_bit /enc_bits /=. apply/negP => /eqP H. discriminate.
+  - move=> IH _ _. have H1: 0 < (size ls_tltl).+1 by done.
+    have H2: 0 < (size (bs_tlhd::bs_tltl)) by done.
+    move: (IH _ H1 H2) => {IH H1 H2} /=. rewrite !enc_bits_cons. move=> ->.
+    rewrite andb_assoc (andb_comm (enc_bit E ls_hd bs_hd)) -andb_assoc. reflexivity.
 Qed.
 
-Lemma enc_bits_cons :
-  forall E w ls_hd (ls_tl : w.-tuple literal) bv_hd (bv_tl : BITS w),
-    enc_bits E (cons_tuple ls_hd ls_tl) (cons_tuple bv_hd bv_tl) =
-    (enc_bit E ls_hd bv_hd && enc_bits E ls_tl bv_tl).
+Lemma enc_bits_rcons E ls l bs b :
+  enc_bits E (rcons ls l) (rcons bs b) = enc_bits E ls bs && enc_bit E l b.
 Proof.
-  move=> E w ls_hd ls_tl bv_hd bv_tl. rewrite /enc_bits -/enc_bits /=.
-  rewrite !theadE !beheadCons. reflexivity.
+  rewrite enc_bits_splitmsb_nonempty.
+  - rewrite /splitmsl /=. rewrite !belastd_rcons !lastd_rcons. reflexivity.
+  - by rewrite size_rcons.
+  - by rewrite size_rcons.
 Qed.
 
-Lemma enc_bits_split :
-  forall E w (ls : (w.+1).-tuple literal) (bv : BITS (w.+1)),
-    enc_bits E ls bv =
-    (enc_bit E (thead ls) (thead bv) &&
-             enc_bits E (behead_tuple ls) (behead_tuple bv)).
+Lemma enc_bits_joinmsb E ls l bs b :
+  enc_bits E (joinmsl ls l) (joinmsb bs b) = enc_bits E ls bs && enc_bit E l b.
+Proof. exact: enc_bits_rcons. Qed.
+
+Lemma enc_bits_dropmsb E (ls : word) (bs : bits) :
+  interp_lit E lit_tt -> enc_bits E ls bs -> enc_bits E (dropmsl ls) (dropmsb bs).
 Proof.
-  reflexivity.
+  move=> Htt Henc. rewrite /dropmsl /dropmsb.
+    by case/andP: (enc_bits_splitmsb Htt Henc).
 Qed.
 
-Lemma enc_bits_change_lits :
-  forall w E (bv : BITS w) (ls1 ls2 : w.-tuple literal),
-    lits_equiv E ls1 ls2 ->
-    enc_bits E ls1 bv ->
-    enc_bits E ls2 bv.
+Lemma enc_bits_cat E ls1 ls2 bs1 bs2 :
+  enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (ls1 ++ ls2) (bs1 ++ bs2)%bits.
 Proof.
-  elim.
-  - done.
-  - move=> w IH E. case/tupleP => [bv_hd bv_tl]. case/tupleP => [ls1_hd ls1_tl].
-    case/tupleP => [ls2_hd ls2_tl]. rewrite /= !theadE !beheadCons.
-    move=> /andP [Heq1 Heq2] /andP [Henc1_hd Henc1_tl].
-    rewrite (enc_bit_change_lit (eqP Heq1) Henc1_hd) andTb.
-    exact: (IH _ _ _ _ Heq2 Henc1_tl).
+  elim: ls1 bs1 => [| ls1_hd ls1_tl IH] [| bs1_hd bs1_tl] //=.
+  rewrite !enc_bits_cons => /andP [H1_hd H1_tl] H2. by rewrite H1_hd (IH _ H1_tl H2).
 Qed.
 
-Lemma enc_bits_tval_eq :
-  forall w E (bv : BITS w) (ls1 ls2 : w.-tuple literal),
-    tval ls1 = tval ls2 ->
-    enc_bits E ls1 bv ->
-    enc_bits E ls2 bv.
+Lemma enc_bits_catrev E ls1 ls2 bs1 bs2 :
+  enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (catrev ls1 ls2) (catrev bs1 bs2).
 Proof.
-  elim.
-  - done.
-  - move=> w IH E. case/tupleP => [bv_hd bv_tl]. case/tupleP => [ls1_hd ls1_tl].
-    case/tupleP => [ls2_hd ls2_tl]. rewrite /= !theadE !beheadCons.
-    case => <- Htl /andP [Henc_hd Henc_tl]. rewrite Henc_hd (IH _ _ _ _ Htl Henc_tl).
-    done.
+  elim: ls1 ls2 bs1 bs2 => [| ls1_hd ls1_tl IH] ls2 [| bs1_hd bs1_tl] bs2 //=.
+  rewrite enc_bits_cons => /andP [H1_hd H1_tl] H2.
+  rewrite (IH _ _ _ H1_tl); first reflexivity.
+  by rewrite enc_bits_cons H1_hd H2.
 Qed.
 
-Lemma enc_bits_thead :
-  forall E w (ls : (w.+1).-tuple literal) (bv : BITS (w.+1)),
-    enc_bits E ls bv ->
-    enc_bit E (thead ls) (thead bv).
+Lemma enc_bits_rev E ls bs : enc_bits E ls bs -> enc_bits E (rev ls) (rev bs).
+Proof. move=> H. rewrite /rev. by apply: (enc_bits_catrev H). Qed.
+
+Lemma enc_bit_lit_of_bool E b : enc_bit E (lit_of_bool b) b = enc_bit E lit_tt true.
+Proof. case: b => //=. by rewrite enc_bit_tt_ff. Qed.
+
+Lemma enc_bits_lit_of_bool E bs :
+  enc_bit E lit_tt true -> enc_bits E (map lit_of_bool bs) bs.
 Proof.
-  move=> E w ls bv. rewrite enc_bits_split. move/andP => [H1 H2]. exact: H1.
+  move=> Htt. elim: bs => [| hd tl IH] //=. rewrite enc_bits_cons.
+  by rewrite enc_bit_lit_of_bool Htt IH.
 Qed.
 
-Lemma enc_bits_behead :
-  forall E w (ls : (w.+1).-tuple literal) (bv : BITS (w.+1)),
-    enc_bits E ls bv ->
-    enc_bits E (behead_tuple ls) (behead_tuple bv).
+Lemma enc_bits_map_lit_of_bool_nonempty E bs :
+  0 < size bs -> enc_bits E (map lit_of_bool bs) bs = enc_bit E lit_tt true.
 Proof.
-  move=> E w ls bv. rewrite enc_bits_split. move/andP => [H1 H2]. exact: H2.
+  elim: bs => [| hd [| tl_hd tl_tl] IH] _ //=.
+  - by rewrite enc_bits_seq1 enc_bit_lit_of_bool.
+  - rewrite enc_bits_cons. rewrite IH; last by done.
+    by rewrite enc_bit_lit_of_bool andb_diag.
 Qed.
 
-Lemma enc_bits_tuple0 :
-  forall E (ls : 0.-tuple literal) (bv : BITS 0),
-    enc_bits E ls bv.
+Lemma enc_bit_env_upd_eq_pos E x b : enc_bit (env_upd E x b) (Pos x) b.
+Proof. rewrite /enc_bit /=. by rewrite env_upd_eq. Qed.
+
+Lemma enc_bit_env_upd_eq_neg E x b : enc_bit (env_upd E x b) (Neg x) (~~b).
+Proof. rewrite /enc_bit /=. by rewrite env_upd_eq. Qed.
+
+Lemma enc_bit_env_upd_neq E l b x y :
+  x != var_of_lit l ->
+  enc_bit (env_upd E x y) l b = enc_bit E l b.
 Proof.
-  done.
+  rewrite /enc_bit => Hne. rewrite (interp_lit_env_upd_neq _ _ Hne). reflexivity.
 Qed.
 
-Lemma enc_bit_copy :
-  forall E (l : literal) (b : bool) n,
-    enc_bit E l b -> enc_bits E (copy n l) (copy n b).
+Lemma interp_word_enc_bits E (ls1 ls2 : word) bs :
+  interp_word E ls1 = interp_word E ls2 ->
+  enc_bits E ls1 bs = enc_bits E ls2 bs.
 Proof.
-  move=> E l b. elim.
-  - done.
-  - move=> n IH Henc_hd. rewrite /copy 2!nseqCons /=.
-    rewrite !theadE !beheadCons. rewrite Henc_hd (IH Henc_hd). done.
-Qed.
-
-Lemma enc_bits_val_eq :
-  forall E w (ls1 ls2 : w.-tuple literal) (bv1 bv2 : BITS w),
-    enc_bits E ls1 bv1 ->
-    val ls1 = val ls2 ->
-    val bv1 = val bv2 ->
-    enc_bits E ls2 bv2.
-Proof.
-  move=> E. elim.
-  - move=> ls1 ls2 bv1 bv2 Henc1 Heq1 Heq2. exact: enc_bits_tuple0.
-  - move=> w IH. case/tupleP => ls1_hd ls1_tl. case/tupleP => ls2_hd ls2_tl.
-    case/tupleP => bv1_hd bv1_tl. case/tupleP => bv2_hd bv2_tl.
-    rewrite /= !theadE !beheadCons.
-    move=> /andP [Henc_hd Henc_tl] [] Hlseq_hd Hlseq_tl [] Hbveq_hd Hbveq_tl.
-    rewrite -Hlseq_hd -Hbveq_hd Henc_hd andTb.
-    exact: (IH ls1_tl ls2_tl bv1_tl bv2_tl Henc_tl Hlseq_tl Hbveq_tl).
-Qed.
-
-Lemma enc_bits_splitlsb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs =
-    enc_bit E (splitlsb ls).2 (spec.splitlsb bs).2 &&
-            enc_bits E (splitlsb ls).1 (spec.splitlsb bs).1.
-Proof.
-  move=> w. case/tupleP => bs_hd bs_tl. move=> E. case/tupleP => ls_hd ls_tl.
-  rewrite /spec.splitlsb /splitlsb /=. rewrite !theadE !beheadCons. reflexivity.
-Qed.
-
-Corollary enc_bits_splitlsb_lsb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bit E (splitlsb ls).2 (spec.splitlsb bs).2.
-Proof.
-  move=> w bs E ls. rewrite enc_bits_splitlsb. move/andP => [H1 H2]; assumption.
-Qed.
-
-Corollary enc_bits_splitlsb_res :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bits E (splitlsb ls).1 (spec.splitlsb bs).1.
-Proof.
-  move=> w bs E ls. rewrite enc_bits_splitlsb. move/andP => [H1 H2]; assumption.
-Qed.
-
-Lemma enc_bits_joinlsb :
-  forall w bs_hd (bs_tl : BITS w) E ls_hd (ls_tl : w.-tuple literal),
-    enc_bits E (joinlsb (ls_tl, ls_hd)) (spec.joinlsb (bs_tl, bs_hd)) =
-    (enc_bit E ls_hd bs_hd && enc_bits E ls_tl bs_tl).
-Proof.
-  move=> w bs_hd bs_tl E ls_hd ls_tl. rewrite /joinlsb /=.
-  rewrite !theadE !beheadCons. reflexivity.
-Qed.
-
-Lemma enc_bits_droplsb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bits E (droplsb ls) (spec.droplsb bs).
-Proof.
-  move=> w bs E ls Henc. rewrite /droplsb /spec.droplsb.
-  by apply: enc_bits_splitlsb_res.
-Qed.
-
-Lemma enc_bits_splitmsb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs =
-    (enc_bit E (splitmsb ls).1 (spec.splitmsb bs).1 &&
-             enc_bits E (splitmsb ls).2 (spec.splitmsb bs).2).
-Proof.
-  elim.
-  - move=> bs E ls /=. reflexivity.
-  - move=> w IH. case/tupleP => [bs_hd bs_tl]. move=> E.
-    case/tupleP => [ls_hd ls_tl]. rewrite /=. rewrite !beheadCons !theadE.
-    case Hlsplit: (splitmsb ls_tl) => [lc lr].
-    case Hbsplit: (spec.splitmsb bs_tl) => [bc br].
-    rewrite /joinlsb /=. rewrite !beheadCons !theadE. rewrite -enc_bits_split.
-    move: (IH bs_tl E ls_tl). rewrite Hbsplit Hlsplit. move=> -> /=.
-    case: (enc_bit E ls_hd bs_hd).
-    + reflexivity.
-    + rewrite 2!andFb andbF. reflexivity.
-Qed.
-
-Corollary enc_bits_splitmsb_msb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bit E (splitmsb ls).1 (spec.splitmsb bs).1.
-Proof.
-  move=> w bs E ls. rewrite enc_bits_splitmsb. move/andP => [H1 H2]; assumption.
-Qed.
-
-Corollary enc_bits_splitmsb_res :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bits E (splitmsb ls).2 (spec.splitmsb bs).2.
-Proof.
-  move=> w bs E ls. rewrite enc_bits_splitmsb. move/andP => [H1 H2]; assumption.
-Qed.
-
-Lemma enc_bits_joinmsb :
-  forall w bs_hd (bs_tl : BITS w) E ls_hd (ls_tl : w.-tuple literal),
-    enc_bits E (joinmsb (ls_hd, ls_tl)) (spec.joinmsb (bs_hd, bs_tl)) =
-    (enc_bit E ls_hd bs_hd && enc_bits E ls_tl bs_tl).
-Proof.
-  elim.
-  - done.
-  - move=> w IH bs_hd1. case/tupleP => [bs_hd2 bs_tl] E ls_hd1.
-    case/tupleP => [ls_hd2 ls_tl].
-    rewrite (lock enc_bit) (lock enc_bits) /= -!lock.
-    rewrite !beheadCons !theadCons.
-    rewrite /joinlsb enc_bits_cons (lock enc_bits) /= -!lock.
-    rewrite IH /=. rewrite !theadE !beheadCons.
-    rewrite Bool.andb_assoc.
-    rewrite (Bool.andb_comm (enc_bit E ls_hd2 bs_hd2) (enc_bit E ls_hd1 bs_hd1)).
-    rewrite -Bool.andb_assoc.
-    reflexivity.
-Qed.
-
-Lemma enc_bits_dropmsb :
-  forall w (bs : BITS (w.+1)) E (ls : (w.+1).-tuple literal),
-    enc_bits E ls bs ->
-    enc_bits E (dropmsb ls) (spec.dropmsb bs).
-Proof.
-  move=> w bs E ls Henc. rewrite /dropmsb /spec.dropmsb.
-  by apply: enc_bits_splitmsb_res.
-Qed.
-
-Lemma enc_bits_concat: forall w0 w1 E (ls0 : w0.-tuple literal) bs0 (ls1 : w1.-tuple literal) bs1,
-    enc_bits E ls0 bs0 -> enc_bits E ls1 bs1 ->
-    enc_bits E (cat_tuple ls1 ls0) (bs0 ## bs1) .
-Proof .
-  move => w0 w1 E ls0 bs0 ls1 bs1 Hls0bs0 .
-  move: w1 ls1 bs1 .
-  elim .
-  - intros . rewrite /catB . rewrite tuple0 catNil .
-    rewrite tuple0 catNil . done .
-  - move => w1 IHw1 . case/tupleP => ls1 ls2 /= .
-    case/tupleP => bs1 bs2 /= .
-    rewrite /catB !tupleE !catCons !theadE !beheadCons .
-    move/andP => [Hls1bs1 Hls2bs2] .
-    move: (IHw1 ls2 bs2 Hls2bs2) .
-    rewrite /catB => Hbs2bs0 .
-    rewrite Hls1bs1 Hbs2bs0 .
-    done .
-Qed .
-
-Lemma enc_bits_nseq : forall E n l b,
-    enc_bit E l b -> enc_bits E (nseq_tuple n l) (nseq_tuple n b) .
-Proof .
-  move => E n l b Hencbit .
-  elim n .
-  - done .
-  - move => n' IH .
-    rewrite enc_bits_splitlsb /= .
-    apply /andP ; split .
-    + done .
-    + by rewrite !behead_nseq.
-Qed .
-
-Lemma tuple1_behead : forall T (ls : 1.-tuple T), behead ls = [tuple] .
-Proof .
-  move => T .
-  case => [val sz] .
-  apply size0nil .
-  rewrite size_behead /= .
-  by rewrite (eqP sz) .
-Qed .
-
-Lemma enc_bits_last : forall w (bs : BITS w.+1) E ls b l,
-    enc_bits E ls bs ->
-    enc_bit E (last l ls) (last b bs) .
-Proof .
-  elim .
-  - move => bs E ls b l .
-    rewrite enc_bits_splitlsb => /andP [Hencbit _] .
-    rewrite /splitlsb /= in Hencbit .
-    rewrite (tuple_eta ls) (tuple_eta bs) /last /= .
-    by rewrite (tuple1_behead ls) (tuple1_behead bs) .
-  - move => n IH bs E ls b l Hencbit .
-    move: Hencbit; rewrite enc_bits_splitlsb => /andP [_ Hencbits] .
-    rewrite /splitlsb in Hencbits .
-    move: (IH (behead_tuple bs) _ (behead_tuple ls)
-              (thead bs) (thead ls) Hencbits)
-    => {Hencbits} Hencbits .
-    by rewrite (tuple_eta ls) (tuple_eta bs) /last /= .
-Qed .
-
-Lemma enc_bits_rev:
-  forall w E (ls: w.-tuple literal) (bs: BITS w),
-    enc_bits E ls bs ->
-    enc_bits E (rev_tuple ls) (rev_tuple bs).
-Proof.
-  elim.
-  - done.
-  - move=> w IH E ls bs Henc.
-    case Hmsb1: (splitmsb ls) => [last1 prefix1].
-    case Hmsb2: (splitmsb bs) => [last2 prefix2].
-    move: (splitmsb_rev Hmsb1) (splitmsb_rev Hmsb2) => Hrev1 Hrev2 /=.
-    have ->: rev_tuple ls = cons_tuple last1 (rev_tuple prefix1).
-    {
-      apply: val_inj. rewrite /= Hrev1. reflexivity.
-    }
-    have ->: rev_tuple bs = cons_tuple last2 (rev_tuple prefix2).
-    {
-      apply: val_inj. rewrite /= Hrev2. reflexivity.
-    }
-    rewrite 2!theadCons 2!beheadCons /=.
-    move: (enc_bits_splitmsb bs E ls) => Henc_split.
-    rewrite Henc_split in Henc.
-    move /andP : Henc => [Henc_msb Henc_res].
-    rewrite Hmsb1 Hmsb2 /= in Henc_msb Henc_res.
-      by rewrite (IH _ _ _ Henc_res) andbT.
-Qed.
-
-Lemma enc_bit_env_upd_updated :
-  forall E b l x y,
-    x != var_of_lit b ->
-    enc_bit (env_upd E x y) b l = enc_bit E b l.
-Proof.
-  rewrite /enc_bit => E b l x y Hne. rewrite (interp_lit_env_upd_neq _ _ Hne).
-  reflexivity.
-Qed.
-
-Lemma enc_bit_env_upd_original :
-  forall E b l x y,
-    x != var_of_lit b ->
-    enc_bit (env_upd E x y) b l = enc_bit E b l.
-Proof.
-  rewrite /enc_bit => E b l x y Hne. rewrite (interp_lit_env_upd_neq _ _ Hne).
-  reflexivity.
-Qed.
-
-Lemma interp_lits_enc_bits :
-  forall w E (ls1 ls2 : w.-tuple literal) bs,
-    interp_lits E ls1 = interp_lits E ls2 ->
-    enc_bits E ls1 bs -> enc_bits E ls2 bs.
-Proof.
-  elim.
-  - by trivial.
-  - move=> w IH E. case/tupleP=> [ls1_hd ls1_tl]. case/tupleP=> [ls2_hd ls2_tl].
-    case/tupleP=> [bs_hd bs_tl]. rewrite /= !theadE !beheadCons 2!interp_lits_cons.
-    move=> H /andP [Henchd Henctl]. move: (splitTuple H)=> {H} [Hhd Htl].
-    rewrite (enc_bit_change_lit Hhd Henchd) andTb.
-    exact: (IH E ls1_tl ls2_tl bs_tl Htl Henctl).
+  move=> Heq. apply: enc_bits_change_word. rewrite word_equiv_interp_eq.
+  apply/eqP. assumption.
 Qed.
 
 
@@ -793,413 +621,358 @@ Definition newer_than_lits g ls : bool := all (newer_than_lit g) ls.
 
 Definition newer_than_cnf g cs : bool := all (newer_than_lits g) cs.
 
-Lemma newer_than_var_irrefl :
-  forall x, ~~ newer_than_var x x.
+Lemma newer_than_lit_tt_ff g : newer_than_lit g lit_tt = newer_than_lit g lit_ff.
+Proof. by rewrite /newer_than_lit /=. Qed.
+
+Lemma newer_than_var_irrefl x : ~~ newer_than_var x x.
 Proof.
-  move=> x. apply/negP => Hnew. rewrite /newer_than_var Pos.ltb_irrefl in Hnew.
+  apply/negP => Hnew. rewrite /newer_than_var Pos.ltb_irrefl in Hnew.
   exact: not_false_is_true.
 Qed.
 
-Lemma newer_than_var_trans :
-  forall x y z, newer_than_var x y -> newer_than_var y z -> newer_than_var x z.
+Lemma newer_than_var_trans x y z :
+  newer_than_var x y -> newer_than_var y z -> newer_than_var x z.
 Proof.
-  move=> x y z Hxy Hyz. apply/pos_ltP. move/pos_ltP: Hxy=> Hxy.
+  move=> Hxy Hyz. apply/pos_ltP. move/pos_ltP: Hxy=> Hxy.
   move/pos_ltP: Hyz=> Hyz. exact: (Pos.lt_trans _ _ _ Hyz Hxy).
 Qed.
 
-Lemma newer_than_var_le_newer :
-  forall x y z, newer_than_var x y -> (x <=? z)%positive -> newer_than_var z y.
+Lemma newer_than_var_le_newer x y z :
+  newer_than_var x y -> (x <=? z)%positive -> newer_than_var z y.
 Proof.
-  move=> x y z /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
+  move=> /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
   exact: (Pos.lt_le_trans _ _ _ Hyx Hxz).
 Qed.
 
-Lemma newer_than_var_lt_newer :
-  forall x y z, newer_than_var x y -> (x <? z)%positive -> newer_than_var z y.
+Lemma newer_than_var_lt_newer x y z :
+  newer_than_var x y -> (x <? z)%positive -> newer_than_var z y.
 Proof.
-  move=> x y z /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
+  move=> /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
   exact: (Pos.lt_trans _ _ _ Hyx Hxz).
 Qed.
 
-Lemma newer_than_var_neq :
-  forall g l,
-    newer_than_var g l ->
-    g != l.
+Lemma newer_than_var_neq g l :
+  newer_than_var g l -> g != l.
 Proof.
-  move=> g l Hg. apply/negP. rewrite /= => H. rewrite (eqP H) in Hg.
+  move=> Hg. apply/negP. rewrite /= => H. rewrite (eqP H) in Hg.
   rewrite /newer_than_var in Hg. rewrite Pos.ltb_irrefl in Hg. by elim Hg.
 Qed.
 
-Lemma newer_than_var_add_diag_r :
-  forall x y, newer_than_var (x + y) x.
+Lemma newer_than_var_add_diag_r x y : newer_than_var (x + y) x.
+Proof. rewrite /newer_than_var. exact: pos_ltb_add_diag_r. Qed.
+
+Lemma newer_than_var_add_r x y z : newer_than_var x y -> newer_than_var (x + z) y.
 Proof.
-  rewrite /newer_than_var=> x y. exact: pos_ltb_add_diag_r.
+  rewrite /newer_than_var=> Hnew. apply/pos_ltP. move/pos_ltP: Hnew=> Hnew.
+  exact: pos_lt_add_r.
 Qed.
 
-Lemma newer_than_var_add_r :
-  forall x y z, newer_than_var x y -> newer_than_var (x + z) y.
-Proof.
-  rewrite /newer_than_var=> x y z Hnew. apply/pos_ltP.
-  move/pos_ltP: Hnew=> Hnew. exact: pos_lt_add_r.
-Qed.
+Lemma newer_than_lit_irrefl x : ~~ newer_than_lit (var_of_lit x) x.
+Proof. exact: newer_than_var_irrefl. Qed.
 
-Lemma newer_than_lit_irrefl :
-  forall x, ~~ newer_than_lit (var_of_lit x) x.
-Proof.
-  move=> x. exact: newer_than_var_irrefl.
-Qed.
+Lemma newer_than_lit_trans x y z :
+  newer_than_lit (var_of_lit x) y -> newer_than_lit (var_of_lit y) z ->
+  newer_than_var (var_of_lit x) (var_of_lit z).
+Proof. move=> Hxy Hyz. exact: (newer_than_var_trans Hxy Hyz). Qed.
 
-Lemma newer_than_lit_trans :
-  forall x y z,
-    newer_than_lit (var_of_lit x) y -> newer_than_lit (var_of_lit y) z ->
-    newer_than_var (var_of_lit x) (var_of_lit z).
-Proof.
-  move=> x y H Hxy Hyz. exact: (newer_than_var_trans Hxy Hyz).
-Qed.
+Lemma newer_than_lit_neq g l : newer_than_lit g l -> g != var_of_lit l.
+Proof. move=> Hg. apply: newer_than_var_neq. exact: Hg. Qed.
 
-Lemma newer_than_lit_neq :
-  forall g l,
-    newer_than_lit g l ->
-    g != var_of_lit l.
-Proof.
-  move=> g l Hg. apply: newer_than_var_neq. exact: Hg.
-Qed.
+Lemma newer_than_lit_neg g l : newer_than_lit g (neg_lit l) = newer_than_lit g l.
+Proof. case: l => l; reflexivity. Qed.
 
-Lemma newer_than_lit_neg :
-  forall g l,
-    newer_than_lit g (neg_lit l) = newer_than_lit g l.
-Proof.
-  move=> g l. case: l => l; reflexivity.
-Qed.
+Lemma newer_than_lit_add_diag_r x y : newer_than_lit (var_of_lit x + y) x.
+Proof. rewrite /newer_than_lit /newer_than_var. exact: pos_ltb_add_diag_r. Qed.
 
-Lemma newer_than_lit_add_diag_r :
-  forall x y, newer_than_lit (var_of_lit x + y) x.
-Proof.
-  rewrite /newer_than_lit /newer_than_var=> x y. exact: pos_ltb_add_diag_r.
-Qed.
+Lemma newer_than_lit_add_r x y z : newer_than_lit x y -> newer_than_lit (x + z) y.
+Proof. rewrite /newer_than_lit=> Hnew. exact: newer_than_var_add_r. Qed.
 
-Lemma newer_than_lit_add_r :
-  forall x y z, newer_than_lit x y -> newer_than_lit (x + z) y.
+Lemma newer_than_lit_le_newer x y z :
+  newer_than_lit x y -> (x <=? z)%positive -> newer_than_lit z y.
 Proof.
-  rewrite /newer_than_lit=> x y z Hnew. exact: newer_than_var_add_r.
-Qed.
-
-Lemma newer_than_lit_le_newer :
-  forall x y z, newer_than_lit x y -> (x <=? z)%positive -> newer_than_lit z y.
-Proof.
-  move=> x y z /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
+  move=> /pos_ltP Hyx /pos_leP Hxz. apply/pos_ltP.
   exact: (Pos.lt_le_trans _ _ _ Hyx Hxz).
 Qed.
 
-Lemma newer_than_lit_lt_newer :
-  forall x y z, newer_than_lit x y -> (x <? z)%positive -> newer_than_lit z y.
+Lemma newer_than_lit_lt_newer x y z :
+  newer_than_lit x y -> (x <? z)%positive -> newer_than_lit z y.
 Proof.
-  move=> x y z /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
+  move=> /pos_ltP Hyx /pos_ltP Hxz. apply/pos_ltP.
   exact: (Pos.lt_trans _ _ _ Hyx Hxz).
 Qed.
 
-Lemma newer_than_lit_enc_bit_env_upd :
-  forall E x v l b,
-    newer_than_lit x l ->
-    enc_bit (env_upd E x v) l b = enc_bit E l b.
+Lemma newer_than_lit_enc_bit_env_upd E x v l b :
+  newer_than_lit x l ->
+  enc_bit (env_upd E x v) l b = enc_bit E l b.
 Proof.
-  move=> E x v l b Hnew. rewrite /enc_bit.
-  move: (newer_than_lit_neq Hnew) => Hneq.
+  move=> Hnew. rewrite /enc_bit. move: (newer_than_lit_neq Hnew) => Hneq.
   rewrite (interp_lit_env_upd_neq _ _ Hneq). reflexivity.
 Qed.
 
-Lemma newer_than_lits_cons :
-  forall g l ls,
-    newer_than_lits g (l::ls) = newer_than_lit g l && newer_than_lits g ls.
+Lemma newer_than_lit_lit_of_bool g b :
+  newer_than_lit g (lit_of_bool b) = newer_than_lit g lit_tt.
+Proof. by case: b. Qed.
+
+Lemma newer_than_lits_cons g l ls :
+  newer_than_lits g (l::ls) = newer_than_lit g l && newer_than_lits g ls.
+Proof. reflexivity. Qed.
+
+Lemma newer_than_lits_cat g ls1 ls2 :
+  newer_than_lits g (ls1++ls2) = newer_than_lits g ls1 && newer_than_lits g ls2.
 Proof.
+  elim: ls1 ls2 => [| hd1 tl1 IH1] ls2 //=. rewrite (IH1 ls2). rewrite andbA.
   reflexivity.
 Qed.
 
-Lemma newer_than_lits_append :
-  forall g ls1 ls2,
-    newer_than_lits g (ls1++ls2) = newer_than_lits g ls1 && newer_than_lits g ls2.
+Lemma newer_than_lits_rcons g ls l :
+  newer_than_lits g (rcons ls l) = newer_than_lits g ls && newer_than_lit g l.
 Proof.
-  move=> g; elim.
-  - reflexivity.
-  - move=> l ls1 IH ls2. rewrite /=. rewrite (IH ls2). rewrite andbA. reflexivity.
+  elim: ls => [| hd tl IH] /=.
+  - by rewrite andbT.
+  - by rewrite IH andb_assoc.
 Qed.
 
-Lemma newer_than_lits_behead :
-  forall w g (ls : (w.+1).-tuple literal),
-    newer_than_lits g ls -> newer_than_lits g (behead_tuple ls) .
-Proof .
-  move => w g ls .
-  rewrite (tuple_eta ls) /= .
-  by move /andP => [_ H] .
-Qed .
-
-Lemma newer_than_lits_thead :
-  forall w g (ls : (w.+1).-tuple literal),
-    newer_than_lits g ls -> newer_than_lit g (thead ls) .
-Proof .
-  move => w g ls .
-  rewrite (tuple_eta ls) /= .
-  by move /andP => [H _] .
-Qed .
-
-Lemma newer_than_lits_neq :
-  forall g ls l,
-    l \in ls ->
-    newer_than_lits g ls ->
-     g != (var_of_lit l).
+Lemma newer_than_lits_catrev g ls1 ls2 :
+  newer_than_lits g (catrev ls1 ls2) = newer_than_lits g ls1 && newer_than_lits g ls2.
 Proof.
-  move=> g. elim.
-  - done.
-  - move=> hd tl IH l Hmem. rewrite newer_than_lits_cons.
-    move/andP=> [Hnew_hd Hnew_tl]. rewrite in_cons in Hmem. case/orP: Hmem.
-    + move=> /eqP ->. exact: (newer_than_lit_neq Hnew_hd).
-    + move=> Hmem. exact: (IH _ Hmem Hnew_tl).
+  elim: ls1 ls2 => [| hd1 tl1 IH1] ls2 //=. rewrite IH1 newer_than_lits_cons.
+  by rewrite andb_assoc (andb_comm _ (newer_than_lit g hd1)).
 Qed.
 
-Lemma newer_than_lits_add_r :
-  forall x ls y, newer_than_lits x ls -> newer_than_lits (x + y) ls.
+Lemma newer_than_lits_lit_of_bool g bs :
+  newer_than_lit g lit_tt -> newer_than_lits g (map lit_of_bool bs).
 Proof.
-  move=> x ls. elim: ls x.
-  - done.
-  - move=> ls_hd ls_tl IH x y. rewrite 2!newer_than_lits_cons.
-    move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
-    exact: newer_than_lit_add_r.
+  move=> H. elim: bs => [| hd tl IH] //=. by rewrite newer_than_lit_lit_of_bool H IH.
 Qed.
 
-Lemma newer_than_lits_le_newer :
-  forall x ls y, newer_than_lits x ls -> (x <=? y)%positive -> newer_than_lits y ls.
+Lemma newer_than_lits_lit_of_bool_nonempty g bs :
+  0 < size bs ->
+  newer_than_lits g (map lit_of_bool bs) = newer_than_lit g lit_tt.
 Proof.
-  move=> x ls. elim: ls x.
-  - done.
-  - move=> hd tl IH x y. rewrite 2!newer_than_lits_cons.
-    move/andP=> [Hnew_hd Hnew_tl] Hle. rewrite (newer_than_lit_le_newer Hnew_hd Hle).
-    rewrite (IH _ _ Hnew_tl Hle). done.
+  elim: bs => [| hd [| tl_hd tl_tl] IH] _ //.
+  - by rewrite /= newer_than_lit_lit_of_bool andbT.
+  - rewrite newer_than_lits_cons IH; last by done.
+      by rewrite newer_than_lit_lit_of_bool andb_diag.
 Qed.
 
-Lemma newer_than_lits_lt_newer :
-  forall x ls y, newer_than_lits x ls -> (x <? y)%positive -> newer_than_lits y ls.
+Lemma newer_than_lits_neq g ls l :
+  l \in ls -> newer_than_lits g ls -> g != (var_of_lit l).
 Proof.
-  move=> x ls. elim: ls x.
-  - done.
-  - move=> hd tl IH x y. rewrite 2!newer_than_lits_cons.
-    move/andP=> [Hnew_hd Hnew_tl] Hle. rewrite (newer_than_lit_lt_newer Hnew_hd Hle).
-    rewrite (IH _ _ Hnew_tl Hle). done.
+  elim: ls l => [| hd tl IH] l //=. move=> Hmem. move/andP=> [Hnew_hd Hnew_tl].
+  rewrite in_cons in Hmem. case/orP: Hmem.
+  + move=> /eqP ->. exact: (newer_than_lit_neq Hnew_hd).
+  + move=> Hmem. exact: (IH _ Hmem Hnew_tl).
 Qed.
 
-Lemma newer_than_lits_nseq_lit :
-  forall g n lit, newer_than_lit g lit -> newer_than_lits g (nseq_tuple n lit) .
-Proof .
-  move => g n lit Hglit .
-  elim n .
-  - by rewrite tuple0 .
-  - move => m IH .
-    rewrite newer_than_lits_cons Hglit .
-    done .
-Qed .
-
-Lemma newer_than_lits_copy :
-  forall g n lit, newer_than_lit g lit -> newer_than_lits g (copy n lit) .
-Proof .
-  exact: (newer_than_lits_nseq_lit).
-Qed .
-
-Lemma newer_than_lits_splitlsb :
-  forall w g (lits : (w.+1).-tuple literal) others lsb,
-    newer_than_lits g lits ->
-    splitlsb lits = (others, lsb) ->
-    newer_than_lits g others && newer_than_lit g lsb .
-Proof .
-  move=> w g lits others lsb.
-  rewrite (tuple_eta lits) /=.
-  move=> /andP [H1 H2].
-  rewrite /splitlsb. rewrite !beheadCons !theadCons /=.
-  case=> <- <-.
-    by rewrite H1 H2.
+Lemma newer_than_lits_add_r x ls y :
+  newer_than_lits x ls -> newer_than_lits (x + y) ls.
+Proof.
+  elim: ls x y => [| hd tl IH] x y //=. move/andP=> [Hnewer_hd Hnewer_tl].
+  rewrite (IH _ _ Hnewer_tl) andbT. exact: newer_than_lit_add_r.
 Qed.
 
-Lemma newer_than_lits_splitmsb :
-  forall w g (lits : (w.+1).-tuple literal) msb others,
-    newer_than_lits g lits ->
-    splitmsb lits = (msb, others) ->
-    newer_than_lit g msb && newer_than_lits g others .
-Proof .
-  elim .
-  - move => g lits msb others Hglits .
-    case => <- <- .
-    rewrite -(newer_than_lits_cons) .
-    by rewrite (tuple_eta lits) in Hglits .
-  - move => n IH g /tupleP [lits_hd lits_tl] msb others Hglits .
-    case Hsplittl : (splitmsb (behead_tuple [tuple of lits_hd :: lits_tl])) => [msb_tl others_tl] .
-    move: (IH _ _ _ _ (newer_than_lits_behead Hglits) Hsplittl) => Htl .
-    rewrite /= Hsplittl !theadCons /joinlsb /= .
-    case => <- <- .
-    move : Htl => /andP [Hmsb_tl Hothers_tl] .
-    apply /andP; split .
-    + trivial .
-    + rewrite /= .
-      apply /andP; split .
-      * rewrite newer_than_lits_cons in Hglits .
-        by move: Hglits => /andP [H0 _] .
-      * trivial .
-Qed .
-
-Lemma newer_than_lits_joinmsb :
-  forall w g l (ls : w.-tuple literal),
-    newer_than_lit g l -> newer_than_lits g ls ->
-    newer_than_lits g (joinmsb (l, ls)) .
-Proof .
-  elim .
-  - move => g l ls Hgl _ /= .
-    by rewrite Hgl .
-  - move => n IH g l /tupleP [ls_hd ls_tl] Hgl Hgls /= .
-    rewrite !theadCons !beheadCons /= .
-    rewrite newer_than_lits_cons in Hgls .
-    case : Hgls => /andP [Hglshd Hglstl] .
-    move : (IH _ _ _ Hgl Hglstl) => Hllstl .
-    apply /andP; split; trivial .
-Qed .
-
-Lemma newer_than_lits_last :
-  forall w g (ls : (w.+1).-tuple literal) l,
-    newer_than_lits g ls -> newer_than_lit g (last l ls) .
-Proof .
-  elim .
-  - move => g ls l .
-    rewrite (tuple_eta ls) /last /= .
-    rewrite (tuple1_behead ls) .
-    by move /andP => [Hlshd _] .
-  - move => n IH g ls l .
-    rewrite (tuple_eta ls) /= .
-    move /andP => [_ Hlstl] .
-    move: (IH _ (behead_tuple ls) (thead ls) Hlstl) .
-    by rewrite (tuple_eta ls) theadE /= .
-Qed .
-
-Lemma newer_than_lits_default_last :
-  forall w g (ls : w.-tuple literal) l,
-    newer_than_lits g ls -> newer_than_lit g l ->
-    newer_than_lit g (last l ls) .
-Proof .
-  elim .
-  - move => g ls l _ .
-    by rewrite tuple0 /= .
-  - move => n IH g ls l .
-    rewrite (tuple_eta ls) /= .
-    move /andP => [Hlshd Hlstl] _ .
-    by apply: (IH _ (behead_tuple ls) (thead ls) Hlstl) .
-Qed .
-
-Lemma newer_than_lits_rev:
-  forall w g (ls: w.-tuple literal),
-    newer_than_lits g ls ->
-    newer_than_lits g (rev_tuple ls).
+Lemma newer_than_lits_le_newer x ls y :
+  newer_than_lits x ls -> (x <=? y)%positive -> newer_than_lits y ls.
 Proof.
-  elim.
-  - move=> g ls /=. rewrite tuple0. done.
-  - move=> w IH g ls Hnew.
-    case Hmsb1: (splitmsb ls) => [last1 prefix1].
-    move: (splitmsb_rev Hmsb1) => Hrev1.
-    have -> : rev_tuple ls = cons_tuple last1 (rev_tuple prefix1).
-    {
-      apply: val_inj. rewrite /= Hrev1. reflexivity.
-    }
-    rewrite /=.
-    move: (newer_than_lits_splitmsb Hnew Hmsb1) => /andP [-> H] /=.
-    exact: (IH _ _ H).
+  elim: ls x y => [| hd tl IH] x y //=. move/andP=> [Hnew_hd Hnew_tl] Hle.
+  rewrite (newer_than_lit_le_newer Hnew_hd Hle). rewrite (IH _ _ Hnew_tl Hle). done.
 Qed.
 
-Lemma newer_than_lits_enc_bits_env_upd :
-  forall w E x b (ls : w.-tuple literal) bs,
-    newer_than_lits x ls ->
-    enc_bits (env_upd E x b) ls bs = enc_bits E ls bs.
+Lemma newer_than_lits_lt_newer x ls y :
+  newer_than_lits x ls -> (x <? y)%positive -> newer_than_lits y ls.
 Proof.
-  elim.
-  - done.
-  - move=> w IH E x b. case/tupleP=> [ls_hd ls_tl]. case/tupleP=> [bs_hd bs_tl].
-    rewrite /= !theadE !beheadCons. move/andP=> [Hnew_hd Hnew_tl].
-    rewrite (newer_than_lit_enc_bit_env_upd _ _ _ Hnew_hd).
-    rewrite (IH _ _ _ _ _ Hnew_tl). reflexivity.
+  elim: ls x y => [| hd tl IH] x y //=. move/andP=> [Hnew_hd Hnew_tl] Hle.
+  rewrite (newer_than_lit_lt_newer Hnew_hd Hle). rewrite (IH _ _ Hnew_tl Hle). done.
 Qed.
 
-Lemma newer_than_cnf_cons :
-  forall g c cs,
-    newer_than_cnf g (c::cs) = newer_than_lits g c && newer_than_cnf g cs.
+Lemma newer_than_lits_copy g n l :
+  newer_than_lit g l -> newer_than_lits g (copy n l).
+Proof. elim: n => [| n IH] //=. move=> H. by rewrite H (IH H). Qed.
+
+Lemma newer_than_lits_copy_nonempty g n l :
+  0 < n -> newer_than_lits g (nseq n l) = newer_than_lit g l.
 Proof.
-  reflexivity.
+  elim: n => [| n IH] _ //=. case: n IH => /=.
+  - move=> _; by rewrite andbT.
+  - move=> n IH. rewrite IH => //=. exact: andb_diag.
 Qed.
 
-Lemma newer_than_cnf_append :
-  forall g cs1 cs2,
-    newer_than_cnf g (cs1++cs2) = newer_than_cnf g cs1 && newer_than_cnf g cs2.
+Lemma newer_than_lits_splitlsl g (lits : seq literal) :
+  newer_than_lit g lit_tt ->
+  newer_than_lits g lits ->
+  newer_than_lit g (splitlsl lits).1 && newer_than_lits g (splitlsl lits).2.
 Proof.
-  move=> g; elim.
-  - reflexivity.
-  - move=> c cs1 IH cs2. rewrite /=. rewrite (IH cs2). rewrite andbA. reflexivity.
+  case: lits => [| hd tl IH] //=. move=> Htt _. by rewrite -newer_than_lit_tt_ff Htt.
 Qed.
 
-Lemma newer_than_cnf_add_r :
-  forall x cs y, newer_than_cnf x cs -> newer_than_cnf (x + y) cs.
+Lemma newer_than_lits_splitlsl_nonempty g (lits : seq literal) :
+  0 < size lits ->
+  newer_than_lits g lits ->
+  newer_than_lit g (splitlsl lits).1 && newer_than_lits g (splitlsl lits).2.
+Proof. by case: lits => [| hd tl IH] //=. Qed.
+
+Lemma newer_than_lits_lsl g (ls : seq literal) :
+  newer_than_lit g lit_tt -> newer_than_lits g ls -> newer_than_lit g (lsl ls).
 Proof.
-  move=> x cs. elim: cs x.
-  - done.
-  - move=> cs_hd cs_tl IH x y. rewrite 2!newer_than_cnf_cons.
-    move/andP=> [Hnewer_hd Hnewer_tl]. rewrite (IH _ _ Hnewer_tl) andbT.
-    exact: newer_than_lits_add_r.
+  move=> Htt H. move: (newer_than_lits_splitlsl Htt H).
+  by rewrite /lsl => /andP [-> _].
 Qed.
 
-Lemma newer_than_cnf_le_newer :
-  forall x cs y, newer_than_cnf x cs -> (x <=? y)%positive -> newer_than_cnf y cs.
+Lemma newer_than_lits_lsl_nonempty g (ls : seq literal) :
+  0 < size ls -> newer_than_lits g ls -> newer_than_lit g (lsl ls).
 Proof.
-  move=> x cs. elim: cs x.
-  - done.
-  - move=> hd tl IH x y. rewrite 2!newer_than_cnf_cons.
-    move/andP=> [Hnew_hd Hnew_tl] Hle.
-    rewrite (newer_than_lits_le_newer Hnew_hd Hle).
-    rewrite (IH _ _ Hnew_tl Hle). done.
+  move=> Hs H. move: (newer_than_lits_splitlsl_nonempty Hs H).
+  by rewrite /lsl => /andP [-> _].
 Qed.
 
-Lemma newer_than_cnf_lt_newer :
-  forall x cs y, newer_than_cnf x cs -> (x <? y)%positive -> newer_than_cnf y cs.
+Lemma newer_than_lits_droplsl g (ls : seq literal) :
+  newer_than_lits g ls -> newer_than_lits g (droplsl ls).
 Proof.
-  move=> x cs. elim: cs x.
-  - done.
-  - move=> hd tl IH x y. rewrite 2!newer_than_cnf_cons.
-    move/andP=> [Hnew_hd Hnew_tl] Hle.
-    rewrite (newer_than_lits_lt_newer Hnew_hd Hle).
-    rewrite (IH _ _ Hnew_tl Hle). done.
+  case: ls => [| hd tl] //=. rewrite /droplsl => /andP [_ H] /=. assumption.
 Qed.
 
-Lemma interp_lit_env_upd_newer :
-  forall E x v y,
-    newer_than_lit x y -> interp_lit (env_upd E x v) y = interp_lit E y.
+Lemma newer_than_lits_joinlsl g l ls :
+  newer_than_lit g l -> newer_than_lits g ls -> newer_than_lits g (joinlsl l ls).
+Proof. move=> H1 H2 /=. by rewrite H1 H2. Qed.
+
+Lemma newer_than_lits_splitmsl g (ls : seq literal) :
+  newer_than_lit g lit_tt ->
+  newer_than_lits g ls ->
+  newer_than_lits g (splitmsl ls).1 && newer_than_lit g (splitmsl ls).2.
 Proof.
-  move=> E x v y Hnewer. apply: interp_lit_env_upd_neq.
-  exact: (newer_than_lit_neq Hnewer).
+  elim: ls => [| hd tl IH] //=. move=> Htt /andP [Hhd Htl].
+  move: (IH Htt Htl) => {IH}. rewrite /splitmsl /split_last /=.
+  case: tl Htl => //=. move=> tl_hd tl_tl /andP [Htl_hd Htl_tl]
+    /andP [Htl_belast Htl_last]. by rewrite Hhd Htl_belast Htl_last.
 Qed.
 
-Lemma interp_clause_env_upd_newer :
-  forall E x v (c : clause),
-    newer_than_lits x c ->
-    interp_clause (env_upd E x v) c = interp_clause E c.
+Lemma newer_than_lits_splitmsl_nonempty g (ls : seq literal) :
+  0 < size ls ->
+  newer_than_lits g ls ->
+  newer_than_lits g (splitmsl ls).1 && newer_than_lit g (splitmsl ls).2.
 Proof.
-  move=> E x v. elim.
-  - reflexivity.
-  - move=> l c IH Hnew. rewrite /= in Hnew. move/andP: Hnew=> [Hnew1 Hnew2].
-    rewrite 2!interp_clause_cons. rewrite (interp_lit_env_upd_newer _ _ Hnew1).
-    rewrite (IH Hnew2). reflexivity.
+  elim: ls => [| hd [| tl_hd tl_tl] IH] //=.
+  - by move=> _ /andP [-> _].
+  - move=> _ /andP [Hhd Htl]. rewrite /= in IH. have Hs: 0 < (size tl_tl).+1 by done.
+    move: (IH Hs Htl) => {IH Hs}. move/andP => [Htl_belast Htl_last].
+    by rewrite Hhd Htl_belast Htl_last.
 Qed.
 
-Lemma interp_cnf_env_upd_newer :
-  forall E x v (cs : cnf),
-    newer_than_cnf x cs ->
-    interp_cnf (env_upd E x v) cs = interp_cnf E cs.
+Lemma newer_than_lits_msl g (ls : seq literal) :
+  newer_than_lit g lit_tt -> newer_than_lits g ls -> newer_than_lit g (msl ls).
 Proof.
-  move=> E x v. elim.
-  - reflexivity.
-  - move=> c cs IH Hnew. rewrite /= in Hnew. move/andP: Hnew=> [Hnew1 Hnew2].
-    rewrite 2!(interp_cnf_cons _ c cs).
-    rewrite (interp_clause_env_upd_newer _ _ Hnew1) (IH Hnew2).
-    reflexivity.
+  move=> Htt H. move: (newer_than_lits_splitmsl Htt H).
+  by rewrite /msl => /andP [_ ->].
+Qed.
+
+Lemma newer_than_lits_msl_nonempty g (ls : seq literal) :
+  0 < size ls -> newer_than_lits g ls -> newer_than_lit g (msl ls).
+Proof.
+  move=> Hs H. move: (newer_than_lits_splitmsl_nonempty Hs H).
+  by rewrite /msl => /andP [_ ->].
+Qed.
+
+Lemma newer_than_lits_dropmsl g (ls : seq literal) :
+  newer_than_lits g ls -> newer_than_lits g (dropmsl ls).
+Proof.
+  elim: ls => [| hd tl IH] //=. move/andP=> [Hhd Htl]. move: (IH Htl) => {IH}.
+  case: tl Htl => //=. move=> tl_hd tl_tl /andP [Htl_hd Htl_tl] Hdropmsl.
+  rewrite /dropmsl /= in Hdropmsl. by rewrite Hhd Hdropmsl.
+Qed.
+
+Lemma newer_than_lits_joinmsl g ls l :
+  newer_than_lits g ls -> newer_than_lit g l -> newer_than_lits g (joinmsl ls l).
+Proof.
+  elim: ls => [| hd tl IH] /=.
+  - by move=> _ ->.
+  - move/andP=> [Hhd Htl] Hl. by rewrite Hhd (IH Htl Hl).
+Qed.
+
+Lemma newer_than_lits_rev g ls :
+  newer_than_lits g ls -> newer_than_lits g (rev ls).
+Proof.
+  elim: ls => [| hd tl IH] //=. rewrite rev_cons.
+  move/andP=> [Hhd Htl]. apply: (newer_than_lits_joinmsl (IH Htl) Hhd).
+Qed.
+
+Lemma newer_than_lits_enc_bits_env_upd  E x b (ls : seq literal) bs :
+  newer_than_lits x ls ->
+  enc_bits (env_upd E x b) ls bs = enc_bits E ls bs.
+Proof.
+  elim: ls bs => [| lt_hd ls_tl IH] [| bs_hd bs_tl] //=. move/andP=> [Hhd Htl].
+  rewrite !enc_bits_cons. rewrite (newer_than_lit_enc_bit_env_upd _ _ _ Hhd).
+  rewrite (IH _ Htl). reflexivity.
+Qed.
+
+Lemma newer_than_cnf_cons g c cs :
+  newer_than_cnf g (c::cs) = newer_than_lits g c && newer_than_cnf g cs.
+Proof. reflexivity. Qed.
+
+Lemma newer_than_cnf_cat g cs1 cs2 :
+  newer_than_cnf g (cs1++cs2) = newer_than_cnf g cs1 && newer_than_cnf g cs2.
+Proof. elim: cs1 cs2 => [| hd tl IH] cs2 //=. by rewrite (IH cs2) andbA. Qed.
+
+Lemma newer_than_cons_rcons g cs c :
+  newer_than_cnf g (rcons cs c) = newer_than_cnf g cs && newer_than_lits g c.
+Proof.
+  elim: cs => [| hd tl IH] /=.
+  - by rewrite andbT.
+  - by rewrite IH andb_assoc.
+Qed.
+
+Lemma newer_than_cnf_catrev g cs1 cs2 :
+  newer_than_cnf g (catrev cs1 cs2) = newer_than_cnf g cs1 && newer_than_cnf g cs2.
+Proof.
+  elim: cs1 cs2 => [| hd1 tl1 IH1] ls2 //=. rewrite IH1 newer_than_cnf_cons.
+  by rewrite andb_assoc (andb_comm _ (newer_than_lits g hd1)).
+Qed.
+
+Lemma newer_than_cnf_add_r x cs y : newer_than_cnf x cs -> newer_than_cnf (x + y) cs.
+Proof.
+  elim: cs x => [| hd tl IH] x //=. move/andP=> [Hhd Htl].
+  by rewrite (newer_than_lits_add_r _ Hhd) (IH _ Htl).
+Qed.
+
+Lemma newer_than_cnf_le_newer x cs y :
+  newer_than_cnf x cs -> (x <=? y)%positive -> newer_than_cnf y cs.
+Proof.
+  elim: cs x => [| hd tl IH] x //=. move/andP=> [Hhd Htl] Hle.
+  by rewrite (newer_than_lits_le_newer Hhd Hle) (IH _ Htl Hle).
+Qed.
+
+Lemma newer_than_cnf_lt_newer x cs y :
+  newer_than_cnf x cs -> (x <? y)%positive -> newer_than_cnf y cs.
+Proof.
+  elim: cs x => [| hd tl IH] x //=. move/andP=> [Hhd Htl] Hlt.
+  by rewrite (newer_than_lits_lt_newer Hhd Hlt) (IH _ Htl Hlt).
+Qed.
+
+Lemma interp_lit_env_upd_newer E x v y :
+  newer_than_lit x y -> interp_lit (env_upd E x v) y = interp_lit E y.
+Proof. move=> H. exact: (interp_lit_env_upd_neq _ _ (newer_than_lit_neq H)). Qed.
+
+Lemma interp_clause_env_upd_newer E x v (c : clause) :
+  newer_than_lits x c ->
+  interp_clause (env_upd E x v) c = interp_clause E c.
+Proof.
+  elim: c => [| hd tl IH] //=. move/andP=> [Hhd Htl].
+  rewrite (interp_lit_env_upd_newer _ _ Hhd) (IH Htl). reflexivity.
+Qed.
+
+Lemma interp_word_env_upd_newer E x v (c : word) :
+  newer_than_lits x c ->
+  interp_word (env_upd E x v) c = interp_word E c.
+Proof.
+  elim: c => [| hd tl IH] //=. move/andP=> [Hhd Htl].
+  rewrite (interp_lit_env_upd_newer _ _ Hhd) (IH Htl). reflexivity.
+Qed.
+
+Lemma interp_cnf_env_upd_newer E x v (cs : cnf) :
+  newer_than_cnf x cs ->
+  interp_cnf (env_upd E x v) cs = interp_cnf E cs.
+Proof.
+  elim: cs => [| hd tl IH] //=. move/andP=> [Hhd Htl].
+  rewrite (interp_clause_env_upd_newer _ _ Hhd) (IH Htl). reflexivity.
 Qed.
 
 
@@ -1207,143 +980,92 @@ Qed.
 (* env_preserve *)
 
 Definition env_preserve (E E' : env) g :=
-  forall v : var,
+  forall v : bvar,
     newer_than_var g v ->
     E' v = E v.
 
-Lemma env_preserve_refl : forall E g, env_preserve E E g.
-Proof.
-  done.
-Qed.
+Lemma env_preserve_refl E g : env_preserve E E g.
+Proof. done. Qed.
 
-Lemma env_preserve_sym :
-  forall E1 E2 g, env_preserve E1 E2 g -> env_preserve E2 E1 g.
-Proof.
-  move=> E1 E2 g H l Hnew. rewrite (H _ Hnew). reflexivity.
-Qed.
+Lemma env_preserve_sym E1 E2 g : env_preserve E1 E2 g -> env_preserve E2 E1 g.
+Proof. move=> H l Hnew. by rewrite (H _ Hnew). Qed.
 
-Lemma env_preserve_trans :
-  forall E1 E2 E3 g,
-    env_preserve E1 E2 g -> env_preserve E2 E3 g -> env_preserve E1 E3 g.
-Proof.
-  move=> E1 E2 E3 g H12 H23 l Hnew. rewrite (H23 _ Hnew) (H12 _ Hnew). reflexivity.
-Qed.
+Lemma env_preserve_trans E1 E2 E3 g :
+  env_preserve E1 E2 g -> env_preserve E2 E3 g -> env_preserve E1 E3 g.
+Proof. move=> H12 H23 l Hnew. by rewrite (H23 _ Hnew) (H12 _ Hnew). Qed.
 
-Lemma env_preserve_lit :
-  forall E E' g l,
-    env_preserve E E' g ->
-    newer_than_lit g l ->
-    interp_lit E' l = interp_lit E l.
+Lemma env_preserve_lit E E' g l :
+  env_preserve E E' g -> newer_than_lit g l -> interp_lit E' l = interp_lit E l.
 Proof.
-  move=> E E' g l Hpre Hnew. rewrite /interp_lit. case: l Hnew.
+  move=> Hpre Hnew. rewrite /interp_lit. case: l Hnew.
   - move=> v Hnew. exact: (Hpre _ Hnew).
   - move=> v Hnew. rewrite (Hpre _ Hnew) /=. reflexivity.
 Qed.
 
-Lemma env_preserve_lits :
-  forall w E E' g (ls : w.-tuple literal),
-    env_preserve E E' g ->
-    newer_than_lits g ls ->
-    interp_lits E' ls = interp_lits E ls.
+Lemma env_preserve_word E E' g (ls : seq literal) :
+  env_preserve E E' g -> newer_than_lits g ls -> interp_word E' ls = interp_word E ls.
 Proof.
-  elim.
-  - move=> E E' g ls Hpre Hnew. rewrite tuple0. symmetry. rewrite tuple0. reflexivity.
-  - move=> w IH E E' g. case/tupleP=> [ls_hd ls_tl]. move=> Hpre /=.
-    move/andP=> [Hnew_hd Hnew_tl]. rewrite 2!interp_lits_cons.
-    rewrite (IH _ _ _ _ Hpre Hnew_tl). rewrite (env_preserve_lit Hpre Hnew_hd).
-    reflexivity.
+  elim: ls => [| hd tl IH] //=. move=> Hpre /andP [Hhd Htl].
+  by rewrite (env_preserve_lit Hpre Hhd) (IH Hpre Htl).
 Qed.
 
-Lemma env_preserve_clause :
-  forall E E' g c,
-    env_preserve E E' g ->
-    newer_than_lits g c ->
-    interp_clause E' c = interp_clause E c.
+Lemma env_preserve_clause E E' g c :
+  env_preserve E E' g -> newer_than_lits g c ->
+  interp_clause E' c = interp_clause E c.
 Proof.
-  move=> E E' g. elim.
-  - done.
-  - move=> l c IH Hpre Hnew. rewrite 2!interp_clause_cons.
-    rewrite newer_than_lits_cons in Hnew. move/andP: Hnew => [Hnew_l Hnew_c].
-    rewrite (env_preserve_lit Hpre Hnew_l) (IH Hpre Hnew_c).
-    reflexivity.
+  elim: c => [| hd tl IH] //=. move=> Hpre /andP [Hhd Htl].
+  by rewrite (env_preserve_lit Hpre Hhd) (IH Hpre Htl).
 Qed.
 
-Lemma env_preserve_cnf :
-  forall E E' g cs,
-    env_preserve E E' g ->
-    newer_than_cnf g cs ->
-    interp_cnf E' cs = interp_cnf E cs.
+Lemma env_preserve_cnf E E' g cs :
+  env_preserve E E' g -> newer_than_cnf g cs ->
+  interp_cnf E' cs = interp_cnf E cs.
 Proof.
-  move=> E E' g. elim.
-  - done.
-  - move=> c cs IH Hpre Hnew. rewrite 2!interp_cnf_cons.
-    rewrite newer_than_cnf_cons in Hnew. move/andP: Hnew => [Hnew_l Hnew_c].
-    rewrite (env_preserve_clause Hpre Hnew_l) (IH Hpre Hnew_c).
-    reflexivity.
+  elim: cs => [| hd tl IH] //=. move=> Hpre /andP [Hhd Htl].
+  by rewrite (env_preserve_clause Hpre Hhd) (IH Hpre Htl).
 Qed.
 
-Lemma env_upd_eq_preserve :
-  forall E x v,
-    env_preserve E (env_upd E x v) x.
+Lemma env_upd_eq_preserve E x v : env_preserve E (env_upd E x v) x.
 Proof.
-  move=> E x v l Hnew. rewrite env_upd_neq; first by reflexivity.
+  move=> l Hnew. rewrite env_upd_neq; first by reflexivity.
   exact: (newer_than_var_neq Hnew).
 Qed.
 
-Lemma env_upd_newer_preserve :
-  forall E x v y,
-    newer_than_var x y ->
-    env_preserve E (env_upd E x v) y.
+Lemma env_upd_newer_preserve E x v y :
+  newer_than_var x y -> env_preserve E (env_upd E x v) y.
 Proof.
-  move=> E x v y Hnew_xy l Hnew_yl. apply: env_upd_neq.
-  move: (newer_than_var_trans Hnew_xy Hnew_yl) => Hnew.
-  exact: (newer_than_var_neq Hnew).
+  move=> Hnew_xy l Hnew_yl. apply: env_upd_neq.
+  exact: (newer_than_var_neq (newer_than_var_trans Hnew_xy Hnew_yl)).
 Qed.
 
-Lemma env_preserve_env_upd_succ :
-  forall E E' x v,
-    env_preserve (env_upd E x v) E' (x + 1) -> env_preserve E E' x.
+Lemma env_preserve_env_upd_succ E E' x v :
+  env_preserve (env_upd E x v) E' (x + 1) -> env_preserve E E' x.
 Proof.
-  move=> E E' x v H y Hnew. move: (H y (newer_than_var_add_r 1 Hnew)).
-  move=> ->. rewrite env_upd_neq; first by reflexivity.
-  exact: newer_than_var_neq.
+  move=> H y Hnew. move: (H y (newer_than_var_add_r 1 Hnew)).
+  move=> ->. rewrite env_upd_neq; first by reflexivity. exact: newer_than_var_neq.
 Qed.
 
-Lemma env_preserve_enc_bit :
-  forall E E' g (b : bool) (l : literal),
-    env_preserve E E' g ->
-    newer_than_lit g l ->
-    enc_bit E l b ->
-    enc_bit E' l b.
+Lemma env_preserve_enc_bit E E' g b l :
+  env_preserve E E' g -> newer_than_lit g l ->
+  enc_bit E l b -> enc_bit E' l b.
 Proof.
-  move=> E E' g b l Hpre Hnew. rewrite /enc_bit. move=> Henc.
+  move=> Hpre Hnew. rewrite /enc_bit => Henc.
   rewrite (env_preserve_lit Hpre Hnew). exact: Henc.
 Qed.
 
-Lemma env_preserve_enc_bits :
-  forall w E E' g (bs : BITS w) (ls : w.-tuple literal),
-    env_preserve E E' g ->
-    newer_than_lits g ls ->
-    enc_bits E ls bs ->
-    enc_bits E' ls bs.
+Lemma env_preserve_enc_bits E E' g bs ls :
+  env_preserve E E' g -> newer_than_lits g ls ->
+  enc_bits E ls bs -> enc_bits E' ls bs.
 Proof.
-  elim.
-  - done.
-  - move=> w IH E E' g. case/tupleP=> [bs_hd bs_tl]. case/tupleP=> [ls_hd ls_tl].
-    move=> Hpre. rewrite /= !theadE !beheadCons.
-    move=> /andP [Hnew_hd Hnew_tl] /andP [Henc_hd Henc_tl].
-    rewrite (env_preserve_enc_bit Hpre Hnew_hd Henc_hd).
-    exact: (IH _ _ _ _ _ Hpre Hnew_tl Henc_tl).
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=.
+  move=> Hpre /andP [Hhd Htl]. rewrite !enc_bits_cons => /andP [Henc_hd Henc_tl].
+  by rewrite (env_preserve_enc_bit Hpre Hhd Henc_hd) (IH _ Hpre Htl Henc_tl).
 Qed.
 
-Lemma env_preserve_le :
-  forall E E' g g',
-    env_preserve E E' g ->
-    (g' <=? g)%positive ->
-    env_preserve E E' g'.
+Lemma env_preserve_le E E' g g' :
+  env_preserve E E' g -> (g' <=? g)%positive -> env_preserve E E' g'.
 Proof.
-  move=> E E' g g' Hpre Hle v Hnew.
-  exact: (Hpre v (newer_than_var_le_newer Hnew Hle)).
+  move=> Hpre Hle v Hnew. exact: (Hpre v (newer_than_var_le_newer Hnew Hle)).
 Qed.
 
 
@@ -1356,40 +1078,27 @@ Definition z_of_lit (x : literal) : Z :=
   | Neg n => Zneg n
   end.
 
-Lemma z_of_lit_inj :
-  forall (x y : literal), z_of_lit x = z_of_lit y -> x = y.
-Proof.
-  case.
-  - move=> x; case => y /=.
-    + case => ->. reflexivity.
-    + discriminate.
-  - move=> x; case => y /=.
-    + discriminate.
-    + case => ->. reflexivity.
-Qed.
+Lemma z_of_lit_inj x y : z_of_lit x = z_of_lit y -> x = y.
+Proof. case: x => x; case: y => y //=; by case=> ->. Qed.
 
 Definition lit_lt (x y : literal) : bool := (z_of_lit x <? z_of_lit y)%Z.
 
-Lemma lit_lt_trans :
-  forall (x y z : literal), lit_lt x y -> lit_lt y z -> lit_lt x z.
-Proof.
-  move=> x y z. exact: ZOrder.lt_trans.
-Qed.
+Lemma lit_lt_trans x y z : lit_lt x y -> lit_lt y z -> lit_lt x z.
+Proof. exact: ZOrder.lt_trans. Qed.
 
-Lemma lit_lt_not_eq :
-  forall (x y : literal), lit_lt x y -> x != y.
+Lemma lit_lt_not_eq x y : lit_lt x y -> x != y.
 Proof.
-  move=> x y Hlt. move: (ZOrder.lt_not_eq Hlt). move=> H1; apply/eqP => H2.
+  move=> Hlt. move: (ZOrder.lt_not_eq Hlt). move=> H1; apply/eqP => H2.
   apply: H1. rewrite H2. exact: eqxx.
 Qed.
 
 Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
   Definition t := lit_eqType.
-  Definition eq (x y : t) := x == y.
-  Definition lt (x y : t) := lit_lt x y.
-  Definition lt_trans := lit_lt_trans.
-  Definition lt_not_eq := lit_lt_not_eq.
-  Definition compare (x y : t) : Compare lt eq x y.
+  Definition eqn (x y : t) := x == y.
+  Definition ltn (x y : t) := lit_lt x y.
+  Definition ltn_trans := lit_lt_trans.
+  Definition ltn_not_eqn := lit_lt_not_eq.
+  Definition compare (x y : t) : Compare ltn eqn x y.
   Proof.
     case Heq: (x == y).
     - exact: (EQ Heq).
@@ -1401,8 +1110,8 @@ Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
         apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
   Defined.
 End LiteralOrderedMinimal.
-Module LiteralOrdered := MakeSsrOrderedType LiteralOrderedMinimal.
-Module ClauseOrdered := SeqOrdered LiteralOrdered.
+Module LiteralOrdered <: SsrOrderedTypeWithFacts := MakeSsrOrderedType LiteralOrderedMinimal.
+Module ClauseOrdered <: SsrOrderedTypeWithFacts := SeqOrdered LiteralOrdered.
 Module ClauseSet := FSets.MakeTreeSet ClauseOrdered.
 
 Definition cnf_imp_each E (cs1 cs2 : cnf) :=
@@ -1410,84 +1119,73 @@ Definition cnf_imp_each E (cs1 cs2 : cnf) :=
     c2 \in cs2 ->
            exists c1, c1 \in cs1 /\ (interp_clause E c1 -> interp_clause E c2).
 
-Lemma cnf_imp_each_interp :
-  forall E (cs1 cs2 : cnf),
-    cnf_imp_each E cs1 cs2 ->
-    interp_cnf E cs1 -> interp_cnf E cs2.
+Lemma cnf_imp_each_cons E cs1 cs2_hd cs2_tl :
+  cnf_imp_each E cs1 (cs2_hd::cs2_tl) <-> (cnf_imp_each E cs1 [::cs2_hd] /\
+                                           cnf_imp_each E cs1 cs2_tl).
 Proof.
-  move=> E cs1 cs2. elim: cs2 cs1; first by done.
-  move=> hd2 tl2 IH1. move=> cs1 IH2 Hcs1.
-  move: (IH2 hd2 (mem_head hd2 tl2)) => [l1 [H1 H2]].
-  rewrite interp_cnf_cons. rewrite (H2 (interp_cnf_mem Hcs1 H1)) andTb.
-  apply: (IH1 cs1 _ Hcs1). move=> c2 Hc2.
-  have Hin: (c2 \in hd2 :: tl2) by rewrite in_cons Hc2 orbT.
-  exact: (IH2 c2 Hin).
+  split; [move => H; split | move=> [H1 H2]].
+  - move=> c Hin. rewrite mem_seq1 in Hin.
+    have Hin': c \in cs2_hd :: cs2_tl by rewrite (eqP Hin) mem_head.
+    exact: (H c Hin').
+  - move=> c Hin. have Hin': c \in cs2_hd :: cs2_tl by rewrite in_cons Hin orbT.
+    exact: (H c Hin').
+  - move=> c Hin. rewrite in_cons in Hin. case/orP: Hin => Hin.
+    + have Hin': c \in [::cs2_hd] by rewrite mem_seq1 (eqP Hin).
+      exact: (H1 c Hin').
+    + exact: (H2 c Hin).
 Qed.
 
-Definition cnf_contains (cs1 cs2 : cnf) :=
-  forall c2, c2 \in cs2 -> c2 \in cs1.
-
-Lemma cnf_contains_imp_each :
-  forall E cs1 cs2,
-    cnf_contains cs1 cs2 ->
-    cnf_imp_each E cs1 cs2.
+Lemma cnf_imp_each_interp E cs1 cs2 :
+  cnf_imp_each E cs1 cs2 -> interp_cnf E cs1 -> interp_cnf E cs2.
 Proof.
-  move=> E cs1 cs2 Hcon c2 Hin. exists c2. split.
-  - exact: (Hcon _ Hin).
-  - by apply.
+  elim: cs2 cs1 => [| hd2 tl2 IH] cs1 //=. move=> Himp Hcs1.
+  move: (Himp hd2 (mem_head hd2 tl2)) => [l1 [H1 H2]].
+  rewrite (H2 (interp_cnf_mem Hcs1 H1)) andTb.
+  move/cnf_imp_each_cons: Himp => [Himp_hd Himp_tl]. rewrite (IH _ Himp_tl Hcs1).
+  by case: tl2 IH Himp_tl.
 Qed.
 
-Lemma cnf_contains_interp :
-  forall E (cs1 cs2 : cnf),
-    cnf_contains cs1 cs2 ->
-    interp_cnf E cs1 -> interp_cnf E cs2.
-Proof.
-  move=> E cs1 cs2 Hcon. exact: (cnf_imp_each_interp (cnf_contains_imp_each E Hcon)).
-Qed.
+Definition cnf_contains (cs1 cs2 : cnf) := forall c2, c2 \in cs2 -> c2 \in cs1.
 
-Lemma cnf_contains_eqsat :
-  forall E (cs1 cs2 : cnf),
-    cnf_contains cs1 cs2 -> cnf_contains cs2 cs1 ->
-    interp_cnf E cs1 = interp_cnf E cs2.
+Lemma cnf_contains_imp_each E cs1 cs2 :
+  cnf_contains cs1 cs2 -> cnf_imp_each E cs1 cs2.
+Proof. move=> Hcon c2 Hin. exists c2; split => //=. exact: (Hcon _ Hin). Qed.
+
+Lemma cnf_contains_interp E cs1 cs2 :
+  cnf_contains cs1 cs2 -> interp_cnf E cs1 -> interp_cnf E cs2.
+Proof. move=> Hcon. exact: (cnf_imp_each_interp (cnf_contains_imp_each E Hcon)). Qed.
+
+Lemma cnf_contains_eqsat E cs1 cs2 :
+  cnf_contains cs1 cs2 -> cnf_contains cs2 cs1 -> interp_cnf E cs1 = interp_cnf E cs2.
 Proof.
-  move=> E cs1 cs2 H12 H21.
-  move: (cnf_imp_each_interp (cnf_contains_imp_each E H12)).
-  move: (cnf_imp_each_interp (cnf_contains_imp_each E H21)).
-  case: (interp_cnf E cs1).
+  move=> H12 H21. move: (cnf_imp_each_interp (cnf_contains_imp_each E H12)).
+  move: (cnf_imp_each_interp (cnf_contains_imp_each E H21)). case: (interp_cnf E cs1).
   - move=> _ H. by rewrite (H is_true_true).
-  - case: (interp_cnf E cs2).
-    + move=> H _. exact: (H is_true_true).
-    + reflexivity.
+  - move=> H _. symmetry. apply/negP. move=> Hcs2. by move: (H Hcs2).
 Qed.
 
 Definition cnf_remove_duplicate (cs : cnf) :=
   ClauseSet.elements (ClauseSet.Lemmas.OP.P.of_list cs).
 
-Lemma cnf_remove_duplicate_contains1 :
-  forall cs, cnf_contains cs (cnf_remove_duplicate cs).
+Lemma cnf_remove_duplicate_contains1 cs : cnf_contains cs (cnf_remove_duplicate cs).
 Proof.
-  elim.
-  - rewrite /cnf_remove_duplicate /=. by rewrite ClauseSet.Lemmas.OP.P.elements_empty.
-  - move=> hd tl Hcon c Hin. rewrite /cnf_remove_duplicate in Hin.
-    move: (ClauseSet.Lemmas.in_elements_mem Hin) => {Hin} Hin.
-    exact: (ClauseSet.Lemmas.mem_of_list_in Hin).
+  case: cs => [| hd tl] //=. move=> c Hin. rewrite /cnf_remove_duplicate in Hin.
+  move: (ClauseSet.Lemmas.in_elements_mem Hin) => {Hin} Hin.
+  exact: (ClauseSet.Lemmas.mem_of_list_in Hin).
 Qed.
 
-Lemma cnf_remove_duplicate_contains2 :
-  forall cs, cnf_contains (cnf_remove_duplicate cs) cs.
+Lemma cnf_remove_duplicate_contains2 cs : cnf_contains (cnf_remove_duplicate cs) cs.
 Proof.
-  elim.
-  - rewrite /cnf_remove_duplicate /=. by rewrite ClauseSet.Lemmas.OP.P.elements_empty.
-  - move=> hd tl Hcon c Hin. rewrite /cnf_remove_duplicate.
-    apply: ClauseSet.Lemmas.mem_in_elements.
-    exact: (ClauseSet.Lemmas.in_mem_of_list Hin).
+  case: cs => [| hd tl] //=. move=> c Hin. rewrite /cnf_remove_duplicate.
+  apply: ClauseSet.Lemmas.mem_in_elements.
+  exact: (ClauseSet.Lemmas.in_mem_of_list Hin).
 Qed.
 
-Lemma cnf_remove_duplicate_eqsat :
-  forall E cs, interp_cnf E cs = interp_cnf E (cnf_remove_duplicate cs).
+Lemma cnf_remove_duplicate_eqsat E cs :
+  interp_cnf E cs = interp_cnf E (cnf_remove_duplicate cs).
 Proof.
-  move=> E cs. exact: (cnf_contains_eqsat E (@cnf_remove_duplicate_contains1 cs)
-                                          (@cnf_remove_duplicate_contains2 cs)).
+  exact: (cnf_contains_eqsat E (@cnf_remove_duplicate_contains1 cs)
+                                (@cnf_remove_duplicate_contains2 cs)).
 Qed.
 
 
@@ -1513,14 +1211,20 @@ Definition vs_of_cnf cs :=
 Definition num_vars (cs : cnf) : N :=
   PS.fold (fun _ (n : N) => (n + 1)%num) (vs_of_cnf cs) 0%num.
 
+Definition max_var_of_clause c :=
+  foldl (fun m l => Pos.max m (var_of_lit l)) var_tt c.
+
+Definition max_var_of_cnf cs :=
+  foldl (fun m c => Pos.max m (max_var_of_clause c)) var_tt cs.
+
 (* Do not use nat because the output CNF contains a huge number of clauses. *)
 Definition num_clauses (cs : cnf) : N :=
-  List.fold_left (fun n _ => (n + 1)%num) cs 0%num.
+  foldl (fun n _ => (n + 1)%num) 0%num cs.
 
 Definition dimacs_header (cs : cnf) : string :=
   "p cnf " ++ NilEmpty.string_of_uint (N.to_uint (num_vars cs)) ++ " " ++ NilEmpty.string_of_uint (N.to_uint (num_clauses cs)).
 
-Definition diamcs_var (v : var) : string :=
+Definition diamcs_var (v : bvar) : string :=
   NilEmpty.string_of_uint (Pos.to_uint v).
 
 Definition diamcs_lit (l : literal) : string :=
@@ -1537,3 +1241,7 @@ Definition dimacs_cnf (cs : cnf) : string :=
 
 Definition dimacs_cnf_with_header (cs : cnf) : string :=
   dimacs_header cs ++ newline ++ dimacs_cnf cs.
+
+
+
+Global Opaque add_prelude.

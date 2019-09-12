@@ -1,12 +1,15 @@
-From Coq Require Import ZArith List.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import Var QFBV CNF BBCommon.
-From ssrlib Require Import ZAriths Tactics.
-From nbits Require Import NBits.
+
+From Coq Require Import ZArith.
+From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple.
+From BitBlasting Require Import QFBVSimple CNFSimple BBCommonSimple.
+From ssrlib Require Import Var ZAriths Tactics.
+From Bits Require Import bits.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+
+
 
 (* ===== bit_blast_disj ===== *)
 
@@ -31,14 +34,29 @@ Lemma bit_blast_disj_correct :
 Proof.
   move => g ib1 ib2 E g' il1 il2 cs olr.
   rewrite /bit_blast_disj.
-  case=> _ <- <- Henc1 Henc2. rewrite /enc_bit /=.
-  rewrite add_prelude_cons !add_prelude_singleton !interp_clause_cons.
-  rewrite add_prelude_cons !add_prelude_singleton !interp_clause_cons.
-  rewrite !interp_lit_neg_lit /=.
-  rewrite (eqP Henc1) (eqP Henc2) => {Henc1 Henc2}.
-  move=> Hand. split_andb_hyps.
-  move: H2 H3 H4.
-  by case: (E g); case: ib1; case: ib2.
+  case.
+  set r := Pos g.
+  move => Hg <- <-.
+  rewrite add_prelude_cons !add_prelude_singleton /=.
+  rewrite !interp_lit_neg_lit.
+  move => Henc1 Henc2 Hcnf.
+  move/andP: Hcnf => [Htt Hcnf].
+  move/andP: Htt => [Htt Hcnf1].
+  move/andP : Hcnf => [_ Hcnf2].
+  move/andP : Hcnf2 => [Hcnfil1 Hcnfil2].
+  case Heg: (E g).
+  - rewrite Heg in Hcnf1; simpl in Hcnf1.
+    case Hl1 : (interp_lit E il1).
+    + rewrite /enc_bit Hl1 in Henc1.
+      move/eqP : Henc1 => Henc1; by rewrite -Henc1/enc_bit/=Heg.
+    + rewrite Hl1 orFb in Hcnf1; rewrite /enc_bit Hcnf1 in Henc2.
+      move/eqP : Henc2 => Henc2. by rewrite /enc_bit-Henc2/=Heg orbT.
+  - rewrite Heg in Hcnfil1, Hcnfil2; simpl in Hcnfil1, Hcnfil2.
+    move/eqP/eqP : Hcnfil1 => Hl1; symmetry in Hl1; apply Bool.negb_sym in Hl1.
+    move/eqP/eqP : Hcnfil2 => Hl2; symmetry in Hl2; apply Bool.negb_sym in Hl2.
+    rewrite /enc_bit in Henc1, Henc2; rewrite Hl1 in Henc1; rewrite Hl2 in Henc2.
+    move/eqP : Henc1 => Henc1; symmetry; rewrite -Henc1 orFb.
+    move/eqP : Henc2 => Henc2. symmetry; by rewrite /enc_bit/= -Henc2 Heg.
 Qed.
 
 Lemma mk_env_disj_is_bit_blast_disj :
@@ -53,8 +71,7 @@ Lemma mk_env_disj_newer_gen :
   forall E g (l1 l2: literal) E' g' cs lr,
     mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
     (g <=? g')%positive.
-Proof.
-  move => E g l1 l2 E' g' cs lr. case => _ <- _ _. t_auto_newer.
+Proof. move => E g l1 l2 E' g' cs lr. case => _ <- _ _. exact: pos_leb_add_diag_r.
 Qed.
 
 Lemma mk_env_disj_newer_res :
@@ -63,7 +80,7 @@ Lemma mk_env_disj_newer_res :
     newer_than_lit g' lr.
 Proof.
   move => E g l1 l2 E' g' cs lr. case => _ <- _ <-.
-  t_auto_newer.
+  exact : newer_than_lit_add_diag_r.
 Qed.
 
 Lemma mk_env_disj_newer_cnf :
@@ -73,7 +90,14 @@ Lemma mk_env_disj_newer_cnf :
     newer_than_cnf g' cs.
 Proof.
   move => E g l1 l2 E' g' cs lr. case => _ <- <- _ Hnew_l1 Hnew_l2 /=.
-  split_andb_goal; t_auto_newer.
+  move : (newer_than_lit_add_r 1 Hnew_l1) => {Hnew_l1} Hnew_l1;
+  move : (newer_than_lit_add_r 1 Hnew_l2) => {Hnew_l2} Hnew_l2.
+  rewrite 2!newer_than_lit_neg Hnew_l1 Hnew_l2.
+  replace (g + 1)%positive with (var_of_lit (Neg g) + 1)%positive at 1 2
+    by reflexivity.
+  rewrite newer_than_lit_add_diag_r.
+  replace (g + 1)%positive with (var_of_lit (Pos g) + 1)%positive by reflexivity.
+  rewrite newer_than_lit_add_diag_r. done.
 Qed.
 
 Lemma mk_env_disj_preserve :
@@ -81,7 +105,7 @@ Lemma mk_env_disj_preserve :
     mk_env_disj E g l1 l2 = (E', g', cs, lr) ->
     env_preserve E E' g.
 Proof.
-  move=> E g l1 l2 E' g' cs lr. case=> <- _ _ _. t_auto_preserve.
+  move=> E g l1 l2 E' g' cs lr. case=> <- _ _ _. exact: env_upd_eq_preserve.
 Qed.
 
 Lemma mk_env_disj_sat :

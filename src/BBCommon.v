@@ -1,53 +1,154 @@
 
 From Coq Require Import List ZArith.
 From mathcomp Require Import ssreflect ssrnat ssrbool eqtype seq tuple.
-From BitBlasting Require Import QFBVSimple CNF.
-From ssrlib Require Import Var SsrOrdered Tactics.
+From BitBlasting Require Import Var State QFBV CNF.
+From ssrlib Require Import SsrOrdered ZAriths Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Module Arch64 : Arch.
-  Definition wordsize := 64.
-  Lemma wordsize_positive : wordsize > 0.
-  Proof.
-    done.
-  Qed.
-End Arch64.
-Module QFBV64 := QFBVSimple.Make VarOrder Arch64.
-Notation wordsize := Arch64.wordsize.
-
-
 Definition cnf_lit_not a := [:: [:: neg_lit a]].
 Definition cnf_lit_xor a1 a2 := [:: [:: a1; a2]; [:: neg_lit a1; neg_lit a2]].
 Definition cnf_lit_eq a1 a2 := [:: [:: neg_lit a1; a2]; [:: a1; neg_lit a2]].
 
-Lemma cnf_lit_xor_correct :
-  forall b1 b2 E l1 l2,
-    enc_bit E l1 b1 -> enc_bit E l2 b2 ->
-    interp_cnf E (cnf_lit_xor l1 l2) ->
-    b1 != b2.
+Lemma cnf_lit_not_negb E b l :
+  enc_bit E l b -> (interp_cnf E (cnf_lit_not l)) = (~~ b).
 Proof.
-  move=> b1 b2 E l1 l2. rewrite /enc_bit /cnf_lit_xor /=.
-  rewrite !interp_lit_neg_lit.
-  case: b1; case: b2; try reflexivity.
-  - move=> /eqP -> /eqP ->. done.
-  - move=> /eqP -> /eqP ->. done.
+  rewrite /enc_bit /cnf_lit_not /=. rewrite interp_lit_neg_lit orbF andbT.
+    by move/eqP => ->.
 Qed.
 
-Lemma cnf_lit_eq_correct :
-  forall b1 b2 E l1 l2,
-    enc_bit E l1 b1 -> enc_bit E l2 b2 ->
-    interp_cnf E (cnf_lit_eq l1 l2) ->
-    b1 = b2.
+Lemma cnf_lit_xor_neqb E b1 b2 l1 l2 :
+  enc_bit E l1 b1 -> enc_bit E l2 b2 ->
+  (interp_cnf E (cnf_lit_xor l1 l2)) = (b1 != b2).
 Proof.
-  move=> b1 b2 E l1 l2. rewrite /enc_bit /cnf_lit_eq /=.
-  rewrite !interp_lit_neg_lit.
-  case: b1; case: b2; try reflexivity.
-  - move=> /eqP -> /eqP ->. done.
-  - move=> /eqP -> /eqP ->. done.
+  rewrite /enc_bit /cnf_lit_xor /=. rewrite !interp_lit_neg_lit.
+  move=> /eqP -> /eqP ->. by case: b1; case: b2.
 Qed.
+
+Lemma cnf_lit_eq_eqb E b1 b2 l1 l2 :
+  enc_bit E l1 b1 -> enc_bit E l2 b2 ->
+  (interp_cnf E (cnf_lit_eq l1 l2)) = (b1 == b2).
+Proof.
+  rewrite /enc_bit /cnf_lit_eq /=. rewrite !interp_lit_neg_lit.
+  move=> /eqP -> /eqP ->. by case: b1; case: b2.
+Qed.
+
+
+
+(* ===== Word extension ===== *)
+
+Definition extzip_ff := extzip lit_ff lit_ff.
+
+Lemma enc_bits_unzip1_extzip E ls1 ls2 bs1 bs2 :
+  enc_bit E lit_tt b1 -> enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (unzip1 (extzip_ff ls1 ls2)) (unzip1 (extzip0 bs1 bs2)).
+Proof.
+  rewrite /extzip_ff /extzip0 !unzip1_extzip => Henc_tt Henc1 Henc2.
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2).
+  rewrite (enc_bits_cat Henc1); first reflexivity.
+  rewrite enc_bits_copy; first reflexivity.
+  rewrite enc_bit_not. exact: Henc_tt.
+Qed.
+
+Lemma enc_bits_unzip2_extzip E ls1 ls2 bs1 bs2 :
+  enc_bit E lit_tt b1 -> enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
+  enc_bits E (unzip2 (extzip_ff ls1 ls2)) (unzip2 (extzip0 bs1 bs2)).
+Proof.
+  rewrite /extzip_ff /extzip0 !unzip2_extzip => Henc_tt Henc1 Henc2.
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2).
+  rewrite (enc_bits_cat Henc2); first reflexivity.
+  rewrite enc_bits_copy; first reflexivity.
+  rewrite enc_bit_not. exact: Henc_tt.
+Qed.
+
+
+
+(* Tactics for proving newer_than_? and env_preserve *)
+
+Ltac t_newer_hook :=
+  match goal with
+  | H : is_true (newer_than_lit ?g ?l) |- is_true (newer_than_lit ?g ?l)
+    => assumption
+  | H : is_true (newer_than_lits ?g ?l) |- is_true (newer_than_lits ?g ?l)
+    => assumption
+  | |- is_true (newer_than_lit (?g + _) (Pos ?g)) => exact: newer_than_lit_add_diag_r
+  | |- is_true (newer_than_lit (?g + _) (Neg ?g)) => exact: newer_than_lit_add_diag_r
+  | |- is_true (?g <=? ?g)%positive => exact: Pos.leb_refl
+  | |- is_true (?g <=? ?g + _)%positive => exact: pos_leb_add_diag_r
+  | |- is_true (?g <? ?g + _)%positive => exact: pos_ltb_add_diag_r
+  | H: is_true (?g1 <? ?g)%positive |- is_true (?g1 <=? ?g)%positive
+    => exact: (pos_ltb_leb_incl H)
+  | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <=? ?g)%positive
+    => apply: (pos_leb_trans _ H)
+  | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <? ?g)%positive
+    => apply: (pos_ltb_leb_trans _ H)
+  | H : is_true (newer_than_lit ?g1 ?l) |- is_true (newer_than_lit ?g2 ?l)
+    => apply: (newer_than_lit_le_newer H)
+  | H : is_true (newer_than_lits ?g1 ?l) |- is_true (newer_than_lits ?g2 ?l)
+    => apply: (newer_than_lits_le_newer H)
+  | H : is_true (newer_than_cnf ?g1 ?l) |- is_true (newer_than_cnf ?g2 ?l)
+    => apply: (newer_than_cnf_le_newer H)
+  | H : is_true (newer_than_lit _ lit_ff) |- _ => rewrite -newer_than_lit_tt_ff in H
+  | |- is_true (newer_than_lit _ lit_ff) => rewrite -newer_than_lit_tt_ff
+  | |- is_true (newer_than_lits _ (_ :: _)) =>
+    rewrite newer_than_lits_cons; apply/andP; split
+  | H : is_true (newer_than_lits _ (_ :: _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_lits_cons in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_lits _ (_ ++ _)) =>
+    rewrite newer_than_lits_cat; apply/andP; split
+  | H : is_true (newer_than_lits _ (_ ++ _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_lits_cat in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_lits _ (catrev _ _)) =>
+    rewrite newer_than_lits_catrev; apply/andP; split
+  | H : is_true (newer_than_lits _ (catrev _ _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_lits_catrev in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_cnf _ (_ :: _)) =>
+    rewrite newer_than_cnf_cons; apply/andP; split
+  | H : is_true (newer_than_cnf _ (_ :: _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_cnf_cons in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_cnf _ (_ ++ _)) =>
+    rewrite newer_than_cnf_cat; apply/andP; split
+  | H : is_true (newer_than_cnf _ (_ ++ _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_cnf_cat in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_cnf _ (catrev _ _)) =>
+    rewrite newer_than_cnf_catrev; apply/andP; split
+  | H : is_true (newer_than_cnf _ (catrev _ _)) |- _ =>
+    let H1 := fresh in
+    let H2 := fresh in
+    rewrite newer_than_cnf_catrev in H; move/andP: H; intros [H1 H2]
+  | |- is_true (newer_than_lits _ (copy _ _)) => apply: newer_than_lits_copy
+  | H : is_true (newer_than_lit _ (neg_lit _)) |- _ => rewrite newer_than_lit_neg in H
+  | |- is_true (newer_than_lit _ (neg_lit _)) => rewrite newer_than_lit_neg
+  | |- is_true (newer_than_lits _ (unzip1 (extzip_ff _ _))) =>
+    rewrite /extzip_ff unzip1_extzip
+  | |- is_true (newer_than_lits _ (unzip2 (extzip_ff _ _))) =>
+    rewrite /extzip_ff unzip2_extzip
+  end.
+
+Ltac t_auto_newer := t_auto with ltac:(fun _ => t_newer_hook).
+
+Ltac t_preserve_hook :=
+  match goal with
+  | H : env_preserve ?E _ ?g |- env_preserve ?E _ ?g => apply: (env_preserve_trans H)
+  | H : env_preserve _ ?E ?g |- env_preserve _ ?E ?g => apply: (env_preserve_trans _ H)
+  | H : env_preserve ?E1 ?E2 ?g1 |- env_preserve ?E1 ?E2 ?g2 =>
+    apply: (env_preserve_le H)
+  | |- env_preserve ?E (env_upd ?E ?g _) ?g => exact: env_upd_eq_preserve
+  end.
+
+Ltac t_auto_preserve := t_auto with ltac:(fun _ => t_preserve_hook || t_newer_hook).
 
 
 
@@ -61,28 +162,24 @@ Definition gen (g : generator) : generator * literal := (g + 1, Pos g)%positive.
 
 (* ===== A map from variables to literal representation ===== *)
 
-Definition vm := VM.t (wordsize.-tuple literal).
+Definition vm := UVM.t word.
 
 
 
 (* ===== newer_than_vm ===== *)
 
 Definition newer_than_vm g (m : vm) :=
-  forall v rs, VM.find v m = Some rs -> newer_than_lits g rs.
+  forall v rs, UVM.find v m = Some rs -> newer_than_lits g rs.
 
-Lemma newer_than_vm_add_r :
-  forall x (m : vm) y,
-    newer_than_vm x m -> newer_than_vm (x + y) m.
+Lemma newer_than_vm_add_r x m y : newer_than_vm x m -> newer_than_vm (x + y) m.
 Proof.
-  move=> x m y Hnew v rs Hfind. move: (Hnew v rs Hfind).
-  exact: newer_than_lits_add_r.
+  move=> Hnew v rs Hfind. move: (Hnew v rs Hfind). exact: newer_than_lits_add_r.
 Qed.
 
-Lemma newer_than_vm_le_newer :
-  forall x (m : vm) y,
-    newer_than_vm x m -> (x <=? y)%positive -> newer_than_vm y m.
+Lemma newer_than_vm_le_newer x m y :
+  newer_than_vm x m -> (x <=? y)%positive -> newer_than_vm y m.
 Proof.
-  move=> x m y Hnew Hle v rs Hfind. move: (Hnew v rs Hfind) => {Hnew} Hnew.
+  move=> Hnew Hle v rs Hfind. move: (Hnew v rs Hfind) => {Hnew} Hnew.
   exact: (newer_than_lits_le_newer Hnew Hle).
 Qed.
 
@@ -91,36 +188,28 @@ Qed.
 (* ===== Consistent ===== *)
 
 Definition consistent1 m E s v : Prop :=
-    match VM.find v m with
+    match UVM.find v m with
     | None => True
-    | Some rs => @enc_bits E wordsize rs (QFBV64.State.acc v s)
+    | Some rs => enc_bits E rs (State.acc v s)
     end.
 Definition consistent m E s := forall v, consistent1 m E s v.
 
-Lemma consistent_env_upd_newer :
-  forall m s E g g' b,
-    newer_than_vm g m ->
-    consistent m E s ->
-    (g <=? g')%positive ->
-    consistent m (env_upd E g' b) s.
+Lemma consistent_env_upd_newer m s E g g' b :
+  newer_than_vm g m -> consistent m E s -> (g <=? g')%positive ->
+  consistent m (env_upd E g' b) s.
 Proof.
-  move=> m s E g g' b Hnew Hcon Hle.
-  move: (newer_than_vm_le_newer Hnew Hle) => Hnew'. move=> v.
-  move: (Hnew' v) (Hcon v) => {Hnew Hnew' Hcon}.
-  rewrite /consistent1. case: (VM.find v m); last by done.
-  move=> rs Hnew Henc. move: (Hnew rs (Logic.eq_refl (Some rs))) => {Hnew} Hnew.
+  move=> Hnew Hcon Hle. move: (newer_than_vm_le_newer Hnew Hle) => Hnew'. move=> v.
+  move: (Hnew' v) (Hcon v) => {Hnew Hnew' Hcon}. rewrite /consistent1.
+  case: (UVM.find v m); last by done. move=> rs Hnew Henc.
+  move: (Hnew rs (Logic.eq_refl (Some rs))) => {Hnew} Hnew.
   rewrite (newer_than_lits_enc_bits_env_upd _ _ _ Hnew). exact: Henc.
 Qed.
 
-Lemma env_preserve_consistent :
-  forall m E E' g s,
-    newer_than_vm g m ->
-    env_preserve E E' g ->
-    consistent m E s ->
-    consistent m E' s.
+Lemma env_preserve_consistent m E E' g s :
+  newer_than_vm g m -> env_preserve E E' g -> consistent m E s -> consistent m E' s.
 Proof.
-  move=> m E E' g s Hnew_gm Hpre Hcon. move=> x; rewrite /consistent1.
-  case Hfind: (VM.find x m); last by done. move: (Hnew_gm x _ Hfind) => Hnew_glsx.
+  move=> Hnew_gm Hpre Hcon. move=> x; rewrite /consistent1.
+  case Hfind: (UVM.find x m); last by done. move: (Hnew_gm x _ Hfind) => Hnew_glsx.
   move: (Hcon x); rewrite /consistent1. rewrite Hfind.
   exact: (env_preserve_enc_bits Hpre Hnew_glsx).
 Qed.
@@ -130,38 +219,29 @@ Qed.
 (* ===== vm_preserve ===== *)
 
 Definition vm_preserve (m m' : vm) : Prop :=
-  forall v ls, VM.find v m = Some ls -> VM.find v m' = Some ls.
+  forall v ls, UVM.find v m = Some ls -> UVM.find v m' = Some ls.
 
-Lemma vm_preserve_consistent :
-  forall m m' s E,
-    vm_preserve m m' -> consistent m' E s -> consistent m E s.
+Lemma vm_preserve_consistent m m' s E :
+  vm_preserve m m' -> consistent m' E s -> consistent m E s.
 Proof.
-  move=> m m' s E Hpre Hcon v. rewrite /consistent1. case Hfind: (VM.find v m).
-  - move: (Hpre _ _ Hfind) => Hfind'. move: (Hcon v). rewrite /consistent1.
-    rewrite  Hfind'. by apply.
-  - done.
+  move=> Hpre Hcon v. rewrite /consistent1. case Hfind: (UVM.find v m) => //=.
+  move: (Hpre _ _ Hfind) => Hfind'. move: (Hcon v). rewrite /consistent1.
+  rewrite Hfind'. by apply.
 Qed.
 
-Lemma vm_preserve_refl : forall m, vm_preserve m m.
-Proof.
-  move=> m. done.
-Qed.
+Lemma vm_preserve_refl m : vm_preserve m m.
+Proof. done. Qed.
 
-Lemma vm_preserve_trans :
-  forall m1 m2 m3, vm_preserve m1 m2 -> vm_preserve m2 m3 -> vm_preserve m1 m3.
-Proof.
-  move=> m1 m2 m3 H12 H23 v ls Hfind1. move: (H12 _ _ Hfind1) => Hfind2.
-  exact: (H23 _ _ Hfind2).
-Qed.
+Lemma vm_preserve_trans m1 m2 m3 :
+  vm_preserve m1 m2 -> vm_preserve m2 m3 -> vm_preserve m1 m3.
+Proof. move=> H12 H23 v ls Hfind1. apply: H23. apply: H12. assumption. Qed.
 
-Lemma vm_preserve_add_diag :
-  forall m v ls,
-    VM.find v m = None ->
-    vm_preserve m (VM.add v ls m).
+Lemma vm_preserve_add_diag m v ls :
+  UVM.find v m = None -> vm_preserve m (UVM.add v ls m).
 Proof.
-  move=> m v ls Hfind x xls Hfindx. case Hxv: (x == v).
+  move=> Hfind x xls Hfindx. case Hxv: (x == v).
   - rewrite (eqP Hxv) Hfind in Hfindx. discriminate.
-  - move/negP: Hxv => Hxv. rewrite (VM.Lemmas.find_add_neq _ _ Hxv). assumption.
+  - move/negP: Hxv => Hxv. rewrite (UVM.Lemmas.find_add_neq _ _ Hxv). assumption.
 Qed.
 
 
@@ -316,23 +396,18 @@ Ltac dite_hyps :=
   | |- _ => idtac
   end.
 
-Ltac intros_tuple :=
-  lazymatch goal with
-  | |- forall x : ((_.+1).-tuple _), _ =>
-    let hd := fresh x in
-    let tl := fresh x in
-    case/tupleP=> [hd tl] /=; try rewrite !theadE !beheadCons; intros_tuple
-  | |- forall x : _, _ => intro; intros_tuple
-  | |- _ => idtac
-  end.
 
-
-(* todo: change to hyps_splitb *)
-
-Ltac split_andb :=
+(* split_andb *)
+Ltac split_andb_hyps :=
   repeat (match goal with
           | H : is_true (andb ?l ?r) |- _ => move/andP: H;
                                              let H1 := fresh in
                                              let H2 := fresh in
                                              move=> [H1 H2]
+          end).
+
+Ltac split_andb_goal :=
+   repeat (match goal with
+          | |- ?l /\ ?r => split
+          | |- is_true (andb ?l ?r) => apply /andP
           end).

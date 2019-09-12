@@ -4,3 +4,6 @@
 [submodule "lib/coq-ssrlib"]
 	path = lib/coq-ssrlib
 	url = https://github.com/mht208/coq-ssrlib.git
+[submodule "lib/coq-nbits"]
+	path = lib/coq-nbits
+	url = https://github.com/fmlab-iis/coq-nbits.git

@@ -1,12 +1,15 @@
-From Coq Require Import ZArith List.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import Var QFBV CNF BBCommon.
-From ssrlib Require Import ZAriths Tactics.
-From nbits Require Import NBits.
+
+From Coq Require Import ZArith.
+From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq tuple.
+From BitBlasting Require Import QFBVSimple CNFSimple BBCommonSimple.
+From ssrlib Require Import Var ZAriths Tactics.
+From Bits Require Import bits.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+
+
 
 (* ===== bit_blast_conj ===== *)
 
@@ -29,14 +32,9 @@ Lemma bit_blast_conj_correct :
     enc_bit E lr (b1 && b2).
 Proof.
   move=> g b1 b2 E g' l1 l2 cs lr. rewrite /bit_blast_conj.
-  case=> _ <- <- Henc1 Henc2. rewrite /enc_bit /=.
-  rewrite add_prelude_cons !add_prelude_singleton !interp_clause_cons.
-  rewrite add_prelude_cons !add_prelude_singleton !interp_clause_cons.
-  rewrite !interp_lit_neg_lit /=.
-  rewrite (eqP Henc1) (eqP Henc2) => {Henc1 Henc2}.
-  move=> Hand. split_andb_hyps.
-  move: H2 H3 H4.
-  by case: (E g); case: b1; case: b2.
+  case=> _ <- <- Henc1 Henc2. rewrite /enc_bit /=. rewrite !interp_lit_neg_lit.
+  rewrite (eqP Henc1) (eqP Henc2) => {Henc1 Henc2}. move/andP => [_ H].
+  move: H. by case: (E g); case: b1; case: b2.
 Qed.
 
 Lemma mk_env_conj_is_bit_blast_conj :
@@ -52,7 +50,7 @@ Lemma mk_env_conj_newer_gen :
     mk_env_conj E g l1 l2 = (E', g', cs, lr) ->
     (g <=? g')%positive.
 Proof.
-  move=> E g l1 l2 E' g' cs lr. case=> _ <- _ _. t_auto_newer.
+  move=> E g l1 l2 E' g' cs lr. case=> _ <- _ _. exact: pos_leb_add_diag_r.
 Qed.
 
 Lemma mk_env_conj_newer_res :
@@ -61,7 +59,7 @@ Lemma mk_env_conj_newer_res :
     newer_than_lit g' lr.
 Proof.
   move=> E g l1 l2 E' g' cs lr. case=> _ <- _ <-.
-  t_auto_newer.
+  exact: newer_than_lit_add_diag_r.
 Qed.
 
 Lemma mk_env_conj_newer_cnf :
@@ -71,7 +69,14 @@ Lemma mk_env_conj_newer_cnf :
     newer_than_cnf g' cs.
 Proof.
   move=> E g l1 l2 E' g' cs lr. case=> _ <- <- _ Hnew_l1 Hnew_l2 /=.
-  split_andb_goal; t_auto_newer.
+  move: (newer_than_lit_add_r 1 Hnew_l1) => {Hnew_l1} Hnew_l1.
+  move: (newer_than_lit_add_r 1 Hnew_l2) => {Hnew_l2} Hnew_l2.
+  rewrite 2!newer_than_lit_neg Hnew_l1 Hnew_l2.
+  replace (g + 1)%positive with (var_of_lit (Neg g) + 1)%positive at 1 2
+    by reflexivity.
+  rewrite newer_than_lit_add_diag_r.
+  replace (g + 1)%positive with (var_of_lit (Pos g) + 1)%positive by reflexivity.
+  rewrite newer_than_lit_add_diag_r. done.
 Qed.
 
 Lemma mk_env_conj_preserve :
@@ -79,8 +84,7 @@ Lemma mk_env_conj_preserve :
     mk_env_conj E g l1 l2 = (E', g', cs, lr) ->
     env_preserve E E' g.
 Proof.
-  move=> E g l1 l2 E' g' cs lr. case=> <- _ _ _.
-  t_auto_preserve.
+  move=> E g l1 l2 E' g' cs lr. case=> <- _ _ _. exact: env_upd_eq_preserve.
 Qed.
 
 Lemma mk_env_conj_sat :
