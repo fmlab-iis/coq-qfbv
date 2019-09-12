@@ -12,6 +12,7 @@ src/BBVar.v
 src/BBConst.v
 src/BBAnd.v
 src/BBEq.v
+src/BBUlt.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
