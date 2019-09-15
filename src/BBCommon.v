@@ -82,6 +82,8 @@ Ltac t_newer_hook :=
     => exact: (pos_ltb_leb_incl H)
   | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <=? ?g)%positive
     => apply: (pos_leb_trans _ H)
+  | H : is_true (?g <=? ?g1)%positive |- is_true (?g <=? ?g2)%positive
+    => apply: (pos_leb_trans H)
   | H : is_true (?g1 <=? ?g)%positive |- is_true (?g2 <? ?g)%positive
     => apply: (pos_ltb_leb_trans _ H)
   | H : is_true (newer_than_lit ?g1 ?l) |- is_true (newer_than_lit ?g2 ?l)
@@ -141,11 +143,11 @@ Ltac t_auto_newer := t_auto with ltac:(fun _ => t_newer_hook).
 
 Ltac t_preserve_hook :=
   match goal with
+  | |- env_preserve ?E (env_upd ?E ?g _) ?g => exact: env_upd_eq_preserve
   | H : env_preserve ?E _ ?g |- env_preserve ?E _ ?g => apply: (env_preserve_trans H)
   | H : env_preserve _ ?E ?g |- env_preserve _ ?E ?g => apply: (env_preserve_trans _ H)
   | H : env_preserve ?E1 ?E2 ?g1 |- env_preserve ?E1 ?E2 ?g2 =>
     apply: (env_preserve_le H)
-  | |- env_preserve ?E (env_upd ?E ?g _) ?g => exact: env_upd_eq_preserve
   end.
 
 Ltac t_auto_preserve := t_auto with ltac:(fun _ => t_preserve_hook || t_newer_hook).
