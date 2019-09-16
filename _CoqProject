@@ -15,6 +15,8 @@ src/BBIte.v
 src/BBEq.v
 src/BBUlt.v
 src/BBUle.v
+src/BBUgt.v
+src/BBUge.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
