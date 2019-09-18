@@ -2,8 +2,8 @@
 From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Types SsrOrdered Nats ZAriths Env Store Tactics.
-From BitBlasting Require Import Typ Var State.
+From ssrlib Require Import Types SsrOrdered Nats ZAriths Tactics.
+From BitBlasting Require Import Typ Var TypEnv State.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -306,7 +306,7 @@ Section QFBV.
 
   (* Semantics of expressions and Boolean expressions *)
 
-  Local Notation state := State.t.
+  Local Notation state := Store.t.
 
   Definition eunop_denote (o : eunop) : bits -> bits :=
     match o with
@@ -358,7 +358,7 @@ Section QFBV.
 
   Fixpoint eval_exp (e : exp) (s : state) : bits :=
     match e with
-    | Evar v => State.acc v s
+    | Evar v => Store.acc v s
     | Econst n => n
     | Eunop op e => (eunop_denote op) (eval_exp e s)
     | Ebinop op e1 e2 => (ebinop_denote op) (eval_exp e1 s) (eval_exp e2 s)
@@ -383,6 +383,27 @@ Section QFBV.
   Proof.
     move=> Hv [s /= Hs]. apply/idP: Hs. exact: (Hv s).
   Qed.
+
+  (* Variables in expressions *)
+
+  Fixpoint vars_exp (e : exp) : VS.t :=
+    match e with
+    | Evar v => VS.singleton v
+    | Econst n => VS.empty
+    | Eunop op e => vars_exp e
+    | Ebinop op e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | Eite b e1 e2 => VS.union (vars_bexp b) (VS.union (vars_exp e1) (vars_exp e2))
+    end
+  with
+  vars_bexp (e : bexp) : VS.t :=
+    match e with
+    | Bfalse
+    | Btrue => VS.empty
+    | Bbinop op e1 e2 => VS.union (vars_exp e1) (vars_exp e2)
+    | Blneg e => vars_bexp e
+    | Bconj e1 e2
+    | Bdisj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
+    end.
 
   (* Ordering on expressions *)
 
@@ -762,23 +783,23 @@ Module BexpOrdered := MakeSsrOrderedType BexpOrderedMinimal.
 
 Section Subexp.
 
-  Fixpoint size_exp (e : exp) : nat :=
+  Fixpoint len_exp (e : exp) : nat :=
     match e with
     | Evar v => 1
     | Econst n => 1
-    | Eunop op e => (size_exp e).+1
-    | Ebinop op e1 e2 => (size_exp e1 + size_exp e2).+1
-    | Eite b e1 e2 => (size_bexp b + size_exp e1 + size_exp e2).+1
+    | Eunop op e => (len_exp e).+1
+    | Ebinop op e1 e2 => (len_exp e1 + len_exp e2).+1
+    | Eite b e1 e2 => (len_bexp b + len_exp e1 + len_exp e2).+1
     end
     with
-    size_bexp (e : bexp) : nat :=
+    len_bexp (e : bexp) : nat :=
       match e with
       | Bfalse => 1
       | Btrue => 1
-      | Bbinop op e1 e2 => (size_exp e1 + size_exp e2).+1
-      | Blneg e => (size_bexp e).+1
+      | Bbinop op e1 e2 => (len_exp e1 + len_exp e2).+1
+      | Blneg e => (len_bexp e).+1
       | Bconj e1 e2
-      | Bdisj e1 e2 => (size_bexp e1 + size_bexp e2).+1
+      | Bdisj e1 e2 => (len_bexp e1 + len_bexp e2).+1
       end.
 
   Fixpoint subee (c : exp) (p : exp) {struct p} : bool :=
@@ -833,22 +854,22 @@ Section Subexp.
   Ltac t_auto_hook ::=
     match goal with
     | H1 : (forall e1 e2,
-               is_true (subee e1 e2) -> is_true (size_exp e1 <= size_exp e2)),
+               is_true (subee e1 e2) -> is_true (len_exp e1 <= len_exp e2)),
       H2 : is_true (subee ?e1 ?e2)
       |- _ =>
       move: (H1 _ _ H2); clear H2; simpl; intro H2
     | H1 : (forall e1 e2,
-               is_true (subeb e1 e2) -> is_true (size_exp e1 <= size_bexp e2)),
+               is_true (subeb e1 e2) -> is_true (len_exp e1 <= len_bexp e2)),
       H2 : is_true (subeb ?e1 ?e2)
       |- _ =>
       move: (H1 _ _ H2); clear H2; simpl; intro H2
     | H1 : (forall e1 e2,
-               is_true (subbe e1 e2) -> is_true (size_bexp e1 <= size_exp e2)),
+               is_true (subbe e1 e2) -> is_true (len_bexp e1 <= len_exp e2)),
       H2 : is_true (subbe ?e1 ?e2)
       |- _ =>
       move: (H1 _ _ H2); clear H2; simpl; intro H2
     | H1 : (forall e1 e2,
-               is_true (subbb e1 e2) -> is_true (size_bexp e1 <= size_bexp e2)),
+               is_true (subbb e1 e2) -> is_true (len_bexp e1 <= len_bexp e2)),
       H2 : is_true (subbb ?e1 ?e2)
       |- _ =>
       move: (H1 _ _ H2); clear H2; simpl; intro H2
@@ -861,17 +882,17 @@ Section Subexp.
     | |- is_true (?a < (?b + ?a + _).+1) => rewrite (addnC b) -addnA; exact: leq_addr
     end.
 
-  Lemma subee_size e1 e2 : subee e1 e2 -> size_exp e1 <= size_exp e2
-  with subeb_size e b : subeb e b -> size_exp e <= size_bexp b.
+  Lemma subee_len e1 e2 : subee e1 e2 -> len_exp e1 <= len_exp e2
+  with subeb_len e b : subeb e b -> len_exp e <= len_bexp b.
   Proof.
-    (* subee_size *)
+    (* subee_len *)
     case: e1.
     - move=> ?; case: e2 => //=.
     - move=> ?; case: e2 => //=.
     - move=> ? ?; case: e2; by t_auto.
     - move=> ? ? ?; case: e2; by t_auto.
     - move=> ? ? ?; case: e2; by t_auto.
-    (* subeb_size *)
+    (* subeb_len *)
     case: e.
     - move=> ?; case: b => //=.
     - move=> ?; case: b => //=.
@@ -880,10 +901,10 @@ Section Subexp.
     - move=> ? ? ?; case: b; by t_auto.
   Qed.
 
-  Lemma subbe_size b e : subbe b e -> size_bexp b <= size_exp e
-  with subbb_size b1 b2 : subbb b1 b2 -> size_bexp b1 <= size_bexp b2.
+  Lemma subbe_len b e : subbe b e -> len_bexp b <= len_exp e
+  with subbb_len b1 b2 : subbb b1 b2 -> len_bexp b1 <= len_bexp b2.
   Proof.
-    (* subbe_size *)
+    (* subbe_len *)
     case: b.
     - case: e; by t_auto.
     - case: e; by t_auto.
@@ -891,7 +912,7 @@ Section Subexp.
     - move=> ?; case: e; by t_auto.
     - move=> ? ?; case: e; by t_auto.
     - move=> ? ?; case: e; by t_auto.
-    (* subbb_size *)
+    (* subbb_len *)
     case: b1.
     - case: b2; by t_auto.
     - case: b2; by t_auto.
@@ -1116,16 +1137,16 @@ Section Subexp.
         match p2 with
         | context [e1] =>
           let sf := match subf with
-                    | subee => subee_size
-                    | subeb => subeb_size
-                    | subbe => subbe_size
-                    | subbb => subbb_size
+                    | subee => subee_len
+                    | subeb => subeb_len
+                    | subbe => subbe_len
+                    | subbb => subbb_len
                     end in
           let sg := match subg with
-                    | subee => subee_size
-                    | subeb => subeb_size
-                    | subbe => subbe_size
-                    | subbb => subbb_size
+                    | subee => subee_len
+                    | subeb => subeb_len
+                    | subbe => subbe_len
+                    | subbb => subbb_len
                     end in
           move: (sf _ _ H1) (sg _ _ H2); simpl; clear H1 H2; intros H1 H2
         end
@@ -1220,5 +1241,135 @@ Section Subexp.
     - move=> ? ? ? ?; case; by t_auto.
     - move=> ? ? ? ?; case; by t_auto.
   Qed.
+
+  (* subexp and variables in expressions *)
+
+  Ltac subexp_vars_select :=
+    subexp_trans_select
+    || (match goal with
+        | |- is_true (_ || ?f ?e ?e) => apply/orP; right
+        | |- is_true (?f ?e ?e || _ || _) => apply/orP; left; apply/orP; left
+        | |- is_true ([|| _, ?f ?e ?e | _]) => apply/orP; right; apply/orP; left
+        | |- is_true ([|| _, _ | ?f ?e ?e]) => apply/orP; right; apply/orP; right
+        | |- is_true ([|| _, _ || ?f ?e ?e | _]) =>
+          apply/orP; right; apply/orP; left; apply/orP; right
+        | |- is_true (VS.subset ?e (VS.union ?e _)) => apply: VS.Lemmas.subset_union1
+        | |- is_true (VS.subset ?e (VS.union _ ?e)) => apply: VS.Lemmas.subset_union2
+        | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union (?vars ?e) _)) =>
+          apply: VS.Lemmas.subset_union1
+        | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union _ (?vars ?e))) =>
+          apply: VS.Lemmas.subset_union2
+        | H : is_true (?sub _ ?e) |-
+          is_true (VS.subset _ (VS.union (?vars ?e) (VS.union _ _))) =>
+          apply: VS.Lemmas.subset_union1
+        | H : is_true (?sub _ ?e) |-
+          is_true (VS.subset _ (VS.union _ (VS.union (?vars ?e) _))) =>
+          apply: VS.Lemmas.subset_union2; apply: VS.Lemmas.subset_union1
+        | H : is_true (?sub _ ?e) |-
+          is_true (VS.subset _ (VS.union _ (VS.union _ (?vars ?e)))) =>
+          apply: VS.Lemmas.subset_union2; apply: VS.Lemmas.subset_union2
+        | |- is_true (VS.subset (VS.union _ _) _) =>
+          apply: VS.Lemmas.subset_union3
+        end).
+
+  Ltac subexp_vars_app :=
+    match goal with
+    | H : is_true (subee ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
+      apply: (subeeee_trans _ H); clear H; simpl
+    | H : is_true (subbb ?b2 ?b3) |- is_true (subbb ?b1 ?b3) =>
+      apply: (subbbbb_trans _ H); clear H; simpl
+    | H : is_true (subeb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
+      apply: (subeeeb_trans _ H); clear H; simpl
+    | H : is_true (subee ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
+      apply: (subbeee_trans _ H); clear H; simpl
+    | H : is_true (subeb ?e2 ?e3) |- is_true (subbb ?e1 ?e3) =>
+      apply: (subbeeb_trans _ H); clear H; simpl
+    | H : is_true (subbe ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
+      apply: (subebbe_trans _ H); clear H; simpl
+    | H : is_true (subbb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
+      apply: (subebbb_trans _ H); clear H; simpl
+    | H : is_true (subbe ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
+      apply: (subbbbe_trans _ H); clear H; simpl
+    | H : is_true (subee ?e1 ?e2) |- is_true (subee ?e1 ?e3) =>
+      apply: (subeeee_trans H); clear H; simpl
+    | H : is_true (subbb ?b1 ?b2) |- is_true (subbb ?b1 ?b3) =>
+      apply: (subbbbb_trans H); clear H; simpl
+    | subee_vars_subset :
+        (forall e1 e2 : exp,
+            is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
+      H : is_true (subee _ ?e)
+      |- is_true (VS.subset (VS.singleton ?v) (vars_exp ?e)) =>
+      replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
+      apply: subee_vars_subset
+    | subee_vars_subset :
+        (forall e1 e2 : exp,
+            is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
+      H : is_true (subee _ ?e)
+      |- is_true (VS.subset (vars_exp _) (vars_exp ?e)) =>
+      apply: subee_vars_subset
+    | subeb_vars_subset :
+        (forall (e1 : exp) (e2 : bexp),
+            is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
+      H : is_true (subeb _ ?e)
+      |- is_true (VS.subset (VS.singleton ?v) (vars_bexp ?e)) =>
+      replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
+      apply: subeb_vars_subset
+    | subeb_vars_subset :
+        (forall (e1 : exp) (e2 : bexp),
+            is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
+      H : is_true (subeb _ ?e)
+      |- is_true (VS.subset (vars_exp _) (vars_bexp ?e)) =>
+      apply: subeb_vars_subset
+    | subbe_vars_subset :
+        (forall (b : bexp) (e : exp),
+            is_true (subbe b e) -> is_true (VS.subset (vars_bexp b) (vars_exp e))),
+      H : is_true (subee _ ?e)
+      |- is_true (VS.subset (vars_bexp _) (vars_exp ?e)) =>
+      apply: subbe_vars_subset
+    | subbb_vars_subset :
+        (forall b1 b2 : bexp,
+            is_true (subbb b1 b2) ->
+            is_true (VS.subset (vars_bexp b1) (vars_bexp b2))),
+      H : is_true (subeb _ ?e)
+      |- is_true (VS.subset _ (vars_bexp ?e)) =>
+      apply: subbb_vars_subset
+    end.
+
+  Ltac subexp_vars_decide :=
+    subexp_trans_decide
+    || (match goal with
+        | |- is_true (VS.subset ?vs ?vs) => exact: VS.Lemmas.subset_refl
+        | |- is_true (subee ?e ?e) => exact: subee_refl
+        | |- is_true (subbb ?e ?e) => exact: subbb_refl
+        end).
+
+  Ltac t_auto_hook ::= (subexp_vars_select || subexp_vars_app || subexp_vars_decide).
+
+  Lemma subee_vars_subset e1 e2 : subee e1 e2 -> VS.subset (vars_exp e1) (vars_exp e2)
+  with
+  subeb_vars_subset e b : subeb e b -> VS.subset (vars_exp e) (vars_bexp b)
+  with
+  subbe_vars_subset b e : subbe b e -> VS.subset (vars_bexp b) (vars_exp e)
+  with
+  subbb_vars_subset b1 b2 : subbb b1 b2 -> VS.subset (vars_bexp b1) (vars_bexp b2).
+  Proof.
+    case: e1; case: e2 => //=.
+    - move=> v1 v2; by t_auto.
+    - move=> _ e v H; by t_auto.
+    - move=> _ e1 e2 v; by t_auto.
+    - move=> b e1 e2 v; by t_auto.
+    - move=> op1 e1 op2 e2; by t_auto.
+    - move=> _ e1 e2 op e3; by t_auto.
+    - move=> b e1 e2 op e3; by t_auto.
+    - move=> _ e1 op e2 e3; by t_auto.
+    - move=> op1 e1 e2 op2 e3 e4; by t_auto.
+    - move=> b e1 e2 op e3 e4; by t_auto.
+    - move=> _ e1 b e2 e3 H; by t_auto.
+    - move=> _ e1 e2 b e3 e4; by t_auto.
+    - move=> b1 e1 e2 b2 e3 e4; by t_auto.
+    (* subeb_vars_subset *)
+    (* subbe_vars_subset *)
+    (* subbb_vars_subset *)
+  Abort.
 
 End Subexp.
