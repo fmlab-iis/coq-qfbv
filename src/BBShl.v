@@ -110,7 +110,6 @@ Proof.
     case Hm: (bit_blast_shl_int g ls n) => [[g_m cs_m] ls_m] .
     case => _ <- <- .
     move => Hlsbs Hcsm .
-    Check (add_prelude_catrev) .
     rewrite add_prelude_catrev in Hcsm .
     move : Hcsm => /andP [Hcsm _] .
     move : (IH _ _ _ _ _ Hm Hlsbs Hcsm) => Hls_mbs .
