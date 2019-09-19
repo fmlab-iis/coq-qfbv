@@ -332,3 +332,16 @@ Proof .
     + exact : (newer_than_lits_le_newer Hnew2tl Hnewg1) .
 Qed .
 
+Lemma mk_env_ite_sat E g lc ls1 ls2 E' g' cs lrs :
+  size ls1 == size ls2 ->
+  mk_env_ite E g lc ls1 ls2 = (E', g', cs, lrs) ->
+  newer_than_lit g lc ->
+  newer_than_lits g ls1 -> newer_than_lits g ls2 ->
+  interp_cnf E' cs .
+Proof .
+  move => Hsize Henv Hglc Hgls1 Hgls2 .
+  apply : (mk_env_ite_zip_sat Henv); first by done .
+  - rewrite /extzip_ff unzip1_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
+  - rewrite /extzip_ff unzip2_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
+Qed .
+
