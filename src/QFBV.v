@@ -1373,3 +1373,71 @@ Section Subexp.
   Abort.
 
 End Subexp.
+
+
+
+Section WellFormed.
+
+  Fixpoint exp_size (e : exp) (te : TypEnv.t) : nat :=
+    match e with
+    | Evar v => TypEnv.vsize v te
+    | Econst n => size n
+    | Eunop op e =>
+      (match op with
+       | Unot => exp_size e te
+       | Uneg => exp_size e te
+       | Uextr i j => i - j + 1
+       | Uslice w1 w2 w3 => w2
+       | Uhigh n => n
+       | Ulow n => n
+       | Uzext n => exp_size e te + n
+       | Usext n => exp_size e te + n
+       end)
+    | Ebinop op e1 e2 => max (exp_size e1 te) (exp_size e2 te)
+    | Eite b e1 e2 => max (exp_size e1 te) (exp_size e2 te)
+    end.
+
+  Fixpoint well_formed_exp (e : exp) (te : TypEnv.t) : bool :=
+    match e with
+    | Evar v => TypEnv.mem v te
+    | Econst _ => true
+    | Eunop op e => well_formed_exp e te
+    | Ebinop op e1 e2 =>
+      well_formed_exp e1 te && well_formed_exp e2 te &&
+                      (exp_size e1 te == exp_size e2 te)
+    | Eite b e1 e2 =>
+      well_formed_bexp b te && well_formed_exp e1 te && well_formed_exp e2 te &&
+                       (exp_size e1 te == exp_size e2 te)
+    end
+  with
+  well_formed_bexp (b : bexp) (te : TypEnv.t) : bool :=
+    match b with
+    | Bfalse
+    | Btrue => true
+    | Bbinop _ e1 e2 => well_formed_exp e1 te && well_formed_exp e2 te
+    | Blneg b => well_formed_bexp b te
+    | Bconj b1 b2
+    | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
+    end.
+
+  Lemma eval_exp_size e te s :
+    well_formed_exp e te -> conform s te -> size (eval_exp e s) = exp_size e te.
+  Proof.
+    elim: e te s => //=.
+    - move=> v te s Hmem Hcon. move: (TypEnv.mem_find_some Hmem) => [ty Hfind].
+      rewrite (TypEnv.find_some_vsize Hfind) (Hcon v ty Hfind). reflexivity.
+    - move=> [] /=.
+      + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
+      + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
+      + move=> i j e IH te s Hwf Hcon. rewrite size_extract. reflexivity.
+      + (* Need the semantics to proceed *)
+      +
+      +
+      +
+      +
+    -
+    -
+  Admitted.
+
+End WellFormed.
+
