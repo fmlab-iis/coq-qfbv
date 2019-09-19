@@ -13,6 +13,7 @@ src/BBVar.v
 src/BBConst.v
 src/BBAnd.v
 src/BBOr.v
+src/BBXor.v
 src/BBShl.v
 src/BBIte.v
 src/BBEq.v
