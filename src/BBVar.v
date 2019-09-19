@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import Var QFBV CNF BBCommon.
+From BitBlasting Require Import Var TypEnv QFBV CNF BBCommon.
 From ssrlib Require Import ZAriths Tactics.
 From nbits Require Import NBits.
 
@@ -30,18 +30,18 @@ Fixpoint mk_env_var' E g bs : env * generator * word :=
                     (E'', g'', hd::tl)
   end.
 
-Definition bit_blast_var g (v : var) : generator * cnf * word :=
-  let (g', vs) := bit_blast_var' g (vsize v) in
+Definition bit_blast_var (tenv : TypEnv.t) g (v : var) : generator * cnf * word :=
+  let (g', vs) := bit_blast_var' g (TypEnv.vsize v tenv) in
   (g', [::], vs).
 
 Definition mk_env_var E g (bs : bits) (v : var) : env * generator * cnf * word :=
   let '(E', g', vs) := mk_env_var' E g bs in
   (E', g', [::], vs).
 
-Lemma bit_blast_var_cnf_empty g v g' cs lrs :
-  bit_blast_var g v = (g', cs, lrs) -> cs = [::].
+Lemma bit_blast_var_cnf_empty tenv g v g' cs lrs :
+  bit_blast_var tenv g v = (g', cs, lrs) -> cs = [::].
 Proof.
-  rewrite /bit_blast_var. dcase (bit_blast_var' g (vsize v)).
+  rewrite /bit_blast_var. dcase (bit_blast_var' g (TypEnv.vsize v tenv)).
   move=> [g_v lrs_v] Hbb. by case=> _ <- _.
 Qed.
 
@@ -55,9 +55,9 @@ Proof.
     move=> [[E g] lrs] Henv. case=> _ <- <-. by rewrite (IH _ _ _ _ _ Henv).
 Qed.
 
-Lemma mk_env_var_is_bit_blast_var E g bs v E' g' cs lrs :
-  size bs = vsize v -> mk_env_var E g bs v = (E', g', cs, lrs) ->
-  bit_blast_var g v = (g', cs, lrs).
+Lemma mk_env_var_is_bit_blast_var tenv E g bs v E' g' cs lrs :
+  size bs = TypEnv.vsize v tenv -> mk_env_var E g bs v = (E', g', cs, lrs) ->
+  bit_blast_var tenv g v = (g', cs, lrs).
 Proof.
   rewrite /mk_env_var /bit_blast_var. dcase (mk_env_var' E g bs).
   move=> [[E_env g_env] ls_env] Henv <-. rewrite (mk_env_var'_is_bit_blast_var' Henv).
@@ -65,10 +65,9 @@ Proof.
 Qed.
 
 Lemma mk_env_var_sat E g bs v E' g' cs lrs :
-  size bs = vsize v -> mk_env_var E g bs v = (E', g', cs, lrs) ->
-  interp_cnf E' cs.
+  mk_env_var E g bs v = (E', g', cs, lrs) -> interp_cnf E' cs.
 Proof.
-  rewrite /mk_env_var => Hs. dcase (mk_env_var' E g bs) => [[[oE og] olrs] Henv].
+  rewrite /mk_env_var. dcase (mk_env_var' E g bs) => [[[oE og] olrs] Henv].
   by case=> <- _ <- _.
 Qed.
 
