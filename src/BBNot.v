@@ -23,7 +23,7 @@ Fixpoint bit_blast_not g a : generator * cnf * word :=
   | [::] => (g, [::], [::])
   | hd :: tl =>
     let '(g_hd, cs_hd, lrs_hd) := bit_blast_not1 g hd in
-    let '(g_tl, cs_tl, lrs_tl) := bit_blast_not g tl in
+    let '(g_tl, cs_tl, lrs_tl) := bit_blast_not g_hd tl in
     (g_tl, catrev cs_hd cs_tl, lrs_hd :: lrs_tl)
   end.
 
