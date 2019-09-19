@@ -269,6 +269,13 @@ Proof.
     exact : (IH _ _ _ _ _ _ _ _ Henvzip).
 Qed.
 
+Lemma mk_env_full_adder_newer_gen E g l1 l2 lcin E' g' cs lrs lcout:
+  mk_env_full_adder E g lcin l1 l2 = (E', g', cs, lcout, lrs) -> (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_full_adder => Henv.
+  by apply mk_env_full_adder_zip_newer_gen with E (extzip_ff l1 l2) lcin E' cs lrs lcout.
+Qed.
+
 Lemma mk_env_full_adder1_newer_res E g l1 l2 lcin E' g' cs lrs lcout:
   mk_env_full_adder1 E g l1 l2 lcin = (E', g', cs, lcout, lrs) -> newer_than_lit g' lrs.
 Proof.
