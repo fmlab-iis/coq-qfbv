@@ -11,6 +11,7 @@ src/BBCommon.v
 src/BBVar.v
 src/BBConst.v
 src/BBAnd.v
+src/BBOr.v
 src/BBIte.v
 src/BBEq.v
 src/BBUlt.v
