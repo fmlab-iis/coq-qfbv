@@ -475,4 +475,104 @@ Proof.
   apply mk_env_full_adder_zip_sat with E g (extzip_ff l1 l2) lcin g' lrs lcout;
     [done|by rewrite unzip1_extzip_ss|by rewrite unzip2_extzip_ss|done].
 Qed.
-  
+
+
+(* ===== bit_blast_add ===== *)
+
+Definition bit_blast_add g ls1 ls2 : generator * cnf * word :=
+  let '(g', cs, cout, lrs) := bit_blast_full_adder g lit_ff ls1 ls2 in
+  (g', cs, lrs).
+
+Lemma bit_blast_add_correct :
+  forall g bs1 bs2 E ls1 ls2 br g' cs lrs,
+    bit_blast_add g ls1 ls2 = (g', cs, lrs) ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    addB bs1 bs2 = br->
+    interp_cnf E (add_prelude cs) ->
+    size ls1 = size ls2 ->
+    enc_bits E lrs br.
+Proof.
+  move=> g bs1 bs2 E ls1 ls2 br g' cs lrs.
+  rewrite /bit_blast_add. case HadcB: (adcB false bs1 bs2) => [obcout obrs].
+  case Hblast: (bit_blast_full_adder g lit_ff ls1 ls2) => [[[og ocs] olcout] olrs].
+  case=> _ <- <- => Henc1 Henc2 <- Hcs Hszeq.
+  move : (add_prelude_enc_bit_ff Hcs) => Hff.
+  move : (bit_blast_full_adder_correct1 Hblast Henc1 Henc2 Hff Hcs HadcB Hszeq).
+  by rewrite /addB HadcB.
+Qed.
+
+Definition mk_env_add E (g: generator) ls1 ls2 : env * generator * cnf * word :=
+  let '(E', g', cs, cout, lrs) := mk_env_full_adder E g lit_ff ls1 ls2 in
+  (E', g', cs, lrs).
+
+Lemma mk_env_add_is_bit_blast_add :
+  forall E g  ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    bit_blast_add g ls1 ls2 = (g', cs, lrs).
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add/bit_blast_add.
+  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2 ) => [[[[E'0 g'0] cs0] cout] lrs0].
+  move : (mk_env_full_adder_is_bit_blast_full_adder Hmk) => Hbb.
+  rewrite Hbb. move =>[] _ <- <- <-.
+  done.
+Qed.
+
+Lemma mk_env_add_newer_gen :
+  forall E g ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    (g <=? g')%positive.
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add.
+  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] _ <- _ _.
+  apply (mk_env_full_adder_newer_gen Hmk).
+Qed.
+
+Lemma mk_env_add_newer_res :
+  forall E g ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g' lrs.
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add.
+  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] _ <- _ <-.
+  apply (mk_env_full_adder_newer_res Hmk).
+Qed.
+
+Lemma mk_env_add_newer_cnf:
+  forall E g ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g ls1 ->
+    newer_than_lits g ls2 ->
+    newer_than_lit g lit_ff ->
+    size ls1 = size ls2 ->
+    newer_than_cnf g' cs.
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add.
+  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] _ <- <- _ .
+  apply (mk_env_full_adder_newer_cnf Hmk).
+Qed.
+
+Lemma mk_env_add_preserve :
+  forall E g ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    env_preserve E E' g.
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add.  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] <- _ _ _.
+  apply (mk_env_full_adder_preserve Hmk).
+Qed.
+
+Lemma mk_env_add_sat :
+  forall E g ls1 ls2 E' g' cs lrs,
+    mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
+    newer_than_lits g ls1 ->  newer_than_lits g ls2 -> newer_than_lit g lit_ff -> 
+    size ls1 = size ls2 -> interp_cnf E' cs.
+Proof.
+  move => E g ls1 ls2 E' g' cs lrs.
+  rewrite /mk_env_add.  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] <- _ <- _.
+  apply (mk_env_full_adder_sat Hmk).
+Qed.
