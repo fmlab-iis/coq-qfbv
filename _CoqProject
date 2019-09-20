@@ -25,6 +25,7 @@ src/BBUgt.v
 src/BBUge.v
 src/BBUaddo.v
 src/BBUsubo.v
+src/BBSaddo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
