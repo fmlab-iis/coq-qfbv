@@ -164,14 +164,14 @@ Definition gen (g : generator) : generator * literal := (g + 1, Pos g)%positive.
 
 (* ===== A map from variables to literal representation ===== *)
 
-Definition vm := UVM.t word.
+Definition vm := VM.t word.
 
 
 
 (* ===== newer_than_vm ===== *)
 
 Definition newer_than_vm g (m : vm) :=
-  forall v rs, UVM.find v m = Some rs -> newer_than_lits g rs.
+  forall v rs, VM.find v m = Some rs -> newer_than_lits g rs.
 
 Lemma newer_than_vm_add_r x m y : newer_than_vm x m -> newer_than_vm (x + y) m.
 Proof.
@@ -190,9 +190,9 @@ Qed.
 (* ===== Consistent ===== *)
 
 Definition consistent1 m E s v : Prop :=
-    match UVM.find v m with
+    match VM.find v m with
     | None => True
-    | Some rs => enc_bits E rs (State.acc v s)
+    | Some rs => enc_bits E rs (Store.acc v s)
     end.
 Definition consistent m E s := forall v, consistent1 m E s v.
 
@@ -202,7 +202,7 @@ Lemma consistent_env_upd_newer m s E g g' b :
 Proof.
   move=> Hnew Hcon Hle. move: (newer_than_vm_le_newer Hnew Hle) => Hnew'. move=> v.
   move: (Hnew' v) (Hcon v) => {Hnew Hnew' Hcon}. rewrite /consistent1.
-  case: (UVM.find v m); last by done. move=> rs Hnew Henc.
+  case: (VM.find v m); last by done. move=> rs Hnew Henc.
   move: (Hnew rs (Logic.eq_refl (Some rs))) => {Hnew} Hnew.
   rewrite (newer_than_lits_enc_bits_env_upd _ _ _ Hnew). exact: Henc.
 Qed.
@@ -211,7 +211,7 @@ Lemma env_preserve_consistent m E E' g s :
   newer_than_vm g m -> env_preserve E E' g -> consistent m E s -> consistent m E' s.
 Proof.
   move=> Hnew_gm Hpre Hcon. move=> x; rewrite /consistent1.
-  case Hfind: (UVM.find x m); last by done. move: (Hnew_gm x _ Hfind) => Hnew_glsx.
+  case Hfind: (VM.find x m); last by done. move: (Hnew_gm x _ Hfind) => Hnew_glsx.
   move: (Hcon x); rewrite /consistent1. rewrite Hfind.
   exact: (env_preserve_enc_bits Hpre Hnew_glsx).
 Qed.
@@ -221,12 +221,12 @@ Qed.
 (* ===== vm_preserve ===== *)
 
 Definition vm_preserve (m m' : vm) : Prop :=
-  forall v ls, UVM.find v m = Some ls -> UVM.find v m' = Some ls.
+  forall v ls, VM.find v m = Some ls -> VM.find v m' = Some ls.
 
 Lemma vm_preserve_consistent m m' s E :
   vm_preserve m m' -> consistent m' E s -> consistent m E s.
 Proof.
-  move=> Hpre Hcon v. rewrite /consistent1. case Hfind: (UVM.find v m) => //=.
+  move=> Hpre Hcon v. rewrite /consistent1. case Hfind: (VM.find v m) => //=.
   move: (Hpre _ _ Hfind) => Hfind'. move: (Hcon v). rewrite /consistent1.
   rewrite Hfind'. by apply.
 Qed.
@@ -239,11 +239,11 @@ Lemma vm_preserve_trans m1 m2 m3 :
 Proof. move=> H12 H23 v ls Hfind1. apply: H23. apply: H12. assumption. Qed.
 
 Lemma vm_preserve_add_diag m v ls :
-  UVM.find v m = None -> vm_preserve m (UVM.add v ls m).
+  VM.find v m = None -> vm_preserve m (VM.add v ls m).
 Proof.
   move=> Hfind x xls Hfindx. case Hxv: (x == v).
   - rewrite (eqP Hxv) Hfind in Hfindx. discriminate.
-  - move/negP: Hxv => Hxv. rewrite (UVM.Lemmas.find_add_neq _ _ Hxv). assumption.
+  - move/negP: Hxv => Hxv. rewrite (VM.Lemmas.find_add_neq Hxv). assumption.
 Qed.
 
 

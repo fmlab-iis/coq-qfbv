@@ -1,8 +1,7 @@
-
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
 From BitBlasting Require Import Var QFBV CNF BBCommon.
-From ssrlib Require Import ZAriths Seqs Tactics.
+From ssrlib Require Import ZAriths Tactics Bools Seqs.
 From nbits Require Import NBits.
 
 Set Implicit Arguments.
@@ -13,28 +12,26 @@ Import Prenex Implicits.
 
 (* ===== bit_blast_or ===== *)
 
-Definition bit_blast_or1 g l1 l2 : generator * cnf * literal :=
-  if (l1 == lit_tt) || (l2 == lit_tt) then (g, [::], lit_tt)
-  else if (l1 == lit_ff) then (g, [::], l2)
-       else if (l2 == lit_ff) then (g, [::], l1)
+Definition bit_blast_or1 (g: generator) (a1 a2: literal) :generator * cnf * literal :=
+  if (a1 == lit_tt) || (a2 == lit_tt) then (g, [::], lit_tt)
+  else if (a1 == lit_ff) then (g, [::], a2)
+       else if (a2 == lit_ff) then (g, [::], a1)
             else
               let (g', r) := gen g in
-              (g', [:: [:: neg_lit r; l1; l2];
-                      [:: r; neg_lit l1];
-                      [:: r; neg_lit l2]], r).
+              (g', [:: [:: neg_lit r; a1; a2];
+                      [:: r; neg_lit a1];
+                      [:: r; neg_lit a2]], r).
 
-
-Definition mk_env_or1 E g l1 l2 : env * generator * cnf * literal :=
-  if (l1 == lit_tt) || (l2 == lit_tt) then (E, g, [::], lit_tt)
-  else if l1 == lit_ff then (E, g, [::], l2)
-       else if l2 == lit_ff then (E, g, [::], l1)
+Definition mk_env_or1 E g a1 a2 : env * generator * cnf * literal :=
+  if (a1 == lit_tt) || (a2 == lit_tt) then (E, g, [::], lit_tt)
+  else if a1 == lit_ff then (E, g, [::], a2)
+       else if a2 == lit_ff then (E, g, [::], a1)
             else let (g', r) := gen g in
                  let E' := env_upd E (var_of_lit r)
-                                   (interp_lit E l1 || interp_lit E l2) in
-                 let cs := [:: [:: neg_lit r; l1; l2]; [:: r; neg_lit l1];
-                              [:: r; neg_lit l2]] in
+                                   (interp_lit E a1 || interp_lit E a2) in
+                 let cs := [:: [:: neg_lit r; a1; a2]; [:: r; neg_lit a1];
+                              [:: r; neg_lit a2]] in
                  (E', g', cs, r).
-
 
 Fixpoint bit_blast_or_zip g lsp : generator * cnf * word :=
   match lsp with
@@ -58,22 +55,121 @@ Definition bit_blast_or g ls1 ls2 := bit_blast_or_zip g (extzip_ff ls1 ls2).
 
 Definition mk_env_or E g ls1 ls2 := mk_env_or_zip E g (extzip_ff ls1 ls2).
 
-Lemma bit_blast_or1_correct E g b1 b2 l1 l2 g' cs lr :
-  bit_blast_or1 g l1 l2 = (g', cs, lr) ->
-  enc_bit E l1 b1 -> enc_bit E l2 b2 ->
-  interp_cnf E (add_prelude cs) -> enc_bit E lr (orb b1 b2).
+Lemma bit_blast_or1_correct E g b1 b2 l1 l2 g' cs lr:
+    bit_blast_or1 g l1 l2 = (g', cs, lr) ->
+    enc_bit E l1 b1 -> enc_bit E l2 b2 ->
+    interp_cnf E (add_prelude cs) ->
+    enc_bit E lr (orb b1 b2).
 Proof.
-  rewrite /bit_blast_or1 /enc_bit. case Htt: ((l1 == lit_tt) || (l2 == lit_tt)).
-  - case => _ <- <- /eqP <- /eqP <- /= Hpre. move: (add_prelude_tt Hpre) => /= Hvtt.
-    case/orP: Htt => /eqP -> /=; rewrite Hvtt //=. by rewrite orbT.
-  - case Hff1: (l1 == lit_ff); last case Hff2: (l2 == lit_ff).
-    + case=> _ <- <- /eqP <- /eqP <- /= Hpre. move: (add_prelude_tt Hpre) => /= Hvtt.
-      rewrite (eqP Hff1) /= Hvtt //=. 
-    + case=> _ <- <- /eqP <- /eqP <- /= Hpre. move: (add_prelude_tt Hpre) => /= Hvtt.
-      rewrite (eqP Hff2) /= Hvtt /=. by rewrite orbF.
-    + case => _ <- <-. move=> /eqP <- /eqP <- /= /andP [/= Hvtt Hcs]; t_clear.
-      rewrite !interp_lit_neg_lit in Hcs. move: Hcs.
-      by case: (E g); case: (interp_lit E l1); case: (interp_lit E l2).
+  rewrite /bit_blast_or1 /enc_bit.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)).
+  - case=> _ <- <- /eqP <- /eqP <-.
+    move /orP: Htt. case => /eqP ->; rewrite add_prelude_empty; move=> ->.
+    + done.
+    + by rewrite orbT.
+  - case Hff1: (l1 == lit_ff); last case Hff2: (l2 == lit_ff) .
+    + case=> _ <- <- /eqP <- /eqP <- /=.
+      rewrite add_prelude_empty /=; move=> Htt1.
+      by rewrite (eqP Hff1) /= Htt1.
+    + case=> _ <- <- /eqP <- /eqP <- /=;
+      rewrite add_prelude_empty /=; move=> Htt1;
+        by [rewrite (eqP Hff2) /= Htt1 orbF ] .
+    + case=> _ <- <- /eqP <- /eqP <- /andP /= . case => [Htt1 Hcs].
+      rewrite !interp_lit_neg_lit in Hcs . move: Hcs .
+      by case: (E g); case: (interp_lit E l1); case: (interp_lit E l2) .
+Qed.
+
+Lemma mk_env_or1_is_bit_blast_or1 E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    bit_blast_or1 g l1 l2 = (g', cs, lr).
+Proof.
+  rewrite /mk_env_or1 /bit_blast_or1; intros;
+    dite_hyps; dcase_hyps; subst; reflexivity .
+Qed .
+
+Lemma mk_env_or1_newer_gen E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_or1 .
+  case Htt :((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ <- _ _; exact: Pos.leb_refl .
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+    + case => _ <- _ _; exact: Pos.leb_refl .
+    + case => _ <- _ _; exact: Pos.leb_refl .
+    + case => _ <- _ _ . apply /pos_leP . rewrite Pos.add_1_r .
+      apply: Pos.lt_le_incl . exact: Pos.lt_succ_diag_r .
+Qed.
+
+Lemma mk_env_or1_newer_res E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    newer_than_lit g' lr.
+Proof.
+  rewrite /mk_env_or1.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ <- _ <- . by case/orP: Htt; move/eqP => ->.
+  - case Ht1 : (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+    + case => _ <- _ <- . done .
+    + case => _ <- _ <- . done .
+    + move => [[_ g0'] _] . case => <- _ _. rewrite -g0' .
+      exact: (newer_than_var_add_diag_r) .
+Qed .
+
+Lemma mk_env_or1_newer_cnf E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 -> newer_than_lit g l2 ->
+    newer_than_cnf g' cs.
+Proof.
+  move=> Henv.
+  move: Henv . rewrite /mk_env_or1 /= .
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => _ _ <- _ . done .
+  - case Ht1 : (l1 == lit_ff); last case Ht2 : (l2 == lit_ff) .
+    + case => _ _ <- _ . done .
+    + case => _ _ <- _ . done .
+    + case => _ <- <- _ {Htt Ht1 Ht2} /= Hgl1 Hgl2.
+      move: (newer_than_lit_le_newer Hgl1 (pos_leb_add_diag_r g 1)) => Hg1l1 .
+      move: (newer_than_lit_le_newer Hgl2 (pos_leb_add_diag_r g 1)) => Hg1l2 .
+      rewrite !newer_than_lit_neg Hg1l1 Hg1l2 .
+      rewrite /newer_than_lit /var_of_lit /= .
+      rewrite (newer_than_var_add_diag_r g 1) .
+      done .
+Qed .
+
+Lemma mk_env_or1_preserve E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    env_preserve E E' g.
+Proof.
+  rewrite /mk_env_or1.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => <- _ _ _. done.
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_preserve_refl .
+      * case => <- _ _ _; exact: env_upd_eq_preserve .
+Qed.
+
+Lemma mk_env_or1_sat E g l1 l2 E' g' cs lr:
+    mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
+    newer_than_lit g l1 ->
+    newer_than_lit g l2 ->
+    interp_cnf E' cs.
+Proof.
+  move=> H Hgl1 Hgl2.
+  move: H.
+  rewrite /mk_env_or1.
+  case Htt: ((l1 == lit_tt) || (l2 == lit_tt)) .
+  - case => <- _ <- _. done.
+  - case Ht1: (l1 == lit_ff); last case Ht2: (l2 == lit_ff) .
+      * by case => <- _ <- _.
+      * by case => <- _ <- _.
+      * case => <- _ <- _.
+        rewrite !interp_cnf_cons /= !interp_lit_neg_lit .
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgl1)).
+        rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hgl2)).
+        by case: (interp_lit E l1); case: (interp_lit E l2);
+        rewrite /interp_lit !env_upd_eq .
 Qed.
 
 Lemma bit_blast_or_zip_correct E g bsp lsp g' cs lrs :
@@ -106,13 +202,6 @@ Proof.
                                     (enc_bits_unzip2_extzip Henctt Henc1 Henc2) Hcs).
 Qed.
 
-Lemma mk_env_or1_is_bit_blast_or1 E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) -> bit_blast_or1 g l1 l2 = (g', cs, lr).
-Proof.
-  rewrite /mk_env_or1 /bit_blast_or1; intros;
-    dite_hyps; dcase_hyps; subst; reflexivity.
-Qed.
-
 Lemma mk_env_or_zip_is_bit_blast_or_zip E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) ->
   bit_blast_or_zip g lsp = (g', cs, lrs).
@@ -123,22 +212,6 @@ Proof.
     dcase (mk_env_or_zip E_hd g_hd lsp_tl) => [[[[E_tl g_tl] cs_tl] lrs_tl] Henv_tl].
     case=> _ <- <- <-. rewrite (mk_env_or1_is_bit_blast_or1 Henv_hd).
     by rewrite (IH _ _ _ _ _ _ Henv_tl).
-Qed.
-
-Lemma mk_env_or_is_bit_blast_or E g ls1 ls2 E' g' cs lrs :
-  mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
-  bit_blast_or g ls1 ls2 = (g', cs, lrs).
-Proof. exact: mk_env_or_zip_is_bit_blast_or_zip. Qed.
-
-Lemma mk_env_or1_newer_gen E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) -> (g <=? g')%positive.
-Proof.
-  rewrite /mk_env_or1. case Htt : ((l1 == lit_tt) || (l2 == lit_tt)).
-  - case=> _ <- _ _; exact: Pos.leb_refl.
-  - case Hl1f : (l1 == lit_ff); last case Hl2f : (l2 == lit_ff); case=> _ <- _ _.
-    + exact: Pos.leb_refl.
-    + exact: Pos.leb_refl.
-    + exact: pos_leb_add_diag_r.
 Qed.
 
 Lemma mk_env_or_zip_newer_gen E g lsp E' g' cs lrs :
@@ -155,16 +228,6 @@ Qed.
 Lemma mk_env_or_newer_gen E g ls1 ls2 E' g' cs lrs :
   mk_env_or E g ls1 ls2 = (E', g', cs, lrs) -> (g <=? g')%positive.
 Proof. exact: mk_env_or_zip_newer_gen. Qed.
-
-Lemma mk_env_or1_newer_res E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
-  newer_than_lit g l1 -> newer_than_lit g l2 -> newer_than_lit g' lr.
-Proof.
-  rewrite /mk_env_or1. case Htt : ((l1 == lit_tt) || (l2 == lit_tt)).
-  - case=> _ <- _ <-. by case/orP: Htt; move/eqP => ->.
-  - case Hl1f : (l1 == lit_ff); last case Hl2f : (l2 == lit_ff); case=> _ <- _ <- //=.
-    move=> _ _; exact: newer_than_lit_add_diag_r.
-Qed.
 
 Lemma mk_env_or_zip_newer_res E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) ->
@@ -193,16 +256,6 @@ Proof.
   apply: (mk_env_or_zip_newer_res Henv); by t_auto_newer.
 Qed.
 
-Lemma mk_env_or1_newer_cnf E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
-  newer_than_lit g l1 -> newer_than_lit g l2 -> newer_than_cnf g' cs.
-Proof.
-  rewrite /mk_env_or1. case Htt : ((l1 == lit_tt) || (l2 == lit_tt)).
-  - case=> _ <- <- _; done.
-  - case Hl1f : (l1 == lit_ff); last case Hl2f : (l2 == lit_ff); case=> _ <- <- _ //=.
-    move=> Hnew1 Hnew2. by repeat (apply/andP; split); t_auto_newer.
-Qed.
-
 Lemma mk_env_or_zip_newer_cnf E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) ->
   newer_than_lits g (unzip1 lsp) -> newer_than_lits g (unzip2 lsp) ->
@@ -229,15 +282,6 @@ Proof.
   apply: (mk_env_or_zip_newer_cnf Henv); by t_auto_newer.
 Qed.
 
-Lemma mk_env_or1_preserve E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) -> env_preserve E E' g.
-Proof.
-  rewrite /mk_env_or1. case Htt : ((l1 == lit_tt) || (l2 == lit_tt)).
-  - by case=> <- _ _ _.
-  - case Hl1f : (l1 == lit_ff); last case Hl2f : (l2 == lit_ff); case=> <- _ _ _ //=.
-    exact: env_upd_eq_preserve.
-Qed.
-
 Lemma mk_env_or_zip_preserve E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) -> env_preserve E E' g.
 Proof.
@@ -253,21 +297,6 @@ Qed.
 Lemma mk_env_or_preserve E g ls1 ls2 E' g' cs lrs :
   mk_env_or E g ls1 ls2 = (E', g', cs, lrs) -> env_preserve E E' g.
 Proof. exact: mk_env_or_zip_preserve. Qed.
-
-Lemma mk_env_or1_sat E g l1 l2 E' g' cs lr :
-  mk_env_or1 E g l1 l2 = (E', g', cs, lr) ->
-  newer_than_lit g l1 -> newer_than_lit g l2 -> interp_cnf E' cs.
-Proof.
-  rewrite /mk_env_or1. case Htt : ((l1 == lit_tt) || (l2 == lit_tt)).
-  - by case=> <- _ <- _.
-  - case Hl1f : (l1 == lit_ff); last case Hl2f : (l2 == lit_ff); case=> <- _ <- _ //=.
-    move=> Hgl1 Hgl2.
-    move: (newer_than_lit_neq Hgl1) (newer_than_lit_neq Hgl2) => Hngl1 Hngl2.
-    rewrite /= !env_upd_eq !interp_lit_neg_lit.
-    rewrite (interp_lit_env_upd_neq _ _ Hngl1).
-    rewrite (interp_lit_env_upd_neq _ _ Hngl2).
-    by case (interp_lit E l1); case (interp_lit E l2).
-Qed.
 
 Lemma mk_env_or_zip_sat E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) ->
