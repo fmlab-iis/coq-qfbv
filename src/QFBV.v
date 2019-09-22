@@ -1424,8 +1424,7 @@ Section WellFormed.
     well_formed_exp e te -> conform s te -> size (eval_exp e s) = exp_size e te.
   Proof.
     elim: e te s => //=.
-    - move=> v te s Hmem Hcon. move: (TypEnv.mem_find_some Hmem) => [ty Hfind].
-      rewrite (TypEnv.find_some_vsize Hfind) (Hcon v ty Hfind). reflexivity.
+    - move=> v te s Hmem Hcon. by rewrite (Hcon _ Hmem).
     - move=> [] /=.
       + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
       + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
