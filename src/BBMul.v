@@ -339,14 +339,13 @@ Lemma bit_blast_mul_rec_correct :
     bit_blast_mul_rec g ls1 ls2 i = (g', cs, lrs) ->
     enc_bits E ls1 bs1 ->
     enc_bits E ls2 bs2 ->
-    interp_cnf E (add_prelude cs) -> (size ls1)>0 ->
+    interp_cnf E (add_prelude cs) -> (*(size ls1)>0 ->*)
     enc_bits E lrs (mulB bs1 (from_nat (size bs1) (to_nat bs2 * (2^i)))).
 Proof.
   elim => [|ls2_hd ls2_tl IH] g bs1 bs2 i E ls1 g' cs lrs.
   - rewrite /bit_blast_mul_rec/bit_blast_const. rewrite enc_bits_nil_l.
-    case => _ <- <- Henc1 Henc2 Hcnf Hsz1 /=. rewrite (eqP Henc2)/=mul0n.
-    rewrite (enc_bits_size Henc1) mulB0. rewrite (enc_bits_map_lit_of_bool_nonempty). exact (add_prelude_enc_bit_tt Hcnf).
-    by rewrite -(enc_bits_size Henc1) size_from_nat. 
+    case => _ <- <- Henc1 Henc2 Hcnf /=. rewrite (eqP Henc2)/=mul0n.
+    rewrite (enc_bits_size Henc1) mulB0. by rewrite (enc_bits_lit_of_bool (from_nat (size bs1) 0) (add_prelude_enc_bit_tt Hcnf)). 
   - rewrite /bit_blast_mul_rec -/bit_blast_mul_rec
             (lock interp_cnf) (lock bit_blast_add) (lock bit_blast_and)
             (lock bit_blast_shl_int) (lock enc_bits) /= -!lock.
@@ -357,10 +356,10 @@ Proof.
     dcase (bit_blast_add g_and lrs_tl lrs_and) => [[[g_add2 cs_add2] lrs_add2] Hbbadd2].
     case Htt: (ls2_hd == lit_tt); last case Hff: (ls2_hd == lit_ff).
     + rewrite (eqP Htt). case => _ <- <- Henc1 Henc2.
-      rewrite 2!add_prelude_catrev. move => Hcnf Hsz1; split_andb_hyps.
+      rewrite 2!add_prelude_catrev. move => Hcnf; split_andb_hyps.
       move : (enc_bits_splitlsb (add_prelude_tt H) Henc2) => /andP[Hls2hd Hls2tl].
       rewrite /splitlsl/= in Hls2tl; rewrite /splitlsl/= in Hls2hd.
-      move : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl H Hsz1) => Henclrstl.
+      move : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl H) => Henclrstl.
       move : (ltn0Sn ((size ls2_tl))) => Hsz2; move : (enc_bits_size Henc2) => /=Hsz2'.
       rewrite Hsz2' in Hsz2.
       move : (joinlsb_splitlsb  Hsz2) => Hsplitbs2.
@@ -371,7 +370,7 @@ Proof.
       rewrite mulnDl mul1n -muln2 -mulnA -expnS.
       by rewrite /shlB shlB_mul2exp mulB_addn addBC addn1.
         by rewrite -(bit_blast_mul_rec_size_ss Hbbmul) -(bit_blast_shl_int_size_ss Hbbshl).
-    + rewrite (eqP Hff). case => _ <- <- Henc1 Henc2 Hcnf Hsz1.
+    + rewrite (eqP Hff). case => _ <- <- Henc1 Henc2 Hcnf.
       move : (enc_bits_splitlsb (add_prelude_tt Hcnf) Henc2) => /andP[Hls2hd Hls2tl].
       rewrite /splitlsl/= in Hls2tl; rewrite /splitlsl/= in Hls2hd.
       rewrite (add_prelude_enc_bit_is_false _ Hcnf) in Hls2hd. 
@@ -380,15 +379,15 @@ Proof.
       move : (joinlsb_splitlsb  Hsz2) => Hsplitbs2.
       rewrite /splitlsb/= in Hsplitbs2; rewrite -Hsplitbs2 (eqP Hls2hd)/=.
       rewrite add0n -muln2 -mulnA -expnS -(addn1 i).
-      exact : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl Hcnf Hsz1).
-    + case => _ <- <- Henc1 Henc2. rewrite 3!add_prelude_catrev; move => Hcnf Hsz1; split_andb_hyps.
+      exact : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl Hcnf).
+    + case => _ <- <- Henc1 Henc2. rewrite 3!add_prelude_catrev; move => Hcnf; split_andb_hyps.
       move : (enc_bits_splitlsb (add_prelude_tt H) Henc2) => /andP[Hls2hd Hls2tl].
       rewrite /splitlsl/= in Hls2tl; rewrite /splitlsl/= in Hls2hd.
       move : (ltn0Sn ((size ls2_tl))) => Hsz2; move : (enc_bits_size Henc2) => /=Hsz2'.
       rewrite Hsz2' in Hsz2.
       move : (joinlsb_splitlsb  Hsz2) => Hsplitbs2.
       rewrite /splitlsb/= in Hsplitbs2; rewrite -Hsplitbs2.
-      move : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl H Hsz1) => Henclrstl.
+      move : (IH _ _ _ _ _ _ _ _ _ Hbbmul Henc1 Hls2tl H) => Henclrstl.
       move : (bit_blast_shl_int_correct Hbbshl Henc1 H2) => Henclrshd.
       move : (enc_bits_copy (size ls1) Hls2hd) => Hcopy.
       move : (bit_blast_and_correct Hbband Hcopy Henclrshd H1) => Henclrsand.
@@ -410,14 +409,13 @@ Lemma bit_blast_mul_correct :
     enc_bits E ls1 bs1 ->
     enc_bits E ls2 bs2 ->
     interp_cnf E (add_prelude cs) ->
-    size ls1 >0 ->
     size ls1 = size ls2 ->
     enc_bits E lrs (mulB bs1 bs2).
 Proof.
-  move => g bs1 bs2 E ls1 ls2 g' cs lrs Hmul Henc_bs1 Henc_bs2 Hcnf Hsz1 Hszeq.
+  move => g bs1 bs2 E ls1 ls2 g' cs lrs Hmul Henc_bs1 Henc_bs2 Hcnf Hszeq.
   rewrite -(from_nat_to_nat bs2). replace (to_nat bs2) with (to_nat bs2 * (2^ 0)) by ring.
   rewrite -(enc_bits_size Henc_bs2) -Hszeq (enc_bits_size Henc_bs1).
-  exact : (bit_blast_mul_rec_correct Hmul Henc_bs1 Henc_bs2 Hcnf Hsz1). 
+  exact : (bit_blast_mul_rec_correct Hmul Henc_bs1 Henc_bs2 Hcnf ). 
 Qed.
 
 
