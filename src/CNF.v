@@ -566,6 +566,18 @@ Proof.
   by rewrite enc_bits_cons H1_hd H2.
 Qed.
 
+Lemma enc_bit_lastd E (ls : word) (bs : bits) l b:
+    enc_bit E l b ->
+    enc_bits E ls bs ->
+    enc_bit E (lastd l ls) (lastd b bs) .
+Proof.
+  elim: ls bs => [| ls_hd ls_tl IH] [| bs_hd bs_tl] //=.
+  rewrite enc_bits_cons => H /andP [Hhd Htl].
+  move: (IH _ H Htl).
+  move: (enc_bits_size Htl) => {Htl IH}.
+  case: ls_tl; case: bs_tl => //=.
+Qed.
+
 Lemma enc_bits_rev E ls bs : enc_bits E ls bs -> enc_bits E (rev ls) (rev bs).
 Proof. move=> H. rewrite /rev. by apply: (enc_bits_catrev H). Qed.
 
@@ -886,6 +898,18 @@ Proof.
   elim: ls => [| hd tl IH] /=.
   - by move=> _ ->.
   - move/andP=> [Hhd Htl] Hl. by rewrite Hhd (IH Htl Hl).
+Qed.
+
+Lemma newer_than_lit_lastd g (ls : word) l:
+    newer_than_lit g l ->
+    newer_than_lits g ls -> newer_than_lit g (lastd l ls) .
+Proof.
+  rewrite /lastd.
+  elim: ls g l=> [| ls_hd ls_tl IH] g l //=.
+  move=> Hgl /andP [Hhd Htl].
+  move: (IH _ _ Hgl Htl).
+  clear IH Htl.
+  case: ls_tl; move=> //=.
 Qed.
 
 Lemma newer_than_lits_rev g ls :

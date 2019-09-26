@@ -22,6 +22,7 @@ src/BBMul.v
 src/BBShl.v
 src/BBIte.v
 src/BBZeroExtend.v
+src/BBSignExtend.v
 src/BBEq.v
 src/BBUlt.v
 src/BBUle.v
