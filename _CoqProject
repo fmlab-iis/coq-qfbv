@@ -15,7 +15,10 @@ src/BBNot.v
 src/BBAnd.v
 src/BBOr.v
 src/BBXor.v
+src/BBNeg.v
 src/BBAdd.v
+src/BBSub.v
+src/BBMul.v
 src/BBShl.v
 src/BBIte.v
 src/BBEq.v
@@ -26,6 +29,7 @@ src/BBUge.v
 src/BBUaddo.v
 src/BBUsubo.v
 src/BBSaddo.v
+src/BBSsubo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
