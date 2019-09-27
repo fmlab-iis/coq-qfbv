@@ -34,6 +34,7 @@ src/BBSgt.v
 src/BBSge.v
 src/BBUaddo.v
 src/BBUsubo.v
+src/BBUmulo.v
 src/BBSaddo.v
 src/BBSsubo.v
 src/BBConj.v
