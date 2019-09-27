@@ -35,7 +35,7 @@ Definition sltB (bs1 bs2: bits) :=
   ((sign1 == sign2) && ult_tl) || (sign1 && ~~sign2).
 
 (* NOTE: the semantics of sltB, i.e. the relationship between sltB and the comparison
-of Z, should be stated and proved in coq-nbits. *) 
+in Z, should be stated and proved in coq-nbits. *) 
 
 Lemma bit_blast_slt_correct g bs1 bs2 E ls1 ls2 g' cs lr :
   bit_blast_slt g ls1 ls2 = (g', cs, lr) ->

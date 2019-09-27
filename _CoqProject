@@ -29,6 +29,9 @@ src/BBUle.v
 src/BBUgt.v
 src/BBUge.v
 src/BBSlt.v
+src/BBSle.v
+src/BBSgt.v
+src/BBSge.v
 src/BBUaddo.v
 src/BBUsubo.v
 src/BBSaddo.v
@@ -36,4 +39,3 @@ src/BBSsubo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
-src/BBNeg.v
