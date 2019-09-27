@@ -15,9 +15,14 @@ src/BBNot.v
 src/BBAnd.v
 src/BBOr.v
 src/BBXor.v
+src/BBNeg.v
 src/BBAdd.v
+src/BBSub.v
+src/BBMul.v
 src/BBShl.v
 src/BBIte.v
+src/BBZeroExtend.v
+src/BBSignExtend.v
 src/BBEq.v
 src/BBUlt.v
 src/BBUle.v
@@ -27,6 +32,7 @@ src/BBSlt.v
 src/BBUaddo.v
 src/BBUsubo.v
 src/BBSaddo.v
+src/BBSsubo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
