@@ -42,3 +42,5 @@ src/BBDisj.v
 src/BBLneg.v
 src/BBLow.v
 src/BBHigh.v
+src/BBExtract.v
+src/BBSlice.v
