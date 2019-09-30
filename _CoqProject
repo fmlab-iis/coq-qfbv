@@ -40,3 +40,5 @@ src/BBSsubo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v
+src/BBLow.v
+src/BBHigh.v
