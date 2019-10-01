@@ -12,7 +12,7 @@ Module TypEnv.
   Definition t : Type := VM.t typ.
 
   (* The default type of a variable not in the typing environment *)
-  Definition deftyp : typ := Tuint 64.
+  Definition deftyp : typ := Tuint 0.
 
   (* Find the type of a variable in a typing environment *)
   Definition find (v : var) (e : t) : typ :=
