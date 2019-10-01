@@ -20,6 +20,7 @@ src/BBAdd.v
 src/BBSub.v
 src/BBMul.v
 src/BBShl.v
+src/BBLshr.v
 src/BBIte.v
 src/BBZeroExtend.v
 src/BBSignExtend.v
