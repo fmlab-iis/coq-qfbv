@@ -9,13 +9,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-(* ===== nbit definition ===== *)
-
-Definition slice (i m : nat) (bs : bits) : bits :=
-  extract i (i + m - 1) bs .
-
-(* ===== auxiliary lemmas ===== *)
-
 (* ===== bit_blast_slice ===== *)
 
 Definition bit_blast_slice g i m ls : generator * cnf * word :=

@@ -14,8 +14,6 @@ Import Prenex Implicits.
 Definition bit_blast_sge g ls1 ls2: generator * cnf * literal :=
   bit_blast_sle g ls2 ls1.
 
-Definition sgeB (bs1 bs2: bits) := sleB bs2 bs1.
-
 Lemma bit_blast_sge_correct g bs1 bs2 E ls1 ls2 g' cs lr:
   bit_blast_sge g ls1 ls2 = (g', cs, lr) ->
   size ls1 = size ls2 ->

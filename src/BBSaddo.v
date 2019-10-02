@@ -29,14 +29,6 @@ Definition bit_blast_saddo g ls1 ls2: generator * cnf * literal :=
              ] in
   (gr, catrev cs_fa csr, r).
 
-Definition Saddo (bs1 bs2: bits) :=
-  let (tbs1, sign1) := eta_expand (splitmsb bs1) in
-  let (tbs2, sign2) := eta_expand (splitmsb bs2) in
-  let b_add := addB bs1 bs2 in
-  let (u_fa, sign_fa) := eta_expand (splitmsb b_add) in
-  (sign1 && sign2 && ~~sign_fa) || (~~sign1 && ~~sign2 && sign_fa).
-
-
 Lemma bit_blast_saddo_correct g bs1 bs2 E ls1 ls2 g' cs lr :
   bit_blast_saddo g ls1 ls2 = (g', cs, lr) ->
   size ls1 == size ls2 ->

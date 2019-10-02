@@ -28,15 +28,6 @@ Definition bit_blast_slt g ls1 ls2: generator * cnf * literal :=
              ] in
   (gr, catrev cs_tl csr, r).
 
-Definition sltB (bs1 bs2: bits) := 
-  let (tbs1, sign1) := eta_expand (splitmsb bs1) in 
-  let (tbs2, sign2) := eta_expand (splitmsb bs2) in
-  let ult_tl := ltB tbs1 tbs2 in
-  ((sign1 == sign2) && ult_tl) || (sign1 && ~~sign2).
-
-(* NOTE: the semantics of sltB, i.e. the relationship between sltB and the comparison
-in Z, should be stated and proved in coq-nbits. *) 
-
 Lemma bit_blast_slt_correct g bs1 bs2 E ls1 ls2 g' cs lr :
   bit_blast_slt g ls1 ls2 = (g', cs, lr) ->
   enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 -> interp_cnf E (add_prelude cs) ->  

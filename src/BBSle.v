@@ -17,11 +17,6 @@ Definition bit_blast_sle g ls1 ls2: generator * cnf * literal :=
   let '(g_disj, cs_disj, r_disj) := bit_blast_disj g_slt r_eq r_slt in
   (g_disj, catrev cs_eq (catrev cs_slt cs_disj), r_disj).
 
-Definition sleB (bs1 bs2: bits) := (bs1 == bs2) || (sltB bs1 bs2).
-
-(* NOTE: the semantics of sleB, i.e. the relationship between sleB and the comparison
-in Z, should be stated and proved in coq-nbits. *) 
-
 Lemma bit_blast_sle_correct g bs1 bs2 E ls1 ls2 g' cs lr:
   bit_blast_sle g ls1 ls2 = (g', cs, lr) ->
   size ls1 = size ls2 ->

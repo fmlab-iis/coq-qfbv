@@ -31,13 +31,6 @@ Definition bit_blast_ssubo g ls1 ls2: generator * cnf * literal :=
       ] in
   (gr, catrev cs_sub csr, r).
 
-Definition Ssubo (bs1 bs2: bits) :=
-  let (tbs1, sign1) := eta_expand (splitmsb bs1) in
-  let (tbs2, sign2) := eta_expand (splitmsb bs2) in
-  let b_sub := subB bs1 bs2 in
-  let (t_sub, sign_sub) := eta_expand (splitmsb b_sub) in
-  (~~sign1 && sign2 && sign_sub) || (sign1 && ~~sign2 && ~~sign_sub).
-
 Lemma bit_blast_ssubo_correct g bs1 bs2 E ls1 ls2 g' cs lr :
   bit_blast_ssubo g ls1 ls2 = (g', cs, lr) ->
   size ls1 == size ls2 ->

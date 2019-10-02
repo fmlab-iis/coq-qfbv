@@ -14,8 +14,6 @@ Import Prenex Implicits.
 Definition bit_blast_sgt g ls1 ls2: generator * cnf * literal :=
   bit_blast_slt g ls2 ls1.
 
-Definition sgtB (bs1 bs2: bits) := sltB bs2 bs1.
-
 Lemma bit_blast_sgt_correct g bs1 bs2 E ls1 ls2 g' cs lr:
   bit_blast_sgt g ls1 ls2 = (g', cs, lr) ->
   enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 ->
