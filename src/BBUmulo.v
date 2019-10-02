@@ -39,14 +39,6 @@ Section BBUmulo.
   Definition bit_blast_umulo_rec g ls1 ls2 :=
     bit_blast_umulo_rec_zip g (extzip_ff ls1 (rev ls2)).
 
-  Fixpoint orb_all (bs: bits): bool :=
-    match bs with
-    | [::] => false
-    | hd::tl =>
-      let result_tl := orb_all tl in
-      orb result_tl hd
-    end.
-
   Example test_orb:
     orb_all [:: false ; true ;true] = true.
   Proof. reflexivity. Qed.
@@ -93,17 +85,6 @@ Section BBUmulo.
           case (bsp_hd2);
           case (orb_all (unzip1 bsp_tl)).
   Qed.
-
-  Fixpoint andb_orb_all_zip (bsp: seq(bool * bool)) : bool :=
-    match bsp with
-    | [::] => false
-    | (ls1_low, ls2_high)::bsp_tl =>
-      let result_tl := andb_orb_all_zip bsp_tl in
-      let result_or := orb_all (unzip1 bsp) in
-      orb result_tl (andb result_or ls2_high)
-    end.
-
-  Definition andb_orb_all (bs1 bs2 : bits) : bool := andb_orb_all_zip (extzip0 bs1 (rev bs2)).
 
   Lemma bit_blast_umulo_rec_zip_correct2 E g bsp lsp g' cs lr_or lr_and_or :
     bit_blast_umulo_rec_zip g lsp = (g', cs, lr_or, lr_and_or) ->
@@ -503,15 +484,6 @@ Section BBUmulo.
                  [:: neg_lit lrs_msb; r]
               ] in
     (E', g_r, cs_rec ++r cs_wls1 ++r cs_wls2 ++r cs_mul ++r cs, r).
-
-  Definition Umulo bs1 bs2 : bool :=
-    let (bs1_low, bs1_hightl) := eta_expand (splitlsb bs1) in
-    let (bs2_low, bs2_hightl) := eta_expand (splitlsb bs2) in
-    let wbs1 := zext 1 bs1 in
-    let wbs2 := zext 1 bs2 in
-    let mul := mulB wbs1 wbs2 in
-    let mul_high := msb mul in
-    orb (andb_orb_all bs1_hightl bs2_hightl) mul_high.
 
   Lemma bit_blast_umulo_correct g bs1 bs2 E ls1 ls2 g' cs lr :
     bit_blast_umulo g ls1 ls2 = (g', cs, lr) ->
