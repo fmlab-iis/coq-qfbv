@@ -47,3 +47,6 @@ src/BBLow.v
 src/BBHigh.v
 src/BBExtract.v
 src/BBSlice.v
+src/BBConcat.v
+src/BBExport.v
+
