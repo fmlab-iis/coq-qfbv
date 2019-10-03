@@ -17,7 +17,7 @@ Section QFBV.
   | Unot
   | Uneg
   | Uextr : nat -> nat -> eunop
-  | Uslice : nat -> nat -> nat -> eunop
+(*| Uslice : nat -> nat -> nat -> eunop *)
   | Uhigh : nat -> eunop
   | Ulow : nat -> eunop
   | Uzext : nat -> eunop
@@ -78,7 +78,7 @@ Section QFBV.
     | Unot, Unot
     | Uneg, Uneg => true
     | Uextr i1 j1, Uextr i2 j2 => (i1 == i2) && (j1 == j2)
-    | Uslice v1 v2 v3, Uslice w1 w2 w3 => (v1 == w1) && (v2 == w2) && (v3 == w3)
+(*  | Uslice v1 v2 v3, Uslice w1 w2 w3 => (v1 == w1) && (v2 == w2) && (v3 == w3) *)
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
@@ -93,14 +93,13 @@ Section QFBV.
   Proof.
     split; case: o1; case: o2 => //=.
     - move=> n1 n2 n3 n4. move/andP => [/eqP -> /eqP ->]. reflexivity.
-    - move=> n1 n2 n3 n4 n5 n6. move/andP => [/andP [/eqP -> /eqP ->] /eqP ->].
-      reflexivity.
-    - move=> n1 n2. move/eqP=> ->. reflexivity.
-    - move=> n1 n2. move/eqP=> ->. reflexivity.
-    - move=> n1 n2. move/eqP=> ->. reflexivity.
-    - move=> n1 n2. move/eqP=> ->. reflexivity.
+    (* - move=> n1 n2 n3 n4 n5 n6. move/andP => [/andP [/eqP -> /eqP ->] /eqP ->] //. *)
+    - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
     - move=> n1 n2 n3 n4. case=> -> ->. by rewrite !eqxx.
-    - move=> n1 n2 n3 n4 n5 n6. case=> -> -> ->. by rewrite !eqxx.
+    (* - move=> n1 n2 n3 n4 n5 n6. case=> -> -> ->. by rewrite !eqxx. *)
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
@@ -310,10 +309,10 @@ Section QFBV.
 
   Definition eunop_denote (o : eunop) : bits -> bits :=
     match o with
-    | Unot => id (* TODO: define this *)
-    | Uneg => id (* TODO: define this *)
+    | Unot => invB
+    | Uneg => negB
     | Uextr i j => extract i j
-    | Uslice w1 w2 w3 => id (* TODO: define this *)
+(*  | Uslice w1 w2 w3 => *)
     | Uhigh n => high n
     | Ulow n => low n
     | Uzext n => zext n
@@ -331,10 +330,10 @@ Section QFBV.
     | Bmod => fun b1 b2 => b1 (* TODO: define this *)
     | Bsrem => fun b1 b2 => b1 (* TODO: define this *)
     | Bsmod => fun b1 b2 => b1 (* TODO: define this *)
-    | Bshl => fun b1 b2 => b1 (* TODO: define this *)
-    | Blshr => fun b1 b2 => b1 (* TODO: define this *)
-    | Bashr => fun b1 b2 => b1 (* TODO: define this *)
-    | Bconcat => cat
+    | Bshl => fun b1 b2 => shlB (to_nat b2) b1
+    | Blshr => fun b1 b2 => shrB (to_nat b2) b1
+    | Bashr => fun b1 b2 => sarB (to_nat b2) b1
+    | Bconcat => fun b1 b2 => cat b2 b1
     end.
 
   Definition bbinop_denote (o : bbinop) : bits -> bits -> bool :=
@@ -344,15 +343,15 @@ Section QFBV.
     | Bule => leB
     | Bugt => gtB
     | Buge => geB
-    | Bslt => fun b1 b2 => false (* TODO: define this *)
-    | Bsle => fun b1 b2 => false (* TODO: define this *)
-    | Bsgt => fun b1 b2 => false (* TODO: define this *)
-    | Bsge => fun b1 b2 => false (* TODO: define this *)
-    | Buaddo => fun b1 b2 => false (* TODO: define this *)
-    | Busubo => fun b1 b2 => false (* TODO: define this *)
-    | Bumulo => fun b1 b2 => false (* TODO: define this *)
-    | Bsaddo => fun b1 b2 => false (* TODO: define this *)
-    | Bssubo => fun b1 b2 => false (* TODO: define this *)
+    | Bslt => sltB
+    | Bsle => sleB
+    | Bsgt => sgtB
+    | Bsge => sgeB
+    | Buaddo => carry_addB
+    | Busubo => borrow_subB
+    | Bumulo => Umulo
+    | Bsaddo => Saddo
+    | Bssubo => Ssubo
     | Bsmulo => fun b1 b2 => false (* TODO: define this *)
     end.
 
@@ -412,7 +411,7 @@ Section QFBV.
     | Unot => 0
     | Uneg => 1
     | Uextr i j => 2
-    | Uslice w1 w2 w3 => 3
+(*  | Uslice w1 w2 w3 => 3 *)
     | Uhigh n => 4
     | Ulow n => 5
     | Uzext n => 6
@@ -422,9 +421,9 @@ Section QFBV.
   Definition eunop_ltn (o1 o2 : eunop) : bool :=
     match o1, o2 with
     | Uextr i1 j1, Uextr i2 j2 => (i1 < i2) || ((i1 == i2) && (j1 < j2))
-    | Uslice u1 u2 u3, Uslice w1 w2 w3 =>
+(*  | Uslice u1 u2 u3, Uslice w1 w2 w3 =>
       (u1 < w1) || ((u1 == w1) && (u2 < w2))
-      || ((u1 == w1) && (u2 == w2) && (u3 < w3))
+      || ((u1 == w1) && (u2 == w2) && (u3 < w3)) *)
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
@@ -455,10 +454,10 @@ Section QFBV.
     case: o1; case: o2 => //=.
     - move=> n1 n2 n3 n4. move: (eqn_ltn_gtn_cases n1 n3) (eqn_ltn_gtn_cases n2 n4).
       by t_auto.
-    - move=> n1 n2 n3 n4 n5 n6.
+ (* - move=> n1 n2 n3 n4 n5 n6.
       move: (eqn_ltn_gtn_cases n1 n4) (eqn_ltn_gtn_cases n2 n5)
                                       (eqn_ltn_gtn_cases n3 n6).
-      by t_auto.
+      by t_auto. *)
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
@@ -1387,13 +1386,17 @@ Section WellFormed.
        | Unot => exp_size e te
        | Uneg => exp_size e te
        | Uextr i j => i - j + 1
-       | Uslice w1 w2 w3 => w2
+(*     | Uslice w1 w2 w3 => w2 *)
        | Uhigh n => n
        | Ulow n => n
        | Uzext n => exp_size e te + n
        | Usext n => exp_size e te + n
        end)
-    | Ebinop op e1 e2 => max (exp_size e1 te) (exp_size e2 te)
+    | Ebinop op e1 e2 =>
+      (match op with
+       | Bconcat => exp_size e1 te + exp_size e2 te
+       | _ => max (exp_size e1 te) (exp_size e2 te)
+       end)
     | Eite b e1 e2 => max (exp_size e1 te) (exp_size e2 te)
     end.
 
@@ -1420,23 +1423,196 @@ Section WellFormed.
     | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
     end.
 
+(* NBits Lemma *)
+  Lemma size_succB bs : size (succB bs) = size bs .
+  Proof .
+    elim : bs => [|b bs IH]; first done .
+    rewrite /succB -/succB .
+    case : b; rewrite /= IH // .
+  Qed .
+
+  Lemma size_full_adder_zip c bs0 bs1 :
+    size (full_adder_zip c (zip bs0 bs1)).2 =
+    minn (size bs0) (size bs1) .
+  Proof .
+    dcase (zip bs0 bs1) => [zs Hzip] .
+    rewrite -(size_zip bs0 bs1) Hzip .
+    elim : zs bs0 bs1 Hzip c => [|z zs IH] bs0 bs1 Hzip c; first done .
+    rewrite /full_adder_zip /= -/full_adder_zip /= .
+    dcase z => [[hd1 hd2] Hz] .
+    dcase (bool_adder c hd1 hd2) => [[c0 hd] Hadder] .
+    dcase (full_adder_zip c0 zs) => [[c1 tl] Hfull] /= .
+    move : Hzip; rewrite /zip .
+    case bs0; case bs1; rewrite /=; [done|done|done|rewrite -/zip] .
+    move => b bs d ds Hzs .
+    inversion Hzs .
+    move: (IH _ _ H1 c0) .
+    rewrite Hfull H1 /= => Htl .
+    rewrite Htl // .
+  Qed .
+
+  Lemma size_addB bs0 bs1 :
+    size (addB bs0 bs1) = minn (size bs0) (size bs1) .
+  Proof .
+    exact : size_full_adder_zip .
+  Qed .
+
+  Lemma size_subB bs0 bs1 :
+    size (subB bs0 bs1) = minn (size bs0) (size bs1) .
+  Proof .
+    rewrite /subB /sbbB /adcB /full_adder .
+    dcase (full_adder_zip (~~false) (zip bs0 (~~# bs1)%bits)) => [[c res] Hfull] .
+    move : (size_full_adder_zip (~~false) bs0 (~~#bs1)%bits) .
+    rewrite Hfull /= .
+    rewrite /invB size_map // .
+  Qed .
+
+  Lemma size_joinlsb T b (bs : seq T) :
+    size (joinlsb b bs) = (size bs) + 1 .
+  Proof .
+    elim : bs => [|d ds IH] .
+    - rewrite /joinlsb // .
+    - rewrite /joinlsb /= addn1 // .
+  Qed .
+
+  Lemma size_full_mul bs0 bs1 :
+    size (full_mul bs0 bs1) = (size bs0) + (size bs1) .
+  Proof .
+    elim : bs0 => [| b bs0 IH] .
+    - rewrite /full_mul add0n size_from_nat // .
+    - case b .
+      + rewrite /full_mul /= -/full_mul .
+        rewrite size_addB size_zext size_joinlsb IH .
+        rewrite addn1 addSn addnS addnC minnE .
+        rewrite subnn subn0 // .
+      + rewrite /full_mul /= -/full_mul .
+        rewrite IH addSn // .
+  Qed .
+
+  Lemma size_mulB bs0 bs1 :
+    size (mulB bs0 bs1) = size bs0 .
+  Proof .
+    rewrite /mulB size_low // .
+  Qed .
+
+  Lemma size_shlB1 bs :
+    size (shlB1 bs) = size bs .
+  Proof .
+    rewrite /shlB1 .
+    rewrite size_dropmsb size_joinlsb addn1 subn1 // .
+  Qed .
+
+  Lemma size_shlB n bs :
+    size (shlB n bs) = size bs .
+  Proof .
+    elim : n => [|n IH] .
+    - rewrite /shlB // .
+    - rewrite /shlB /= size_shlB1 IH // .
+  Qed .
+
+  Lemma size_joinmsb T b (bs : seq T) :
+    size (joinmsb bs b) = size bs + 1 .
+  Proof .
+    elim : bs => [|d ds IH]; first done .
+    rewrite /joinmsb /= -/joinmsb IH !addn1 // .
+  Qed .
+
+  Lemma size_shrB1 bs :
+    size (shrB1 bs) = size bs .
+  Proof .
+    rewrite /shrB1 .
+    rewrite size_droplsb size_joinmsb .
+    rewrite addn1 subn1 // .
+  Qed .
+
+  Lemma size_shrB n bs :
+    size (shrB n bs) = size bs .
+  Proof .
+    elim : n => [| n IH ]; first done .
+    rewrite /shrB /= -/shrB .
+    rewrite size_shrB1 IH // .
+  Qed .
+
+  Lemma size_sarB1 bs :
+    size (sarB1 bs) = size bs .
+  Proof .
+    rewrite /sarB1 size_droplsb size_joinmsb .
+    rewrite addn1 subn1 // .
+  Qed .
+
+  Lemma size_sarB n bs :
+    size (sarB n bs) = size bs .
+  Proof .
+    elim : n => [| n IH ]; first done .
+    rewrite /sarB /= -/sarB .
+    rewrite size_sarB1 IH // .
+  Qed .
+
   Lemma eval_exp_size e te s :
     well_formed_exp e te -> conform s te -> size (eval_exp e s) = exp_size e te.
   Proof.
     elim: e te s => //=.
     - move=> v te s Hmem Hcon. by rewrite (Hcon _ Hmem).
-    - move=> [] /=.
-      + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
-      + move=> e IH te s Hwf Hcon. exact: (IH _ _ Hwf Hcon).
-      + move=> i j e IH te s Hwf Hcon. rewrite size_extract. reflexivity.
-      + (* Need the semantics to proceed *)
-      +
-      +
-      +
-      +
-    -
-    -
-  Admitted.
+    - case => /= .
+      + move => e IH te s Hwf Hcon .
+        rewrite -(IH _ _ Hwf Hcon) /invB size_map // .
+      + move => e IH te s Hwf Hcon .
+        rewrite /negB /invB size_succB size_map (IH _ _ Hwf Hcon) // .
+      + move => e IH te s Hwf Hcon .
+        rewrite size_extract //.
+      + move => e IH te s Hwf Hcon .
+        rewrite size_high // .
+      + move => e IH te s Hwf Hcon .
+        rewrite size_low // .
+      + move => n e IH te s Hwf Hcon .
+        rewrite size_zext (IH _ _ Hwf Hcon) // .
+      + move => n e IH te s Hwf Hcon .
+        rewrite size_sext (IH _ _ Hwf Hcon) // .
+    - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /= .
+      + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+        rewrite Max.max_idempotent maxnE .
+        apply : subnKC; apply : leqnn .
+      + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+        rewrite Max.max_idempotent maxnE .
+        apply : subnKC; apply : leqnn .
+      + rewrite /xorB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+        rewrite Max.max_idempotent maxnE .
+        apply : subnKC; apply : leqnn .
+      + rewrite size_addB .
+        rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+        rewrite Max.max_idempotent minnE .
+        apply : subKn; apply : leqnn .
+      + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
+        rewrite (eqP Hsize) Max.max_idempotent minnE .
+        apply : subKn; apply : leqnn .
+      + rewrite size_mulB -(eqP Hsize) Max.max_idempotent (IH0 _ _ Hwf0 Hcon) // .
+      + (* TODO *)
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + (* TODO *)
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + (* TODO *)
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + rewrite size_shlB .
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + rewrite size_shrB .
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + rewrite size_sarB .
+        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+        rewrite Max.max_idempotent // .
+      + rewrite size_cat .
+        rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
+        rewrite addnC // .
+    - move => c e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon .
+      case (eval_bexp c s);
+        [rewrite (IH0 _ _ Hwf0 Hcon) | rewrite (IH1 _ _ Hwf1 Hcon)];
+          rewrite (eqP Hsize) Max.max_idempotent // .
+Qed .
+
 
 End WellFormed.
 
