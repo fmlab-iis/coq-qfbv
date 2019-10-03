@@ -39,6 +39,7 @@ src/BBUsubo.v
 src/BBUmulo.v
 src/BBSaddo.v
 src/BBSsubo.v
+src/BBSmulo.v
 src/BBConj.v
 src/BBDisj.v
 src/BBLneg.v

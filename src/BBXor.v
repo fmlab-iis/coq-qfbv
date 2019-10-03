@@ -165,6 +165,10 @@ Proof.
     by rewrite (IH _ _ _ _ _ _ Henv_tl).
 Qed.
 
+Lemma mk_env_xor_is_bit_blast_xor E g ls1 ls2 E' g' cs lrs :
+  mk_env_xor E g ls1 ls2 = (E', g', cs, lrs) ->
+  bit_blast_xor g ls1 ls2 = (g', cs, lrs).
+Proof. exact: mk_env_xor_zip_is_bit_blast_xor_zip. Qed.
 
 Lemma mk_env_xor_zip_newer_gen E g lsp E' g' cs lrs :
   mk_env_xor_zip E g lsp = (E', g', cs, lrs) -> (g <=? g')%positive.
@@ -285,4 +289,33 @@ Lemma mk_env_xor_sat E g ls1 ls2 E' g' cs lrs :
 Proof.
   rewrite /mk_env_xor => Henv Hnewtt Hnew1 Hnew2.
   apply: (mk_env_xor_zip_sat Henv); by t_auto_newer.
+Qed.
+
+Lemma mk_env_xor_zip_size E g lsp E' g' cs lrs :
+  mk_env_xor_zip E g lsp = (E', g', cs, lrs) ->
+  size lrs == size lsp.
+Proof.
+  elim: lsp E g E' g' cs lrs => [| [ls1_hd ls2_hd] lsp_tl IH] E g E' g' cs lrs.
+  - by case=> _ _ _ <-.
+  - rewrite /mk_env_xor_zip -/mk_env_xor_zip.
+    dcase (mk_env_xor1 E g ls1_hd ls2_hd) => [[[[E_hd g_hd] cs_hd] lsr_hd] Henv_hd].
+    dcase (mk_env_xor_zip E_hd g_hd lsp_tl) => [[[[E_tl g_tl] cs_tl] lsr_tl] Henv_tl].
+    case=> _ _ _ <-.
+    rewrite /=.
+    move: (IH _ _ _ _ _ _ Henv_tl) => IHH.
+      by rewrite (eqP IHH).
+Qed.
+
+Lemma mk_env_xor_size E g ls1 ls2 E' g' cs lrs :
+  mk_env_xor E g ls1 ls2 = (E', g', cs, lrs) ->
+  size ls1 == size ls2 ->
+  size lrs == size ls1.
+Proof.
+  rewrite /mk_env_xor.
+  move=> Henv Hsz.
+  move: (mk_env_xor_zip_size Henv) => Hsz2.
+  rewrite (eqP Hsz2).
+  rewrite size_extzip.
+  rewrite -(eqP Hsz).
+    by rewrite maxnn.
 Qed.
