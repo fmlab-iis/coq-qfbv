@@ -10,7 +10,11 @@ Import Prenex Implicits.
 
 
 (* ===== bit_blast_sdiv ===== *)
-
+Definition sdivB bs1 bs2 : bits * bits :=
+  if (msb bs1 == msb bs2) && negb (msb bs1) then udivB bs1 bs2
+  else if (msb bs1 == msb bs2) && (msb bs1) then ((udivB bs1 bs2).1, negB (udivB bs1 bs2).2)
+       else if (msb bs1 != msb bs2) && negb (msb bs1) then (negB (udivB bs1 bs2).1, (udivB bs1 bs2).2)
+            else (negB (udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
 
 Definition bit_blast_abs g ls : generator * cnf * word :=
   if (msl ls == lit_tt) then  bit_blast_neg g ls
