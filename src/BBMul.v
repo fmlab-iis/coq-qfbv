@@ -29,58 +29,32 @@ Qed.
 Lemma size_adcB : forall p q c, size (adcB c p q).2 = minn (size p) (size q).
 Proof. rewrite /adcB. exact : size_full_adder. Qed.
 
+Lemma size_addB : forall p q, size (addB p q) = minn (size p) (size q).
+Proof. intros; rewrite/addB; apply : (size_adcB p q false).
+Qed.
+
 Lemma size_full_mul : forall p q, size (full_mul p q) = size p + size q.
 Proof.
   elim => [|phd ptl IH] q. by rewrite /full_mul size_from_nat.
   case phd. rewrite /=/joinlsb size_adcB/= IH size_zext minnC -addn1 addnA addn1 addnC minnn; ring. rewrite /= IH; ring.
 Qed.
 
+Lemma size_mulB p q : size (mulB p q) = size p.
+Proof. by rewrite/mulB size_low. Qed.
+  
 Lemma full_adder_zip_0_r : forall p n, (full_adder_zip false (zip p (zeros n))).2 = unzip1 (zip p (zeros n)).
 Proof.
   elim => [|phd ptl IH] n. by rewrite zip_nil.
   elim n =>[|ns IH1] /=. done.
   case phd; case Hfadderz :(full_adder_zip false (zip ptl (zeros ns)))=>[c1 tl];
   by rewrite -(IH ns) Hfadderz. 
-Qed.
-  
-Lemma full_adder_0_r : forall p n, (full_adder false p (zeros n)).2 = unzip1 (zip p (zeros n)).
-Proof. rewrite /full_adder. exact : full_adder_zip_0_r. Qed.
-  
-Lemma addB0 : forall p n, addB p (zeros n) = unzip1 (zip p (zeros n)).
-Proof. rewrite /addB. exact : full_adder_0_r. Qed.
 
-Lemma joinlsb_false_zeros : forall n, joinlsb false (zeros n) = zeros n.+1.
-Proof. elim; done. Qed.
-
-Lemma zeros_cats : forall m n, zeros m ++ zeros n = zeros (m + n).
-Proof. elim => [|m IH] n. done. by rewrite addSn -!zeros_cons cat_cons -IH. Qed.
-  
-Lemma zext_zero : forall m n, zext m (zeros n) = zeros (m + n).
-Proof. intros. by rewrite /zext zeros_cats addnC. Qed.
-       
-Lemma full_mul0 : forall p n, full_mul p (zeros n) = (zeros (size p + n)).
-Proof.
-  elim => [|phd ptl IH] n. by rewrite /=from_natn0 size_zeros.
-  case Hphd : phd; rewrite /= IH; try done.
-  by rewrite joinlsb_false_zeros zext_zero addB0 unzip1_zip -zeros_cons.
-Qed.
-  
-Lemma mulB0 p: mulB p (from_nat (size p) 0) = (from_nat (size p) 0).
-Proof.
-  rewrite /mulB from_natn0 full_mul0/low -zeros_cats take_size_cat; try by rewrite size_zeros.
-  by rewrite !zeros_cats size_zeros subnDA subnn sub0n addn0. 
-Qed.  
-
-Lemma full_mul1 : forall p n,  0<n -> full_mul p (from_nat n 1) = zext n p.
-Proof.
 Admitted.
   
-Lemma mulB1 p: mulB p (from_nat (size p) 1) = p.
-Proof. 
-Admitted.
-
-Lemma shlB_mul2exp i (p: bits) : iter i shlB1 p = mulB p (from_nat (size p ) (2^i)).
+Lemma shlB_mul2exp i (p: bits) : iter i shlB1 p = mulB p (from_nat (size p) (2^i)).
 Proof.
+  elim i. rewrite expn0. case H : ((size p) == 0). rewrite (eqP H)/=.
+  elim p => [|phd ptl IH]/=; first done. case phd. rewrite/mulB/=zext_nil addB0 unzip1_zip. 
 Admitted.
 
 Lemma mulB_addn p m1 m2: mulB p (from_nat (size p) (m1 + m2)) = addB (mulB p (from_nat (size p) m1)) (mulB p (from_nat (size p) m2)). 
@@ -117,7 +91,8 @@ Lemma andB_copy_mul :
     andB (copy (size bs) b) bs = mulB bs (from_nat (size bs) b).
 Proof.
   move=> b bs. rewrite andB_copy_case. case: b.
-  - rewrite mulB1; reflexivity. Print mulB0.
+  - move : (mulB1 bs (size bs)). case H : (size bs == 0); last done.
+    + by rewrite (eqP H) (size0nil (eqP H)).
   - rewrite mulB0; reflexivity.
 Qed.
 
@@ -456,7 +431,8 @@ Proof.
       apply : (bit_blast_add_correct Hbbadd2 Henclrstl Henclrsand _ H0).
       rewrite /shlB shlB_mul2exp. rewrite (enc_bits_size Henc1).
       have ->: ((copy (size bs1) (head b0 bs2) &&# (bs1 *# (size bs1) -bits of (2 ^ i)))%bits=(mulB (bs1 *# (size bs1) -bits of (2 ^ i)) (from_nat (size bs1) (head b0 bs2)))%bits).
-      move: (andB_copy_mul (head b0 bs2) (bs1 *# (size bs1) -bits of (2 ^ i))%bits);
+      move : (enc_bits_size Henc1).
+      move: (andB_copy_mul (head b0 bs2) (bs1 *# (size bs1) -bits of (2 ^ i))%bits).
       by rewrite size_low.
       rewrite to_nat_cons -mulB_muln -mulB_addn.
       replace (to_nat (behead bs2) * 2 ^ (i + 1) + 2 ^ i * head b0 bs2)
