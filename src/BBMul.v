@@ -41,13 +41,130 @@ Qed.
 
 Lemma size_mulB p q : size (mulB p q) = size p.
 Proof. by rewrite/mulB size_low. Qed.
-  
+
 Lemma full_adder_zip_0_r : forall p n, (full_adder_zip false (zip p (zeros n))).2 = unzip1 (zip p (zeros n)).
 Proof.
   elim => [|phd ptl IH] n. by rewrite zip_nil.
   elim n =>[|ns IH1] /=. done.
   case phd; case Hfadderz :(full_adder_zip false (zip ptl (zeros ns)))=>[c1 tl];
   by rewrite -(IH ns) Hfadderz. 
+Qed.
+
+Lemma full_adder_0_r : forall p n, (full_adder false p (zeros n)).2 = unzip1 (zip p (zeros n)).
+Proof. rewrite /full_adder. exact : full_adder_zip_0_r. Qed.
+  
+Lemma addB0 : forall p n, addB p (zeros n) = unzip1 (zip p (zeros n)).
+Proof. rewrite /addB. exact : full_adder_0_r. Qed.
+
+Lemma joinlsb_false_zeros : forall n, joinlsb false (zeros n) = zeros n.+1.
+Proof. elim; done. Qed.
+
+Lemma zeros_cats : forall m n, zeros m ++ zeros n = zeros (m + n).
+Proof. elim => [|m IH] n. done. by rewrite addSn -!zeros_cons cat_cons -IH. Qed.
+
+Lemma zext_zero : forall m n, zext m (zeros n) = zeros (m + n).
+Proof. intros. by rewrite /zext zeros_cats addnC. Qed.
+
+Lemma full_mul0 : forall p n, full_mul p (zeros n) = (zeros (size p + n)).
+Proof.
+  elim => [|phd ptl IH] n. by rewrite /=from_natn0 size_zeros.
+  case Hphd : phd; rewrite /= IH; try done.
+  by rewrite joinlsb_false_zeros zext_zero addB0 unzip1_zip -zeros_cons.
+Qed.
+
+Lemma mulB0 p: mulB p (from_nat (size p) 0) = (from_nat (size p) 0).
+Proof.
+  rewrite /mulB from_natn0 full_mul0/low -zeros_cats take_size_cat; try by rewrite size_zeros.
+  by rewrite !zeros_cats size_zeros subnDA subnn sub0n addn0.
+Qed.
+
+Lemma adcB_to_nat : forall p q c, size p = size q -> (adcB c p q).2 = from_nat (size p) (c + to_nat p + to_nat q).
+Proof.
+  rewrite /adcB/full_adder/=.
+  elim => [|phd ptl IH]q c Hsz/=.
+  - by rewrite zip_nil/=.
+  - move : Hsz. case q => [|qhd qtl]/=; first discriminate.
+    move => Hsz; rewrite /=-addn1 in Hsz; symmetry in Hsz; rewrite -addn1 in Hsz; symmetry in Hsz. rewrite addnACA-!addnA -!muln2 -mulnDl. 
+    case phd; case qhd; case c; rewrite/=/bool_adder;
+    case Hfaddzt : (full_adder_zip true (zip ptl qtl)) => [c0 tl0];
+    case Hfaddzf : (full_adder_zip false (zip ptl qtl)) => [c1 tl1];
+    try (rewrite muln2 odd_double/joinlsb-muln2 -div.divn2 div.mulnK; [by rewrite -(IH qtl true (addIn Hsz)) Hfaddzt|by rewrite (Nats.expn2_gt0 1)]);
+    try (rewrite muln2 odd_double/joinlsb uphalf_half odd_double-muln2 -div.divn2 div.mulnK; [by rewrite addnA -(IH qtl false (addIn Hsz)) Hfaddzf | by rewrite (Nats.expn2_gt0 1)]);                                                         
+    try (rewrite muln2 odd_double/joinlsb uphalf_half odd_double-muln2 -div.divn2 div.mulnK; [by rewrite add0n-(IH qtl true (addIn Hsz)) Hfaddzt| by rewrite (Nats.expn2_gt0 1)]);
+    try (rewrite muln2 odd_double/joinlsb-muln2 -div.divn2 div.mulnK; [by rewrite -(IH qtl false (addIn Hsz)) Hfaddzf|by rewrite (Nats.expn2_gt0 1)]).
+Qed.
+    
+Lemma addB_to_nat : forall p q, size p = size q -> addB p q = from_nat (size p) (to_nat p + to_nat q).
+Proof. 
+  intros. exact : (adcB_to_nat false).
+Qed.
+
+Lemma to_nat_one n : if (n==0) then to_nat (from_nat n 1) = 0 else to_nat (from_nat n 1) = 1.
+Proof.
+  case n; first done.
+  intros; rewrite to_nat_cons-/from_nat from_natn0 addnC/=. apply/eqP; by rewrite (Nats.addn_subn _ (ltn0Sn 0)) subnn-muln2 muln_eq0 orbF to_nat_zero size_zeros.
+Qed.  
+
+(*Lemma odd_to_natn1 n: 0 < n -> odd (to_nat (n) -bits of (1)%bits) = true.
+Proof.
+  case n; first (rewrite to_nat_nil/=; discriminate).
+  intros; by rewrite to_nat_cons-/from_nat/=odd_double.
+Qed.*)
+  
+Lemma full_mul1 : forall p n, if (n==0) then full_mul p (from_nat n 1) = zeros (size p) else full_mul p (from_nat n 1) = zext n p.
+Proof.
+  intros; case n.
+  - elim p => [|phd ptl IH]/=; first done.
+    + case phd; rewrite IH; last done. by rewrite zext_nil addB0 unzip1_zip.
+  - rewrite/=;intros. elim p => [|phd ptl IH]/=.
+    + rewrite zext_nil size_from_nat from_natn0. done.
+    + case phd; rewrite IH; last done.
+      rewrite addB_to_nat; last (rewrite/=size_zext size_cat size_from_nat/=size_zeros; ring).
+      by rewrite/= to_nat_cat !odd_add !odd_double/=from_natn0 to_nat_zeros/=!add0n to_nat_zeros-!muln2!mul0n size_zext-div.divn2(div.divnMDl _ _ (Nats.expn2_gt0 1))(div.divn_small (Nats.expn2_gt1 0)) addn0-(size_zext n0.+1)from_nat_to_nat. 
+Qed.  
+
+Lemma low_zext : forall n p, low (size p) (zext n p) = p.
+Proof.
+  intros; by rewrite /low/zext size_cat subnDA subnn sub0n cats0 take_cat ltnn subnn take0 cats0. 
+Qed.
+
+Lemma mulB1 p n: if (n == 0) then mulB p (from_nat n 1) = zeros (size p) else mulB p (from_nat n 1) = p.
+Proof. 
+  move : (full_mul1 p n). rewrite/mulB.
+  case n; rewrite/=;intros.
+  -rewrite full_mul2/low size_zeros subnn zeros0 cats0.
+   have->:(take (size p) (zeros (size p)) = take (size (zeros (size p))) (zeros (size p))) by rewrite size_zeros. by rewrite take_size.
+   by rewrite full_mul2 low_zext.
+Qed.
+
+Lemma bool_adderC c : commutative (bool_adder c).
+Proof. by (case ; case).
+Qed.
+
+Lemma full_adderC c : commutative (full_adder c).
+Proof.
+  intro. generalize dependent c.
+  elim x => [|xhd xtl IH]/=.
+  - intros. rewrite/full_adder zip_nil; case y; done.
+  - intros; rewrite/full_adder/=; case y; try done.
+    intros; rewrite/= bool_adderC. case (bool_adder c b xhd)=>[c0 hd].
+    move : (IH c0 l); rewrite/full_adder; move => IH1. by rewrite IH1.
+Qed.
+
+Lemma adcBC c : commutative (adcB c).
+Proof. exact :full_adderC.
+Qed.
+
+Lemma addBA : associative (@addB).
+Proof.
+Admitted.
+  
+Lemma full_mulBC : forall p q, full_mul p q = full_mul q p.
+Proof.
+Admitted.
+      
+Lemma mulBC : forall (p q: bits), size p = size q -> mulB p q = mulB q p.
+Proof.
 
 Admitted.
   
