@@ -100,7 +100,7 @@ Proof .
   by rewrite /mk_env_low; case => <- _ _ _ .
 Qed .
 
-Lemma mk_env_and_sat E g n ls E' g' cs lrs :
+Lemma mk_env_low_sat E g n ls E' g' cs lrs :
   mk_env_low E g n ls = (E', g', cs, lrs) ->
   newer_than_lits g ls -> interp_cnf E' cs .
 Proof .

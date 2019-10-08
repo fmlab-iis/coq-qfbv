@@ -352,7 +352,7 @@ Section QFBV.
     | Bumulo => Umulo
     | Bsaddo => Saddo
     | Bssubo => Ssubo
-    | Bsmulo => fun b1 b2 => false (* TODO: define this *)
+    | Bsmulo => Smulo
     end.
 
   Fixpoint eval_exp (e : exp) (s : state) : bits :=
@@ -1417,7 +1417,8 @@ Section WellFormed.
     match b with
     | Bfalse
     | Btrue => true
-    | Bbinop _ e1 e2 => well_formed_exp e1 te && well_formed_exp e2 te
+    | Bbinop _ e1 e2 => well_formed_exp e1 te && well_formed_exp e2 te &&
+                                        (exp_size e1 te == exp_size e2 te)
     | Blneg b => well_formed_bexp b te
     | Bconj b1 b2
     | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
