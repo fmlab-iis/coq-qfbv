@@ -126,5 +126,16 @@ Module VarOrderedMinimal <: SsrOrderedTypeMinimal.
 End VarOrderedMinimal.
 Module VarOrder <: SsrOrderedTypeWithFacts := MakeSsrOrderedType VarOrderedMinimal.
 
-Module VS := MakeTreeSet VarOrder.
-Module VM := MakeTreeMap VarOrder.
+Module VarOrderWithDefaultNew <: SsrOrderedWithDefaultSucc.
+  Include VarOrder.
+  Definition default : t := {| vname := 1; vidx := 1 |}.
+  Definition succ (x : t) : t := {| vname := vname x + 1; vidx := 1 |}.
+  Lemma ltn_succ (x : t) : ltn x (succ x).
+  Proof.
+    case: x => [n i]. rewrite /succ /ltn /VarOrderedMinimal.ltn /var_ltn /=.
+      by rewrite NltnSn orTb.
+  Qed.
+End VarOrderWithDefaultNew.
+
+Module VS := MakeTreeSetWithNew VarOrderWithDefaultNew.
+Module VM := MakeTreeMapWithNew VarOrderWithDefaultNew.
