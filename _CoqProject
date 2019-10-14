@@ -3,7 +3,6 @@
 -Q lib/coq-nbits/src nbits
 -Q src BitBlasting
 src/Typ.v
-src/Var.v
 src/TypEnv.v
 src/State.v
 src/QFBV.v

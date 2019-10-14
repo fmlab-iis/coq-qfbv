@@ -1,57 +1,98 @@
 
 From mathcomp Require Import ssreflect ssrbool eqtype.
-From BitBlasting Require Import Typ Var.
+From BitBlasting Require Import Typ.
+From ssrlib Require Import SsrOrder FMaps.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Module TypEnv.
 
-  (* A typing environment is a map from a variable to its type *)
-  Definition t : Type := VM.t typ.
+(* A typing environment is a map from a variable to its type *)
+Module Type TypEnv <: SsrFMap.
+
+  Include SsrFMap.
+
+  Definition env : Type := t typ.
+
+  (* The default type of a variable not in the typing environment *)
+  Parameter deftyp : typ.
+
+  (* Find the type of a variable in a typing environment.
+     If a variable is not in the typing environment, return the default type. *)
+  Parameter vtyp : SE.t -> env -> typ.
+
+  (* Return the size of a variable in a typing environment.
+     If a variable is not in the typing environment, return the size of the
+     default type. *)
+  Parameter vsize : SE.t -> env -> nat.
+
+  Axiom vtyp_add_eq :
+    forall {x y : SE.t} {ty : typ} {e : env}, x == y -> vtyp x (add y ty e) = ty.
+  Axiom vtyp_add_neq :
+    forall {x y : SE.t} {ty : typ} {e : env},
+      x != y -> vtyp x (add y ty e) = vtyp x e.
+  Axiom vsize_add_eq :
+    forall {x y : SE.t} {ty : typ} {e : env},
+      x == y -> vsize x (add y ty e) = sizeof_typ ty.
+  Axiom vsize_add_neq :
+    forall {x y : SE.t} {ty : typ} {e : env},
+      x != y -> vsize x (add y ty e) = vsize x e.
+  Axiom not_mem_vtyp :
+    forall {v : SE.t} {e : env}, ~~ mem v e -> vtyp v e = deftyp.
+  Axiom vtyp_vsize :
+    forall {x : SE.t} {e : env} {ty : typ},
+      vtyp x e = ty -> vsize x e = sizeof_typ ty.
+
+End TypEnv.
+
+Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
+  TypEnv with Module SE := V.
+
+  Include VM.
+  Module Lemmas := FMapLemmas VM.
+
+  Definition env : Type := t typ.
 
   (* The default type of a variable not in the typing environment *)
   Definition deftyp : typ := Tuint 0.
 
-  (* Find the type of a variable in a typing environment *)
-  Definition find (v : var) (e : t) : typ :=
+  (* Find the type of a variable in a typing environment.
+     If a variable is not in the typing environment, return the default type. *)
+  Definition vtyp (v : V.t) (e : env) : typ :=
     match VM.find v e with
     | None => deftyp
     | Some ty => ty
     end.
 
-  (* Return the size of a variable in a typing environment *)
-  Definition vsize (v : var) (e : t) : nat := sizeof_typ (find v e).
+  (* Return the size of a variable in a typing environment.
+     If a variable is not in the typing environment, return the size of the
+     default type. *)
+  Definition vsize (v : V.t) (e : env) : nat := sizeof_typ (vtyp v e).
 
-  Definition mem (v : var) (e : t) : bool := VM.mem v e.
+  Lemma vtyp_add_eq {x y ty e} : x == y -> vtyp x (add y ty e) = ty.
+  Proof. rewrite /vtyp /add => H. by rewrite (Lemmas.find_add_eq H). Qed.
 
-  Definition add (v : var) (ty : typ) (e : t) := VM.add v ty e.
-
-  Lemma find_add_eq {x y ty e} : x == y -> find x (add y ty e) = ty.
-  Proof. rewrite /find /add => H. by rewrite (VM.Lemmas.find_add_eq H). Qed.
-
-  Lemma find_add_neq {x y ty e} : x != y -> find x (add y ty e) = find x e.
+  Lemma vtyp_add_neq {x y ty e} : x != y -> vtyp x (add y ty e) = vtyp x e.
   Proof.
-    move/negP=> Hxy. rewrite /find /add. by rewrite (VM.Lemmas.find_add_neq Hxy).
+    move/negP=> Hxy. rewrite /vtyp /add. by rewrite (Lemmas.find_add_neq Hxy).
   Qed.
 
   Lemma vsize_add_eq {x y ty e} : x == y -> vsize x (add y ty e) = sizeof_typ ty.
-  Proof. rewrite /vsize=> H. by rewrite (find_add_eq H). Qed.
+  Proof. rewrite /vsize=> H. by rewrite (vtyp_add_eq H). Qed.
 
   Lemma vsize_add_neq {x y ty e} : x != y -> vsize x (add y ty e) = vsize x e.
-  Proof. rewrite /vsize => H. by rewrite (find_add_neq H). Qed.
+  Proof. rewrite /vsize => H. by rewrite (vtyp_add_neq H). Qed.
 
-  Lemma not_mem_find_deftyp v e : ~~ mem v e -> find v e = deftyp.
-  Proof. rewrite /find => H. by rewrite VM.Lemmas.not_mem_find_none. Qed.
+  Lemma not_mem_vtyp v e : ~~ mem v e -> vtyp v e = deftyp.
+  Proof. rewrite /vtyp => H. by rewrite Lemmas.not_mem_find_none. Qed.
 
-  Lemma mem_add_eq {x y ty e} : x == y -> mem x (add y ty e).
-  Proof. exact: VM.Lemmas.mem_add_eq. Qed.
+  Lemma vtyp_vsize x e ty : vtyp x e = ty -> vsize x e = sizeof_typ ty.
+  Proof. rewrite /vsize /vtyp. move=> ->. reflexivity. Qed.
 
-  Lemma mem_add_neq {x y ty e} : x != y -> mem x (add y ty e) = mem x e.
-  Proof. move/idP/negP=> H. exact: (VM.Lemmas.mem_add_neq H). Qed.
+End MakeTypEnv.
 
-  Lemma find_vsize x e ty : find x e = ty -> vsize x e = sizeof_typ ty.
-  Proof. rewrite /vsize /find. move=> ->. reflexivity. Qed.
+From ssrlib Require Import Var.
 
-End TypEnv.
+Module TE <: TypEnv := MakeTypEnv VarOrder VM.
+Module SSATE <: TypEnv := MakeTypEnv SSAVarOrder SSAVM.

@@ -1,7 +1,7 @@
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
 From BitBlasting Require Import QFBV CNF BBCommon BBConst BBAnd BBAdd BBShl.
-From ssrlib Require Import Var ZAriths Tactics.
+From ssrlib Require Import ZAriths Tactics.
 From nbits Require Import NBits.
 
 Set Implicit Arguments.
@@ -17,7 +17,7 @@ Proof.
   elim => [| zhd ztl IH] c/=. done.
   case Hzhd: zhd=> [hd1 hd2]. case Hbadder: (bool_adder c hd1 hd2) => [c0 hd]. case Hfadderzip : (full_adder_zip c0 ztl) => [c1 tl].
   by rewrite -(IH c0) Hfadderzip/=.
-Qed.   
+Qed.
 
 Lemma size_full_adder : forall p q c, size (full_adder c p q).2 = minn (size p) (size q).
 Proof.

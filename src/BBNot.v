@@ -1,6 +1,6 @@
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
-From BitBlasting Require Import Var QFBV CNF BBCommon.
+From BitBlasting Require Import QFBV CNF BBCommon.
 From ssrlib Require Import ZAriths Tactics.
 From nbits Require Import NBits.
 
@@ -223,7 +223,7 @@ Lemma mk_env_not_sat E g ls E' g' cs lrs:
     interp_cnf E' cs.
 Proof.
   elim: ls E g E' g' cs lrs => [| ls_hd ls_tl IH] E g E' g' cs lrs.
-  - by case=> <- _ <- _. 
+  - by case=> <- _ <- _.
   - rewrite /mk_env_not -/mk_env_not.
     case Hmk_hd : (mk_env_not1 E g ls_hd) => [[[E_hd g_hd] cs_hd] lrs_hd].
     case Hmk_tl : (mk_env_not E_hd g_hd ls_tl) => [[[E_tl g_tl] cs_tl] lrs_tl].
@@ -233,7 +233,7 @@ Proof.
       move: (mk_env_not1_newer_cnf Hmk_hd Hglh) => Hghch.
       rewrite (env_preserve_cnf HpEhEtgh Hghch).
       exact: (mk_env_not1_sat Hmk_hd Hglh).
-    + apply: (IH _ _ _ _ _ _ Hmk_tl). 
-      move: (mk_env_not1_newer_gen Hmk_hd). 
+    + apply: (IH _ _ _ _ _ _ Hmk_tl).
+      move: (mk_env_not1_newer_gen Hmk_hd).
       by apply: newer_than_lits_le_newer.
 Qed.

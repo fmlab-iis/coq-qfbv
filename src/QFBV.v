@@ -2,14 +2,22 @@
 From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Types SsrOrdered Nats ZAriths Tactics.
-From BitBlasting Require Import Typ Var TypEnv State.
+From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics.
+From BitBlasting Require Import Typ TypEnv State.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Section QFBV.
+Module MakeQFBV
+       (V : SsrOrder)
+       (VS : SsrFSet with Module SE := V)
+       (TE : TypEnv with Module SE := V)
+       (S : BitsStore V TE).
+
+  Module VSLemmas := FSetLemmas VS.
+
+  Local Notation var := V.t.
 
   (* Syntax of expressions and Boolean expressions *)
 
@@ -305,7 +313,7 @@ Section QFBV.
 
   (* Semantics of expressions and Boolean expressions *)
 
-  Local Notation state := Store.t.
+  Local Notation state := S.t.
 
   Definition eunop_denote (o : eunop) : bits -> bits :=
     match o with
@@ -357,7 +365,7 @@ Section QFBV.
 
   Fixpoint eval_exp (e : exp) (s : state) : bits :=
     match e with
-    | Evar v => Store.acc v s
+    | Evar v => S.acc v s
     | Econst n => n
     | Eunop op e => (eunop_denote op) (eval_exp e s)
     | Ebinop op e1 e2 => (ebinop_denote op) (eval_exp e1 s) (eval_exp e2 s)
@@ -555,11 +563,13 @@ Section QFBV.
     | Bdisj _ _ => 5
     end.
 
+  Local Notation "x <? y" := (V.ltn x y).
+
   (* exp_ltn e1 e2 does not guarantee that the evaluation of e1 is smaller than
      the evaluation of e2 *)
   Fixpoint exp_ltn (e1 e2 : exp) : bool :=
     match e1, e2 with
-    | Evar v1, Evar v2 => (v1 <? v2)%var
+    | Evar v1, Evar v2 => v1 <? v2
     | Econst n1, Econst n2 =>
       (size n1 < size n2) || ((size n1 == size n2) && (n1 <# n2)%bits)
     | Eunop o1 e1, Eunop o2 e2 =>
@@ -593,7 +603,7 @@ Section QFBV.
   Proof.
     (* exp_ltnn *)
     case: e => /=.
-    - move=> v; exact: var_ltnn.
+    - move=> v; exact: V.ltnn.
     - move=> b. rewrite eqxx ltBnn ltnn. reflexivity.
     - move=> o e. rewrite eunop_ltnn eqxx exp_ltnn. reflexivity.
     - move=> o e1 e2. rewrite ebinop_ltnn !eqxx (exp_ltnn e1) (exp_ltnn e2).
@@ -631,9 +641,9 @@ Section QFBV.
     | H1 : (is_true (?e1 < ?e2)),
       H2 : (is_true (?e2 < ?e3)) |- context [?e1 < ?e3] =>
       rewrite (ltn_trans H1 H2); clear H1 H2
-    | H1 : (is_true (?e1 <? ?e2)%var),
-      H2 : (is_true (?e2 <? ?e3)%var) |- context [(?e1 <? ?e3)%var] =>
-      rewrite (var_ltn_trans H1 H2); clear H1 H2
+    | H1 : (is_true (?e1 <? ?e2)),
+      H2 : (is_true (?e2 <? ?e3)) |- context [(?e1 <? ?e3)] =>
+      rewrite (V.ltn_trans H1 H2); clear H1 H2
     | H1 : (is_true (?e1 <# ?e2)%bits),
       H2 : (is_true (?e2 <# ?e3)%bits) |-
       context [(?e1 <# ?e3)%bits] =>
@@ -698,7 +708,7 @@ Section QFBV.
     (* exp_eqn_ltb_gtb *)
     case: e1.
     - move=> v1; case: e2 => /=; try eauto. move=> v2.
-      case: (var_compare v1 v2) => H; by t_auto.
+      case: (V.compare v1 v2); rewrite /V.lt /V.eq=> H; by t_auto.
     - move=> b1; case: e2 => /=; try eauto. move=> b2.
       move: (eqn_ltn_gtn_cases (size b1) (size b2)).
       case/orP; [case/orP; [| by t_auto] | by t_auto]. move/eqP => H.
@@ -746,50 +756,45 @@ Section QFBV.
       + move=> {H} H. apply: GT. exact: H.
   Defined.
 
-End QFBV.
+  (* exp and bexp are ordered *)
+  Module ExpOrderMinimal <: SsrOrderMinimal.
+    Definition t := exp_eqType.
+    Definition eqn (e1 e2 : t) : bool := e1 == e2.
+    Definition ltn (e1 e2 : t) : bool := exp_ltn e1 e2.
+    Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
+    Proof. exact: exp_ltn_trans. Qed.
+    Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
+    Proof. exact: exp_ltn_not_eqn. Qed.
+    Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := exp_compare e1 e2.
+  End ExpOrderMinimal.
 
+  Module ExpOrder <: SsrOrder := MakeSsrOrder ExpOrderMinimal.
 
+  Module BexpOrderMinimal <: SsrOrderMinimal.
+    Definition t := bexp_eqType.
+    Definition eqn (e1 e2 : t) : bool := e1 == e2.
+    Definition ltn (e1 e2 : t) : bool := bexp_ltn e1 e2.
+    Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
+    Proof. exact: bexp_ltn_trans. Qed.
+    Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
+    Proof. exact: bexp_ltn_not_eqn. Qed.
+    Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := bexp_compare e1 e2.
+  End BexpOrderMinimal.
 
-Module ExpOrderedMinimal <: SsrOrderedTypeMinimal.
-  Definition t := exp_eqType.
-  Definition eqn (e1 e2 : t) : bool := e1 == e2.
-  Definition ltn (e1 e2 : t) : bool := exp_ltn e1 e2.
-  Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
-  Proof. exact: exp_ltn_trans. Qed.
-  Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
-  Proof. exact: exp_ltn_not_eqn. Qed.
-  Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := exp_compare e1 e2.
-End ExpOrderedMinimal.
+  Module BexpOrder <: SsrOrder := MakeSsrOrder BexpOrderMinimal.
 
-Module ExpOrdered <: SsrOrderedTypeWithFacts := MakeSsrOrderedType ExpOrderedMinimal.
+  (* Subexpression *)
 
-Module BexpOrderedMinimal <: SsrOrderedTypeMinimal.
-  Definition t := bexp_eqType.
-  Definition eqn (e1 e2 : t) : bool := e1 == e2.
-  Definition ltn (e1 e2 : t) : bool := bexp_ltn e1 e2.
-  Lemma ltn_trans : forall (e1 e2 e3 : t), ltn e1 e2 -> ltn e2 e3 -> ltn e1 e3.
-  Proof. exact: bexp_ltn_trans. Qed.
-  Lemma ltn_not_eqn (e1 e2 : t) : ltn e1 e2 -> e1 != e2.
-  Proof. exact: bexp_ltn_not_eqn. Qed.
-  Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := bexp_compare e1 e2.
-End BexpOrderedMinimal.
+  Section Subexp.
 
-Module BexpOrdered := MakeSsrOrderedType BexpOrderedMinimal.
-
-
-
-(* Subexpression *)
-
-Section Subexp.
-
-  Fixpoint len_exp (e : exp) : nat :=
-    match e with
-    | Evar v => 1
-    | Econst n => 1
-    | Eunop op e => (len_exp e).+1
-    | Ebinop op e1 e2 => (len_exp e1 + len_exp e2).+1
-    | Eite b e1 e2 => (len_bexp b + len_exp e1 + len_exp e2).+1
-    end
+    Fixpoint len_exp (e : exp) : nat :=
+      match e with
+      | Evar v => 1
+      | Econst n => 1
+      | Eunop op e => (len_exp e).+1
+      | Ebinop op e1 e2 => (len_exp e1 + len_exp e2).+1
+      | Eite b e1 e2 => (len_bexp b + len_exp e1 + len_exp e2).+1
+      end
     with
     len_bexp (e : bexp) : nat :=
       match e with
@@ -801,819 +806,811 @@ Section Subexp.
       | Bdisj e1 e2 => (len_bexp e1 + len_bexp e2).+1
       end.
 
-  Fixpoint subee (c : exp) (p : exp) {struct p} : bool :=
-    (c == p) || (
+    Fixpoint subee (c : exp) (p : exp) {struct p} : bool :=
+      (c == p) || (
+                 match p with
+                 | Evar _
+                 | Econst _ => false
+                 | Eunop op e => subee c e
+                 | Ebinop op e1 e2 => subee c e1 || subee c e2
+                 | Eite b e1 e2 => subeb c b || subee c e1 || subee c e2
+                 end
+               )
+    with
+    subeb (e : exp) (b : bexp) {struct b} : bool :=
+      match b with
+      | Bfalse
+      | Btrue => false
+      | Bbinop op e1 e2 => subee e e1 || subee e e2
+      | Blneg b => subeb e b
+      | Bconj b1 b2
+      | Bdisj b1 b2 => subeb e b1 || subeb e b2
+      end.
+
+    Fixpoint subbe (c : bexp) (p : exp) {struct p} : bool :=
       match p with
       | Evar _
       | Econst _ => false
-      | Eunop op e => subee c e
-      | Ebinop op e1 e2 => subee c e1 || subee c e2
-      | Eite b e1 e2 => subeb c b || subee c e1 || subee c e2
+      | Eunop op e => subbe c e
+      | Ebinop op e1 e2 => subbe c e1 || subbe c e2
+      | Eite b e1 e2 => subbb c b || subbe c e1 || subbe c e2
       end
-    )
-  with
-  subeb (e : exp) (b : bexp) {struct b} : bool :=
-    match b with
-    | Bfalse
-    | Btrue => false
-    | Bbinop op e1 e2 => subee e e1 || subee e e2
-    | Blneg b => subeb e b
-    | Bconj b1 b2
-    | Bdisj b1 b2 => subeb e b1 || subeb e b2
-    end.
+    with subbb (c p : bexp) {struct p} : bool :=
+           (c == p) ||
+                    match p with
+                    | Bfalse
+                    | Btrue => false
+                    | Bbinop _ e1 e2 => subbe c e1 || subbe c e2
+                    | Blneg b => subbb c b
+                    | Bconj b1 b2
+                    | Bdisj b1 b2 => subbb c b1 || subbb c b2
+                    end.
 
-  Fixpoint subbe (c : bexp) (p : exp) {struct p} : bool :=
-    match p with
-    | Evar _
-    | Econst _ => false
-    | Eunop op e => subbe c e
-    | Ebinop op e1 e2 => subbe c e1 || subbe c e2
-    | Eite b e1 e2 => subbb c b || subbe c e1 || subbe c e2
-    end
-  with subbb (c p : bexp) {struct p} : bool :=
-    (c == p) ||
-    match p with
-    | Bfalse
-    | Btrue => false
-    | Bbinop _ e1 e2 => subbe c e1 || subbe c e2
-    | Blneg b => subbb c b
-    | Bconj b1 b2
-    | Bdisj b1 b2 => subbb c b1 || subbb c b2
-    end.
+    Lemma subee_refl e : subee e e.
+    Proof. case: e => * /=; by rewrite eqxx. Qed.
 
-  Lemma subee_refl e : subee e e.
-  Proof. case: e => * /=; by rewrite eqxx. Qed.
+    Lemma subbb_refl e : subbb e e.
+    Proof. case: e => * /=; by rewrite ?eqxx. Qed.
 
-  Lemma subbb_refl e : subbb e e.
-  Proof. case: e => * /=; by rewrite ?eqxx. Qed.
-
-  (* We need to simplify the term before applying induction hypotheses.
+    (* We need to simplify the term before applying induction hypotheses.
      Otherwise, induction hypotheses will be applied using the same terms. *)
-  Ltac t_auto_first ::= simpl.
-  Ltac t_auto_hook ::=
-    match goal with
-    | H1 : (forall e1 e2,
-               is_true (subee e1 e2) -> is_true (len_exp e1 <= len_exp e2)),
-      H2 : is_true (subee ?e1 ?e2)
-      |- _ =>
-      move: (H1 _ _ H2); clear H2; simpl; intro H2
-    | H1 : (forall e1 e2,
-               is_true (subeb e1 e2) -> is_true (len_exp e1 <= len_bexp e2)),
-      H2 : is_true (subeb ?e1 ?e2)
-      |- _ =>
-      move: (H1 _ _ H2); clear H2; simpl; intro H2
-    | H1 : (forall e1 e2,
-               is_true (subbe e1 e2) -> is_true (len_bexp e1 <= len_exp e2)),
-      H2 : is_true (subbe ?e1 ?e2)
-      |- _ =>
-      move: (H1 _ _ H2); clear H2; simpl; intro H2
-    | H1 : (forall e1 e2,
-               is_true (subbb e1 e2) -> is_true (len_bexp e1 <= len_bexp e2)),
-      H2 : is_true (subbb ?e1 ?e2)
-      |- _ =>
-      move: (H1 _ _ H2); clear H2; simpl; intro H2
-    | |- is_true (0 < _.+1) => exact: ltn0Sn
-    | |- is_true (?a < ?a.+1) => exact: leqnn
-    | H : is_true (?a < _) |- is_true (?a < _.+1) => apply: (ltn_trans H)
-    | |- is_true (?a < (?a + _).+1) => exact: leq_addr
-    | |- is_true (?a < (_ + ?a).+1) => exact: leq_addl
-    | |- is_true (?a < (?a + _ + _).+1) => rewrite -addnA; exact: leq_addr
-    | |- is_true (?a < (?b + ?a + _).+1) => rewrite (addnC b) -addnA; exact: leq_addr
-    end.
+    Ltac t_auto_first ::= simpl.
+    Ltac t_auto_hook ::=
+      match goal with
+      | H1 : (forall e1 e2,
+                 is_true (subee e1 e2) -> is_true (len_exp e1 <= len_exp e2)),
+             H2 : is_true (subee ?e1 ?e2)
+        |- _ =>
+        move: (H1 _ _ H2); clear H2; simpl; intro H2
+      | H1 : (forall e1 e2,
+                 is_true (subeb e1 e2) -> is_true (len_exp e1 <= len_bexp e2)),
+             H2 : is_true (subeb ?e1 ?e2)
+        |- _ =>
+        move: (H1 _ _ H2); clear H2; simpl; intro H2
+      | H1 : (forall e1 e2,
+                 is_true (subbe e1 e2) -> is_true (len_bexp e1 <= len_exp e2)),
+             H2 : is_true (subbe ?e1 ?e2)
+        |- _ =>
+        move: (H1 _ _ H2); clear H2; simpl; intro H2
+      | H1 : (forall e1 e2,
+                 is_true (subbb e1 e2) -> is_true (len_bexp e1 <= len_bexp e2)),
+             H2 : is_true (subbb ?e1 ?e2)
+        |- _ =>
+        move: (H1 _ _ H2); clear H2; simpl; intro H2
+      | |- is_true (0 < _.+1) => exact: ltn0Sn
+      | |- is_true (?a < ?a.+1) => exact: leqnn
+      | H : is_true (?a < _) |- is_true (?a < _.+1) => apply: (ltn_trans H)
+      | |- is_true (?a < (?a + _).+1) => exact: leq_addr
+      | |- is_true (?a < (_ + ?a).+1) => exact: leq_addl
+      | |- is_true (?a < (?a + _ + _).+1) => rewrite -addnA; exact: leq_addr
+      | |- is_true (?a < (?b + ?a + _).+1) => rewrite (addnC b) -addnA; exact: leq_addr
+      end.
 
-  Lemma subee_len e1 e2 : subee e1 e2 -> len_exp e1 <= len_exp e2
-  with subeb_len e b : subeb e b -> len_exp e <= len_bexp b.
-  Proof.
-    (* subee_len *)
-    case: e1.
-    - move=> ?; case: e2 => //=.
-    - move=> ?; case: e2 => //=.
-    - move=> ? ?; case: e2; by t_auto.
-    - move=> ? ? ?; case: e2; by t_auto.
-    - move=> ? ? ?; case: e2; by t_auto.
-    (* subeb_len *)
-    case: e.
-    - move=> ?; case: b => //=.
-    - move=> ?; case: b => //=.
-    - move=> ? ?; case: b; by t_auto.
-    - move=> ? ? ?; case: b; by t_auto.
-    - move=> ? ? ?; case: b; by t_auto.
-  Qed.
+    Lemma subee_len e1 e2 : subee e1 e2 -> len_exp e1 <= len_exp e2
+    with subeb_len e b : subeb e b -> len_exp e <= len_bexp b.
+    Proof.
+      (* subee_len *)
+      case: e1.
+      - move=> ?; case: e2 => //=.
+      - move=> ?; case: e2 => //=.
+      - move=> ? ?; case: e2; by t_auto.
+      - move=> ? ? ?; case: e2; by t_auto.
+      - move=> ? ? ?; case: e2; by t_auto.
+        (* subeb_len *)
+        case: e.
+      - move=> ?; case: b => //=.
+      - move=> ?; case: b => //=.
+      - move=> ? ?; case: b; by t_auto.
+      - move=> ? ? ?; case: b; by t_auto.
+      - move=> ? ? ?; case: b; by t_auto.
+    Qed.
 
-  Lemma subbe_len b e : subbe b e -> len_bexp b <= len_exp e
-  with subbb_len b1 b2 : subbb b1 b2 -> len_bexp b1 <= len_bexp b2.
-  Proof.
-    (* subbe_len *)
-    case: b.
-    - case: e; by t_auto.
-    - case: e; by t_auto.
-    - move=> ? ? ?; case: e; by t_auto.
-    - move=> ?; case: e; by t_auto.
-    - move=> ? ?; case: e; by t_auto.
-    - move=> ? ?; case: e; by t_auto.
-    (* subbb_len *)
-    case: b1.
-    - case: b2; by t_auto.
-    - case: b2; by t_auto.
-    - move=> ? ? ?; case: b2; by t_auto.
-    - move=> ?; case: b2; by t_auto.
-    - move=> ? ?; case: b2; by t_auto.
-    - move=> ? ?; case: b2; by t_auto.
-  Qed.
+    Lemma subbe_len b e : subbe b e -> len_bexp b <= len_exp e
+    with subbb_len b1 b2 : subbb b1 b2 -> len_bexp b1 <= len_bexp b2.
+    Proof.
+      (* subbe_len *)
+      case: b.
+      - case: e; by t_auto.
+      - case: e; by t_auto.
+      - move=> ? ? ?; case: e; by t_auto.
+      - move=> ?; case: e; by t_auto.
+      - move=> ? ?; case: e; by t_auto.
+      - move=> ? ?; case: e; by t_auto.
+        (* subbb_len *)
+        case: b1.
+      - case: b2; by t_auto.
+      - case: b2; by t_auto.
+      - move=> ? ? ?; case: b2; by t_auto.
+      - move=> ?; case: b2; by t_auto.
+      - move=> ? ?; case: b2; by t_auto.
+      - move=> ? ?; case: b2; by t_auto.
+    Qed.
 
-  (* case selection *)
-  Ltac subexp_trans_select :=
-    match goal with
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (?h ?e1 ?e3 || _) => leftb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (_ || ?h ?e1 ?e3) => rightb
+    (* case selection *)
+    Ltac subexp_trans_select :=
+      match goal with
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (?h ?e1 ?e3 || _) => leftb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (_ || ?h ?e1 ?e3) => rightb
 
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (_ || ?h ?e1 ?e3 || _) => leftb; rightb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (?h ?e1 ?e3 || _ || _) => leftb; leftb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (_ || (?h ?e1 ?e3 || _)) => rightb; leftb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true (_ || (_ || ?h ?e1 ?e3)) => rightb; rightb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (_ || ?h ?e1 ?e3 || _) => leftb; rightb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (?h ?e1 ?e3 || _ || _) => leftb; leftb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (_ || (?h ?e1 ?e3 || _)) => rightb; leftb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true (_ || (_ || ?h ?e1 ?e3)) => rightb; rightb
 
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true [|| _, _ || ?h ?e1 ?e3 | _] => rightb; leftb; rightb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true [|| _, ?h ?e1 ?e3 || _ | _] => rightb; leftb; leftb
-    | H1 : is_true (?f _ ?e3),
-      H2 : is_true (?g ?e1 _) |-
-      is_true [|| _, _ || ?h ?e1 ?e3 | _] => rightb; rightb
-    | H1 : is_true (?f ?e1 _),
-      H2 : is_true (?g _ ?e3) |-
-      is_true [|| _, ?h ?e1 ?e3 || _ | _] => rightb; leftb; leftb
-    end.
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true [|| _, _ || ?h ?e1 ?e3 | _] => rightb; leftb; rightb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true [|| _, ?h ?e1 ?e3 || _ | _] => rightb; leftb; leftb
+      | H1 : is_true (?f _ ?e3),
+             H2 : is_true (?g ?e1 _) |-
+        is_true [|| _, _ || ?h ?e1 ?e3 | _] => rightb; rightb
+      | H1 : is_true (?f ?e1 _),
+             H2 : is_true (?g _ ?e3) |-
+        is_true [|| _, ?h ?e1 ?e3 || _ | _] => rightb; leftb; leftb
+      end.
 
-  (* Simplify goal after applying induction hypotheses so that induction hypotheses
+    (* Simplify goal after applying induction hypotheses so that induction hypotheses
      won't be applied with the same term. The order of the cases is important. *)
-  Ltac subexp_trans_app :=
-    match goal with
-    | subeeee_trans :
-        (forall e1 e2 e3 : exp,
-            is_true (subee e1 e2) -> is_true (subee e2 e3) -> is_true (subee e1 e3)),
-        H : is_true (subee ?e2 ?e3) |-
-      is_true (subee ?e1 ?e3) =>
-      apply: (subeeee_trans _ _ _ _ H); clear H; simpl
-    | subbbbb_trans :
-        (forall b1 b2 b3 : bexp,
-            is_true (subbb b1 b2) -> is_true (subbb b2 b3) -> is_true (subbb b1 b3)),
-        H : is_true (subbb ?b2 ?b3) |-
-      is_true (subbb ?b1 ?b3) =>
-      apply: (subbbbb_trans _ _ _ _ H); clear H; simpl
-    | subeeeb_trans :
-        (forall (e1 e2 : exp) (b : bexp),
-            is_true (subee e1 e2) -> is_true (subeb e2 b) -> is_true (subeb e1 b)),
-        H : is_true (subeb ?e2 ?e3) |-
-      is_true (subeb ?e1 ?e3) =>
-      apply: (subeeeb_trans _ _ _ _ H); clear H; simpl
-    | subbeee_trans :
-        (forall (b : bexp) (e1 e2 : exp),
-            is_true (subbe b e1) -> is_true (subee e1 e2) -> is_true (subbe b e2)),
-        H : is_true (subee ?e2 ?e3) |-
-      is_true (subbe ?e1 ?e3) =>
-      apply: (subbeee_trans _ _ _ _ H); clear H; simpl
-    | subbeeb_trans :
-        (forall (b1 : bexp) (e : exp) (b2 : bexp),
-            is_true (subbe b1 e) -> is_true (subeb e b2) -> is_true (subbb b1 b2)),
-        H : is_true (subeb ?e2 ?e3) |-
-      is_true (subbb ?e1 ?e3) =>
-      apply: (subbeeb_trans _ _ _ _ H); clear H; simpl
-    | subebbe_trans :
-        (forall (e1 : exp) (b : bexp) (e2 : exp),
-            is_true (subeb e1 b) -> is_true (subbe b e2) -> is_true (subee e1 e2)),
-        H : is_true (subbe ?e2 ?e3) |-
-      is_true (subee ?e1 ?e3) =>
-      apply: (subebbe_trans _ _ _ _ H); clear H; simpl
-    | subebbb_trans :
-        (forall (e : exp) (b1 b2 : bexp),
-            is_true (subeb e b1) -> is_true (subbb b1 b2) -> is_true (subeb e b2)),
-        H : is_true (subbb ?e2 ?e3) |-
-      is_true (subeb ?e1 ?e3) =>
-      apply: (subebbb_trans _ _ _ _ H); clear H; simpl
-    | subbbbe_trans :
-        (forall (b1 b2 : bexp) (e : exp),
-            is_true (subbb b1 b2) -> is_true (subbe b2 e) -> is_true (subbe b1 e)),
-        H : is_true (subbe ?e2 ?e3) |-
-      is_true (subbe ?e1 ?e3) =>
-      apply: (subbbbe_trans _ _ _ _ H); clear H; simpl
-    | subeeee_trans :
-        (forall e1 e2 e3 : exp,
-            is_true (subee e1 e2) -> is_true (subee e2 e3) -> is_true (subee e1 e3)),
-        H : is_true (subee ?e1 ?e2) |-
-      is_true (subee ?e1 ?e3) =>
-      apply: (subeeee_trans _ _ _ H); clear H; simpl
-    | subbbbb_trans :
-        (forall b1 b2 b3 : bexp,
-            is_true (subbb b1 b2) -> is_true (subbb b2 b3) -> is_true (subbb b1 b3)),
-        H : is_true (subbb ?b1 ?b2) |-
-      is_true (subbb ?b1 ?b3) =>
-      apply: (subbbbb_trans _ _ _ H); clear H; simpl
-    end.
+    Ltac subexp_trans_app :=
+      match goal with
+      | subeeee_trans :
+          (forall e1 e2 e3 : exp,
+              is_true (subee e1 e2) -> is_true (subee e2 e3) -> is_true (subee e1 e3)),
+          H : is_true (subee ?e2 ?e3) |-
+        is_true (subee ?e1 ?e3) =>
+        apply: (subeeee_trans _ _ _ _ H); clear H; simpl
+      | subbbbb_trans :
+          (forall b1 b2 b3 : bexp,
+              is_true (subbb b1 b2) -> is_true (subbb b2 b3) -> is_true (subbb b1 b3)),
+          H : is_true (subbb ?b2 ?b3) |-
+        is_true (subbb ?b1 ?b3) =>
+        apply: (subbbbb_trans _ _ _ _ H); clear H; simpl
+      | subeeeb_trans :
+          (forall (e1 e2 : exp) (b : bexp),
+              is_true (subee e1 e2) -> is_true (subeb e2 b) -> is_true (subeb e1 b)),
+          H : is_true (subeb ?e2 ?e3) |-
+        is_true (subeb ?e1 ?e3) =>
+        apply: (subeeeb_trans _ _ _ _ H); clear H; simpl
+      | subbeee_trans :
+          (forall (b : bexp) (e1 e2 : exp),
+              is_true (subbe b e1) -> is_true (subee e1 e2) -> is_true (subbe b e2)),
+          H : is_true (subee ?e2 ?e3) |-
+        is_true (subbe ?e1 ?e3) =>
+        apply: (subbeee_trans _ _ _ _ H); clear H; simpl
+      | subbeeb_trans :
+          (forall (b1 : bexp) (e : exp) (b2 : bexp),
+              is_true (subbe b1 e) -> is_true (subeb e b2) -> is_true (subbb b1 b2)),
+          H : is_true (subeb ?e2 ?e3) |-
+        is_true (subbb ?e1 ?e3) =>
+        apply: (subbeeb_trans _ _ _ _ H); clear H; simpl
+      | subebbe_trans :
+          (forall (e1 : exp) (b : bexp) (e2 : exp),
+              is_true (subeb e1 b) -> is_true (subbe b e2) -> is_true (subee e1 e2)),
+          H : is_true (subbe ?e2 ?e3) |-
+        is_true (subee ?e1 ?e3) =>
+        apply: (subebbe_trans _ _ _ _ H); clear H; simpl
+      | subebbb_trans :
+          (forall (e : exp) (b1 b2 : bexp),
+              is_true (subeb e b1) -> is_true (subbb b1 b2) -> is_true (subeb e b2)),
+          H : is_true (subbb ?e2 ?e3) |-
+        is_true (subeb ?e1 ?e3) =>
+        apply: (subebbb_trans _ _ _ _ H); clear H; simpl
+      | subbbbe_trans :
+          (forall (b1 b2 : bexp) (e : exp),
+              is_true (subbb b1 b2) -> is_true (subbe b2 e) -> is_true (subbe b1 e)),
+          H : is_true (subbe ?e2 ?e3) |-
+        is_true (subbe ?e1 ?e3) =>
+        apply: (subbbbe_trans _ _ _ _ H); clear H; simpl
+      | subeeee_trans :
+          (forall e1 e2 e3 : exp,
+              is_true (subee e1 e2) -> is_true (subee e2 e3) -> is_true (subee e1 e3)),
+          H : is_true (subee ?e1 ?e2) |-
+        is_true (subee ?e1 ?e3) =>
+        apply: (subeeee_trans _ _ _ H); clear H; simpl
+      | subbbbb_trans :
+          (forall b1 b2 b3 : bexp,
+              is_true (subbb b1 b2) -> is_true (subbb b2 b3) -> is_true (subbb b1 b3)),
+          H : is_true (subbb ?b1 ?b2) |-
+        is_true (subbb ?b1 ?b3) =>
+        apply: (subbbbb_trans _ _ _ H); clear H; simpl
+      end.
 
-  (* final decision *)
-  Ltac subexp_trans_decide :=
-    match goal with
-    | |- is_true (subee ?e ?e) => exact: subee_refl
-    | |- is_true (subee ?e (?f ?e)) =>
-      apply/orP; right; exact: subee_refl
-    | |- is_true (subee ?e (?f ?e _)) =>
-      apply/orP; right; apply/orP; left; exact: subee_refl
-    | |- is_true (subee ?e (?f _ ?e)) =>
-      apply/orP; right; apply/orP; right; exact: subee_refl
-    | H : is_true (subeb ?e ?b) |-
-      is_true (subee ?e (?f ?b _ _)) =>
-      apply/orP; right; apply/orP; left; apply/orP; left; exact: H
-    | |- is_true (subee ?e (?f _ ?e _)) =>
-      apply/orP; right; apply/orP; left; apply/orP; right; exact: subee_refl
-    | |- is_true (subee ?e (?f _ _ ?e)) =>
-      apply/orP; right; apply/orP; right; exact: subee_refl
-    end.
+    (* final decision *)
+    Ltac subexp_trans_decide :=
+      match goal with
+      | |- is_true (subee ?e ?e) => exact: subee_refl
+      | |- is_true (subee ?e (?f ?e)) =>
+        apply/orP; right; exact: subee_refl
+      | |- is_true (subee ?e (?f ?e _)) =>
+        apply/orP; right; apply/orP; left; exact: subee_refl
+      | |- is_true (subee ?e (?f _ ?e)) =>
+        apply/orP; right; apply/orP; right; exact: subee_refl
+      | H : is_true (subeb ?e ?b) |-
+        is_true (subee ?e (?f ?b _ _)) =>
+        apply/orP; right; apply/orP; left; apply/orP; left; exact: H
+      | |- is_true (subee ?e (?f _ ?e _)) =>
+        apply/orP; right; apply/orP; left; apply/orP; right; exact: subee_refl
+      | |- is_true (subee ?e (?f _ _ ?e)) =>
+        apply/orP; right; apply/orP; right; exact: subee_refl
+      end.
 
-  Ltac t_auto_hook ::= (subexp_trans_select || subexp_trans_app || subexp_trans_decide).
+    Ltac t_auto_hook ::= (subexp_trans_select || subexp_trans_app || subexp_trans_decide).
 
-  Lemma subeeee_trans e1 e2 e3 : subee e1 e2 -> subee e2 e3 -> subee e1 e3
-  with
-  subeeeb_trans e1 e2 b : subee e1 e2 -> subeb e2 b -> subeb e1 b.
-  Proof.
-    (* subeeee_trans *)
-    case: e1.
-    - move=> ?; case: e2; case: e3; by t_auto.
-    - move=> b; case: e2; case: e3; by t_auto.
-    - move=> e; case: e2; case: e3; by t_auto.
-    - move=> ne1 ne2; case: e2; case: e3; by t_auto.
-    - move=> b1 ne1 ne2; case: e2; case: e3; by t_auto.
-    (* subeeeb_trans *)
-    case: e1 => /=.
-    - move=> v; case: e2; case: b; by t_auto.
-    - move=> bs; case: e2; case: b; by t_auto.
-    - move=> op1 ne1; case: e2; case: b; by t_auto.
-    - move=> ne1 ne2; case: e2; case: b; by t_auto.
-    - move=> b1 ne1 ne2; case: e2; case: b; by t_auto.
-  Qed.
+    Lemma subeeee_trans e1 e2 e3 : subee e1 e2 -> subee e2 e3 -> subee e1 e3
+    with
+    subeeeb_trans e1 e2 b : subee e1 e2 -> subeb e2 b -> subeb e1 b.
+    Proof.
+      (* subeeee_trans *)
+      case: e1.
+      - move=> ?; case: e2; case: e3; by t_auto.
+      - move=> b; case: e2; case: e3; by t_auto.
+      - move=> e; case: e2; case: e3; by t_auto.
+      - move=> ne1 ne2; case: e2; case: e3; by t_auto.
+      - move=> b1 ne1 ne2; case: e2; case: e3; by t_auto.
+        (* subeeeb_trans *)
+        case: e1 => /=.
+      - move=> v; case: e2; case: b; by t_auto.
+      - move=> bs; case: e2; case: b; by t_auto.
+      - move=> op1 ne1; case: e2; case: b; by t_auto.
+      - move=> ne1 ne2; case: e2; case: b; by t_auto.
+      - move=> b1 ne1 ne2; case: e2; case: b; by t_auto.
+    Qed.
 
-  Lemma subbeee_trans b e1 e2 : subbe b e1 -> subee e1 e2 -> subbe b e2
-  with
-  subebbe_trans e1 b e2 : subeb e1 b -> subbe b e2 -> subee e1 e2
-  with
-  subbeeb_trans b1 e b2 : subbe b1 e -> subeb e b2 -> subbb b1 b2
-  with
-  subebbb_trans e b1 b2 : subeb e b1 -> subbb b1 b2 -> subeb e b2
-  with
-  subbbbe_trans b1 b2 e : subbb b1 b2 -> subbe b2 e -> subbe b1 e
-  with
-  subbbbb_trans b1 b2 b3 : subbb b1 b2 -> subbb b2 b3 -> subbb b1 b3.
-  Proof.
-    (* subbeee_trans *)
-    case: b.
-    - case: e1; case: e2; by t_auto.
-    - case: e1; case: e2; by t_auto.
-    - move=> ? ? ?; case: e1; case: e2; by t_auto.
-    - move=> ?; case: e1; case: e2; by t_auto.
-    - move=> ? ?; case: e1; case: e2; by t_auto.
-    - move=> ? ?; case: e1; case: e2; by t_auto.
-    (* subebbe_trans *)
-    case: e1.
-    - move=> ?; case: b; case: e2; by t_auto.
-    - move=> ?; case: b; case: e2; by t_auto.
-    - move=> ? ?; case: b; case: e2; by t_auto.
-    - move=> ? ? ?; case: b; case: e2; by t_auto.
-    - move=> ? ? ?; case: b; case: e2; by t_auto.
-    (* subbeeb_trans *)
-    case: b1.
-    - case: e; case: b2; by t_auto.
-    - case: e; case: b2; by t_auto.
-    - move=> ? ? ?; case: e; case: b2; by t_auto.
-    - move=> ?; case: e; case: b2; by t_auto.
-    - move=> ? ?; case: e; case: b2; by t_auto.
-    - move=> ? ?; case: e; case: b2; by t_auto.
-    (* subebbb_trans *)
-      case: e.
-    - move=> ?; case: b1; case: b2; by t_auto.
-    - move=> ?; case: b1; case: b2; by t_auto.
-    - move=> ? ?; case: b1; case: b2; by t_auto.
-    - move=> ? ? ?; case: b1; case: b2; by t_auto.
-    - move=> ? ? ?; case: b1; case: b2; by t_auto.
-    (* subbbbe_trans *)
-    case: b1.
-    - case: b2; case: e; by t_auto.
-    - case: b2; case: e; by t_auto.
-    - move=> ? ? ?; case: b2; case: e; by t_auto.
-    - move=> ?; case: b2; case: e; by t_auto.
-    - move=> ? ?; case: b2; case: e; by t_auto.
-    - move=> ? ?; case: b2; case: e; by t_auto.
-    (* subbbbb_trans *)
-    case: b1.
-    - case: b2; case: b3; by t_auto.
-    - case: b2; case: b3; by t_auto.
-    - move=> ? ? ?; case: b2; case: b3; by t_auto.
-    - move=> ?; case: b2; case: b3; by t_auto.
-    - move=> ? ?; case: b2; case: b3; by t_auto.
-    - move=> ? ?; case: b2; case: b3; by t_auto.
-  Qed.
+    Lemma subbeee_trans b e1 e2 : subbe b e1 -> subee e1 e2 -> subbe b e2
+    with
+    subebbe_trans e1 b e2 : subeb e1 b -> subbe b e2 -> subee e1 e2
+    with
+    subbeeb_trans b1 e b2 : subbe b1 e -> subeb e b2 -> subbb b1 b2
+    with
+    subebbb_trans e b1 b2 : subeb e b1 -> subbb b1 b2 -> subeb e b2
+    with
+    subbbbe_trans b1 b2 e : subbb b1 b2 -> subbe b2 e -> subbe b1 e
+    with
+    subbbbb_trans b1 b2 b3 : subbb b1 b2 -> subbb b2 b3 -> subbb b1 b3.
+    Proof.
+      (* subbeee_trans *)
+      case: b.
+      - case: e1; case: e2; by t_auto.
+      - case: e1; case: e2; by t_auto.
+      - move=> ? ? ?; case: e1; case: e2; by t_auto.
+      - move=> ?; case: e1; case: e2; by t_auto.
+      - move=> ? ?; case: e1; case: e2; by t_auto.
+      - move=> ? ?; case: e1; case: e2; by t_auto.
+        (* subebbe_trans *)
+        case: e1.
+      - move=> ?; case: b; case: e2; by t_auto.
+      - move=> ?; case: b; case: e2; by t_auto.
+      - move=> ? ?; case: b; case: e2; by t_auto.
+      - move=> ? ? ?; case: b; case: e2; by t_auto.
+      - move=> ? ? ?; case: b; case: e2; by t_auto.
+        (* subbeeb_trans *)
+        case: b1.
+      - case: e; case: b2; by t_auto.
+      - case: e; case: b2; by t_auto.
+      - move=> ? ? ?; case: e; case: b2; by t_auto.
+      - move=> ?; case: e; case: b2; by t_auto.
+      - move=> ? ?; case: e; case: b2; by t_auto.
+      - move=> ? ?; case: e; case: b2; by t_auto.
+        (* subebbb_trans *)
+        case: e.
+      - move=> ?; case: b1; case: b2; by t_auto.
+      - move=> ?; case: b1; case: b2; by t_auto.
+      - move=> ? ?; case: b1; case: b2; by t_auto.
+      - move=> ? ? ?; case: b1; case: b2; by t_auto.
+      - move=> ? ? ?; case: b1; case: b2; by t_auto.
+        (* subbbbe_trans *)
+        case: b1.
+      - case: b2; case: e; by t_auto.
+      - case: b2; case: e; by t_auto.
+      - move=> ? ? ?; case: b2; case: e; by t_auto.
+      - move=> ?; case: b2; case: e; by t_auto.
+      - move=> ? ?; case: b2; case: e; by t_auto.
+      - move=> ? ?; case: b2; case: e; by t_auto.
+        (* subbbbb_trans *)
+        case: b1.
+      - case: b2; case: b3; by t_auto.
+      - case: b2; case: b3; by t_auto.
+      - move=> ? ? ?; case: b2; case: b3; by t_auto.
+      - move=> ?; case: b2; case: b3; by t_auto.
+      - move=> ? ?; case: b2; case: b3; by t_auto.
+      - move=> ? ?; case: b2; case: b3; by t_auto.
+    Qed.
 
-  Ltac t_auto_hook ::=
-    (* Turn a contradiction on subee (subbb etc.) to a contradiction on lt of nat. *)
-    match goal with
-    | H1 : is_true (?subf ?p1 ?e1),
-      H2 : is_true (?subg ?p2 ?e2)
-      |- _ =>
-      match p1 with
-      | context [e2] =>
-        match p2 with
-        | context [e1] =>
-          let sf := match subf with
-                    | subee => subee_len
-                    | subeb => subeb_len
-                    | subbe => subbe_len
-                    | subbb => subbb_len
-                    end in
-          let sg := match subg with
-                    | subee => subee_len
-                    | subeb => subeb_len
-                    | subbe => subbe_len
-                    | subbb => subbb_len
-                    end in
-          move: (sf _ _ H1) (sg _ _ H2); simpl; clear H1 H2; intros H1 H2
+    Ltac t_auto_hook ::=
+      (* Turn a contradiction on subee (subbb etc.) to a contradiction on lt of nat. *)
+      match goal with
+      | H1 : is_true (?subf ?p1 ?e1),
+             H2 : is_true (?subg ?p2 ?e2)
+        |- _ =>
+        match p1 with
+        | context [e2] =>
+          match p2 with
+          | context [e1] =>
+            let sf := match subf with
+                      | subee => subee_len
+                      | subeb => subeb_len
+                      | subbe => subbe_len
+                      | subbb => subbb_len
+                      end in
+            let sg := match subg with
+                      | subee => subee_len
+                      | subeb => subeb_len
+                      | subbe => subbe_len
+                      | subbb => subbb_len
+                      end in
+            move: (sf _ _ H1) (sg _ _ H2); simpl; clear H1 H2; intros H1 H2
+          end
         end
+      | H1 : is_true (?a < ?b), H2 : is_true (?b < ?a) |- _ =>
+        move: (ltn_trans H1 H2); by rewrite ltnn
+      | H1 : is_true (?a < ?b), H2 : is_true (?b + ?c < ?a) |- _ =>
+        move: (ltn_leq_trans H1 (leq_addr c b)); clear H1; intro H1;
+        move: (ltn_trans H1 H2); by rewrite ltnn
+      | H1 : is_true (?a < ?b), H2 : is_true (?c + ?b < ?a) |- _ =>
+        move: (ltn_leq_trans H1 (leq_addl c b)); clear H1; intro H1;
+        move: (ltn_trans H1 H2); by rewrite ltnn
+      | H1 : is_true (?a < ?b), H2 : is_true (?b + ?c + ?d < ?a) |- _ =>
+        move: (ltn_leq_trans H1 (leq_addr (c + d) b)); clear H1; rewrite addnA; intro H1;
+        move: (ltn_trans H1 H2); by rewrite ltnn
+      | H1 : is_true (?a < ?b), H2 : is_true (?c + ?b + ?d < ?a) |- _ =>
+        move: (ltn_leq_trans H1 (leq_addl c b)); clear H1; intro H1;
+        move: (ltn_leq_trans H1 (leq_addr d (c + b))); clear H1; intro H1;
+        move: (ltn_trans H1 H2); by rewrite ltnn
+      | H1 : is_true (?a + ?c < ?b),
+             H2 : is_true (?b + ?d < ?a)
+        |- _ =>
+        let H := fresh in
+        move: (leq_addr d b); intro H;
+        move: (leq_ltn_trans H H2); clear H H2; intro H;
+        move: (ltn_addr c H) => {H} H;
+                                move: (ltn_trans H H1); by rewrite ltnn
+      | H1 : is_true (?a + ?c < ?b),
+             H2 : is_true (?d + ?b < ?a)
+        |- _ => rewrite (addnC d b) in H2
+      | H1 : is_true (?c + ?a < ?b),
+             H2 : is_true (?d + ?b < ?a)
+        |- _ => rewrite (addnC c a) in H1; rewrite (addnC d b) in H2
+      | H1 : is_true (?a + ?c < ?b),
+             H2 : is_true (?b + ?d + ?e < ?a)
+        |- _ =>
+        let H := fresh in
+        move: (leq_addr (d + e) b); rewrite addnA; intro H;
+        move: (ltn_leq_trans H1 H); clear H1 H; intro H;
+        move: (ltn_trans H H2); clear H H2; intro H;
+        move: (ltn_addr c H); by rewrite ltnn
+      | H1 : is_true (?a + ?c < ?b),
+             H2 : is_true (?d + ?b + ?e < ?a)
+        |- _ => rewrite (addnC d b) in H2
+      | H1 : is_true (?c + ?a < ?b),
+             H2 : is_true (?b + ?d + ?e < ?a)
+        |- _ => rewrite (addnC c a) in H1
+      | H1 : is_true (?c + ?a < ?b),
+             H2 : is_true (?d + ?b + ?e < ?a)
+        |- _ => rewrite (addnC c a) in H1; rewrite (addnC d b) in H2
+      | H1 : is_true (?a + ?c + ?d < ?b),
+             H2 : is_true (?b + ?e + ?f < ?a)
+        |- _ =>
+        let Hi := fresh in
+        let Hj := fresh in
+        move: (leq_addr (c + d) a); rewrite addnA; intro Hi;
+        move: (leq_addr (e + f) b); rewrite addnA; intro Hj;
+        move: (leq_ltn_trans Hi H1); clear Hi H1; intro Hi;
+        move: (leq_ltn_trans Hj H2); clear Hj H2; intro Hj;
+        move: (ltn_trans Hi Hj); by rewrite ltnn
+      | H1 : is_true (?c + ?a + ?d < ?b),
+             H2 : is_true (?b + ?e + ?f < ?a)
+        |- _ => rewrite (addnC c a) in H1
+      | H1 : is_true (?c + ?a + ?d < ?b),
+             H2 : is_true (?e + ?b + ?f < ?a)
+        |- _ => rewrite (addnC c a) in H1; rewrite (addnC e b) in H2
+      end.
+
+    Lemma subee_antisym c p : (subee c p && subee p c) = (c == p).
+    Proof.
+      case H: (c == p).
+      - rewrite (eqP H). by rewrite subee_refl.
+      - apply/negP => Hsub. apply/negPf: H. case/andP: Hsub.
+        elim: c p.
+      - move=> ?; case; by t_auto.
+      - move=> ?; case; by t_auto.
+      - move=> ? ? ?; case; by t_auto.
+      - move=> ? ? ? ? ?; case; by t_auto.
+      - move=> ? ? ? ? ?; case; by t_auto.
+    Qed.
+
+    Lemma subbb_antisym c p : (subbb c p && subbb p c) = (c == p).
+    Proof.
+      case H: (c == p).
+      - rewrite (eqP H). by rewrite subbb_refl.
+      - apply/negP => Hsub. apply/negPf: H. case/andP: Hsub.
+        elim: c p.
+      - case; by t_auto.
+      - case; by t_auto.
+      - move=> ? ? ?; case; by t_auto.
+      - move=> ? ?; case; by t_auto.
+      - move=> ? ? ? ?; case; by t_auto.
+      - move=> ? ? ? ?; case; by t_auto.
+    Qed.
+
+    (* subexp and variables in expressions *)
+
+    Ltac subexp_vars_select :=
+      subexp_trans_select
+      || (match goal with
+          | |- is_true (_ || ?f ?e ?e) => apply/orP; right
+          | |- is_true (?f ?e ?e || _ || _) => apply/orP; left; apply/orP; left
+          | |- is_true ([|| _, ?f ?e ?e | _]) => apply/orP; right; apply/orP; left
+          | |- is_true ([|| _, _ | ?f ?e ?e]) => apply/orP; right; apply/orP; right
+          | |- is_true ([|| _, _ || ?f ?e ?e | _]) =>
+            apply/orP; right; apply/orP; left; apply/orP; right
+          | |- is_true (VS.subset ?e (VS.union ?e _)) => apply: VSLemmas.subset_union1
+          | |- is_true (VS.subset ?e (VS.union _ ?e)) => apply: VSLemmas.subset_union2
+          | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union (?vars ?e) _)) =>
+            apply: VSLemmas.subset_union1
+          | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union _ (?vars ?e))) =>
+            apply: VSLemmas.subset_union2
+          | H : is_true (?sub _ ?e) |-
+            is_true (VS.subset _ (VS.union (?vars ?e) (VS.union _ _))) =>
+            apply: VSLemmas.subset_union1
+          | H : is_true (?sub _ ?e) |-
+            is_true (VS.subset _ (VS.union _ (VS.union (?vars ?e) _))) =>
+            apply: VSLemmas.subset_union2; apply: VSLemmas.subset_union1
+          | H : is_true (?sub _ ?e) |-
+            is_true (VS.subset _ (VS.union _ (VS.union _ (?vars ?e)))) =>
+            apply: VSLemmas.subset_union2; apply: VSLemmas.subset_union2
+          | |- is_true (VS.subset (VS.union _ _) _) =>
+            apply: VSLemmas.subset_union3
+          end).
+
+    Ltac subexp_vars_app :=
+      match goal with
+      | H : is_true (subee ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
+        apply: (subeeee_trans _ H); clear H; simpl
+      | H : is_true (subbb ?b2 ?b3) |- is_true (subbb ?b1 ?b3) =>
+        apply: (subbbbb_trans _ H); clear H; simpl
+      | H : is_true (subeb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
+        apply: (subeeeb_trans _ H); clear H; simpl
+      | H : is_true (subee ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
+        apply: (subbeee_trans _ H); clear H; simpl
+      | H : is_true (subeb ?e2 ?e3) |- is_true (subbb ?e1 ?e3) =>
+        apply: (subbeeb_trans _ H); clear H; simpl
+      | H : is_true (subbe ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
+        apply: (subebbe_trans _ H); clear H; simpl
+      | H : is_true (subbb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
+        apply: (subebbb_trans _ H); clear H; simpl
+      | H : is_true (subbe ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
+        apply: (subbbbe_trans _ H); clear H; simpl
+      | H : is_true (subee ?e1 ?e2) |- is_true (subee ?e1 ?e3) =>
+        apply: (subeeee_trans H); clear H; simpl
+      | H : is_true (subbb ?b1 ?b2) |- is_true (subbb ?b1 ?b3) =>
+        apply: (subbbbb_trans H); clear H; simpl
+      | subee_vars_subset :
+          (forall e1 e2 : exp,
+              is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
+          H : is_true (subee _ ?e)
+        |- is_true (VS.subset (VS.singleton ?v) (vars_exp ?e)) =>
+        replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
+        apply: subee_vars_subset
+      | subee_vars_subset :
+          (forall e1 e2 : exp,
+              is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
+          H : is_true (subee _ ?e)
+        |- is_true (VS.subset (vars_exp _) (vars_exp ?e)) =>
+        apply: subee_vars_subset
+      | subeb_vars_subset :
+          (forall (e1 : exp) (e2 : bexp),
+              is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
+          H : is_true (subeb _ ?e)
+        |- is_true (VS.subset (VS.singleton ?v) (vars_bexp ?e)) =>
+        replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
+        apply: subeb_vars_subset
+      | subeb_vars_subset :
+          (forall (e1 : exp) (e2 : bexp),
+              is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
+          H : is_true (subeb _ ?e)
+        |- is_true (VS.subset (vars_exp _) (vars_bexp ?e)) =>
+        apply: subeb_vars_subset
+      | subbe_vars_subset :
+          (forall (b : bexp) (e : exp),
+              is_true (subbe b e) -> is_true (VS.subset (vars_bexp b) (vars_exp e))),
+          H : is_true (subee _ ?e)
+        |- is_true (VS.subset (vars_bexp _) (vars_exp ?e)) =>
+        apply: subbe_vars_subset
+      | subbb_vars_subset :
+          (forall b1 b2 : bexp,
+              is_true (subbb b1 b2) ->
+              is_true (VS.subset (vars_bexp b1) (vars_bexp b2))),
+          H : is_true (subeb _ ?e)
+        |- is_true (VS.subset _ (vars_bexp ?e)) =>
+        apply: subbb_vars_subset
+      end.
+
+    Ltac subexp_vars_decide :=
+      subexp_trans_decide
+      || (match goal with
+          | |- is_true (VS.subset VS.empty ?vs) => exact: VSLemmas.subset_empty
+          | |- is_true (VS.subset ?vs ?vs) => exact: VSLemmas.subset_refl
+          | |- is_true (subee ?e ?e) => exact: subee_refl
+          | |- is_true (subbb ?e ?e) => exact: subbb_refl
+          end).
+
+    Ltac t_auto_hook ::= (subexp_vars_select || subexp_vars_app || subexp_vars_decide).
+
+    Lemma subee_vars_subset e1 e2 : subee e1 e2 -> VS.subset (vars_exp e1) (vars_exp e2)
+    with
+    subeb_vars_subset e b : subeb e b -> VS.subset (vars_exp e) (vars_bexp b)
+    with
+    subbe_vars_subset b e : subbe b e -> VS.subset (vars_bexp b) (vars_exp e)
+    with
+    subbb_vars_subset b1 b2 : subbb b1 b2 -> VS.subset (vars_bexp b1) (vars_bexp b2).
+    Proof.
+      (* subee_vars_subset *)
+      case: e1; case: e2 => //=; try by t_auto.
+      (* subeb_vars_subset *)
+      (* subbe_vars_subset *)
+      (* subbb_vars_subset *)
+    Abort.
+
+  End Subexp.
+
+  (* Well-formedness *)
+
+  Section WellFormed.
+
+    Fixpoint exp_size (e : exp) (te : TE.env) : nat :=
+      match e with
+      | Evar v => TE.vsize v te
+      | Econst n => size n
+      | Eunop op e =>
+        (match op with
+         | Unot => exp_size e te
+         | Uneg => exp_size e te
+         | Uextr i j => i - j + 1
+         (*     | Uslice w1 w2 w3 => w2 *)
+         | Uhigh n => n
+         | Ulow n => n
+         | Uzext n => exp_size e te + n
+         | Usext n => exp_size e te + n
+         end)
+      | Ebinop op e1 e2 =>
+        (match op with
+         | Bconcat => exp_size e1 te + exp_size e2 te
+         | _ => max (exp_size e1 te) (exp_size e2 te)
+         end)
+      | Eite b e1 e2 => max (exp_size e1 te) (exp_size e2 te)
+      end.
+
+    Fixpoint well_formed_exp (e : exp) (te : TE.env) : bool :=
+      match e with
+      | Evar v => TE.mem v te
+      | Econst _ => true
+      | Eunop op e => well_formed_exp e te
+      | Ebinop op e1 e2 =>
+        well_formed_exp e1 te && well_formed_exp e2 te &&
+                        (exp_size e1 te == exp_size e2 te)
+      | Eite b e1 e2 =>
+        well_formed_bexp b te && well_formed_exp e1 te && well_formed_exp e2 te &&
+                         (exp_size e1 te == exp_size e2 te)
       end
-    | H1 : is_true (?a < ?b), H2 : is_true (?b < ?a) |- _ =>
-      move: (ltn_trans H1 H2); by rewrite ltnn
-    | H1 : is_true (?a < ?b), H2 : is_true (?b + ?c < ?a) |- _ =>
-      move: (ltn_leq_trans H1 (leq_addr c b)); clear H1; intro H1;
-      move: (ltn_trans H1 H2); by rewrite ltnn
-    | H1 : is_true (?a < ?b), H2 : is_true (?c + ?b < ?a) |- _ =>
-      move: (ltn_leq_trans H1 (leq_addl c b)); clear H1; intro H1;
-      move: (ltn_trans H1 H2); by rewrite ltnn
-    | H1 : is_true (?a < ?b), H2 : is_true (?b + ?c + ?d < ?a) |- _ =>
-      move: (ltn_leq_trans H1 (leq_addr (c + d) b)); clear H1; rewrite addnA; intro H1;
-      move: (ltn_trans H1 H2); by rewrite ltnn
-    | H1 : is_true (?a < ?b), H2 : is_true (?c + ?b + ?d < ?a) |- _ =>
-      move: (ltn_leq_trans H1 (leq_addl c b)); clear H1; intro H1;
-      move: (ltn_leq_trans H1 (leq_addr d (c + b))); clear H1; intro H1;
-      move: (ltn_trans H1 H2); by rewrite ltnn
-    | H1 : is_true (?a + ?c < ?b),
-      H2 : is_true (?b + ?d < ?a)
-      |- _ =>
-      let H := fresh in
-      move: (leq_addr d b); intro H;
-      move: (leq_ltn_trans H H2); clear H H2; intro H;
-      move: (ltn_addr c H) => {H} H;
-      move: (ltn_trans H H1); by rewrite ltnn
-    | H1 : is_true (?a + ?c < ?b),
-      H2 : is_true (?d + ?b < ?a)
-      |- _ => rewrite (addnC d b) in H2
-    | H1 : is_true (?c + ?a < ?b),
-      H2 : is_true (?d + ?b < ?a)
-      |- _ => rewrite (addnC c a) in H1; rewrite (addnC d b) in H2
-    | H1 : is_true (?a + ?c < ?b),
-      H2 : is_true (?b + ?d + ?e < ?a)
-      |- _ =>
-      let H := fresh in
-      move: (leq_addr (d + e) b); rewrite addnA; intro H;
-      move: (ltn_leq_trans H1 H); clear H1 H; intro H;
-      move: (ltn_trans H H2); clear H H2; intro H;
-      move: (ltn_addr c H); by rewrite ltnn
-    | H1 : is_true (?a + ?c < ?b),
-      H2 : is_true (?d + ?b + ?e < ?a)
-      |- _ => rewrite (addnC d b) in H2
-    | H1 : is_true (?c + ?a < ?b),
-      H2 : is_true (?b + ?d + ?e < ?a)
-      |- _ => rewrite (addnC c a) in H1
-    | H1 : is_true (?c + ?a < ?b),
-      H2 : is_true (?d + ?b + ?e < ?a)
-      |- _ => rewrite (addnC c a) in H1; rewrite (addnC d b) in H2
-    | H1 : is_true (?a + ?c + ?d < ?b),
-      H2 : is_true (?b + ?e + ?f < ?a)
-      |- _ =>
-      let Hi := fresh in
-      let Hj := fresh in
-      move: (leq_addr (c + d) a); rewrite addnA; intro Hi;
-      move: (leq_addr (e + f) b); rewrite addnA; intro Hj;
-      move: (leq_ltn_trans Hi H1); clear Hi H1; intro Hi;
-      move: (leq_ltn_trans Hj H2); clear Hj H2; intro Hj;
-      move: (ltn_trans Hi Hj); by rewrite ltnn
-    | H1 : is_true (?c + ?a + ?d < ?b),
-      H2 : is_true (?b + ?e + ?f < ?a)
-      |- _ => rewrite (addnC c a) in H1
-    | H1 : is_true (?c + ?a + ?d < ?b),
-      H2 : is_true (?e + ?b + ?f < ?a)
-      |- _ => rewrite (addnC c a) in H1; rewrite (addnC e b) in H2
-    end.
+    with
+    well_formed_bexp (b : bexp) (te : TE.env) : bool :=
+      match b with
+      | Bfalse
+      | Btrue => true
+      | Bbinop _ e1 e2 => well_formed_exp e1 te && well_formed_exp e2 te &&
+                                          (exp_size e1 te == exp_size e2 te)
+      | Blneg b => well_formed_bexp b te
+      | Bconj b1 b2
+      | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
+      end.
 
-  Lemma subee_antisym c p : (subee c p && subee p c) = (c == p).
-  Proof.
-    case H: (c == p).
-    - rewrite (eqP H). by rewrite subee_refl.
-    - apply/negP => Hsub. apply/negPf: H. case/andP: Hsub.
-    elim: c p.
-    - move=> ?; case; by t_auto.
-    - move=> ?; case; by t_auto.
-    - move=> ? ? ?; case; by t_auto.
-    - move=> ? ? ? ? ?; case; by t_auto.
-    - move=> ? ? ? ? ?; case; by t_auto.
-  Qed.
+    (* NBits Lemma *)
+    Lemma size_succB bs : size (succB bs) = size bs .
+    Proof .
+      elim : bs => [|b bs IH]; first done .
+      rewrite /succB -/succB .
+      case : b; rewrite /= IH // .
+    Qed .
 
-  Lemma subbb_antisym c p : (subbb c p && subbb p c) = (c == p).
-  Proof.
-    case H: (c == p).
-    - rewrite (eqP H). by rewrite subbb_refl.
-    - apply/negP => Hsub. apply/negPf: H. case/andP: Hsub.
-    elim: c p.
-    - case; by t_auto.
-    - case; by t_auto.
-    - move=> ? ? ?; case; by t_auto.
-    - move=> ? ?; case; by t_auto.
-    - move=> ? ? ? ?; case; by t_auto.
-    - move=> ? ? ? ?; case; by t_auto.
-  Qed.
+    Lemma size_full_adder_zip c bs0 bs1 :
+      size (full_adder_zip c (zip bs0 bs1)).2 =
+      minn (size bs0) (size bs1) .
+    Proof .
+      dcase (zip bs0 bs1) => [zs Hzip] .
+      rewrite -(size_zip bs0 bs1) Hzip .
+      elim : zs bs0 bs1 Hzip c => [|z zs IH] bs0 bs1 Hzip c; first done .
+      rewrite /full_adder_zip /= -/full_adder_zip /= .
+      dcase z => [[hd1 hd2] Hz] .
+      dcase (bool_adder c hd1 hd2) => [[c0 hd] Hadder] .
+      dcase (full_adder_zip c0 zs) => [[c1 tl] Hfull] /= .
+      move : Hzip; rewrite /zip .
+      case bs0; case bs1; rewrite /=; [done|done|done|rewrite -/zip] .
+      move => b bs d ds Hzs .
+      inversion Hzs .
+      move: (IH _ _ H1 c0) .
+      rewrite Hfull H1 /= => Htl .
+      rewrite Htl // .
+    Qed .
 
-  (* subexp and variables in expressions *)
+    Lemma size_addB bs0 bs1 :
+      size (addB bs0 bs1) = minn (size bs0) (size bs1) .
+    Proof .
+      exact : size_full_adder_zip .
+    Qed .
 
-  Ltac subexp_vars_select :=
-    subexp_trans_select
-    || (match goal with
-        | |- is_true (_ || ?f ?e ?e) => apply/orP; right
-        | |- is_true (?f ?e ?e || _ || _) => apply/orP; left; apply/orP; left
-        | |- is_true ([|| _, ?f ?e ?e | _]) => apply/orP; right; apply/orP; left
-        | |- is_true ([|| _, _ | ?f ?e ?e]) => apply/orP; right; apply/orP; right
-        | |- is_true ([|| _, _ || ?f ?e ?e | _]) =>
-          apply/orP; right; apply/orP; left; apply/orP; right
-        | |- is_true (VS.subset ?e (VS.union ?e _)) => apply: VS.Lemmas.subset_union1
-        | |- is_true (VS.subset ?e (VS.union _ ?e)) => apply: VS.Lemmas.subset_union2
-        | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union (?vars ?e) _)) =>
-          apply: VS.Lemmas.subset_union1
-        | H : is_true (?sub _ ?e) |- is_true (VS.subset _ (VS.union _ (?vars ?e))) =>
-          apply: VS.Lemmas.subset_union2
-        | H : is_true (?sub _ ?e) |-
-          is_true (VS.subset _ (VS.union (?vars ?e) (VS.union _ _))) =>
-          apply: VS.Lemmas.subset_union1
-        | H : is_true (?sub _ ?e) |-
-          is_true (VS.subset _ (VS.union _ (VS.union (?vars ?e) _))) =>
-          apply: VS.Lemmas.subset_union2; apply: VS.Lemmas.subset_union1
-        | H : is_true (?sub _ ?e) |-
-          is_true (VS.subset _ (VS.union _ (VS.union _ (?vars ?e)))) =>
-          apply: VS.Lemmas.subset_union2; apply: VS.Lemmas.subset_union2
-        | |- is_true (VS.subset (VS.union _ _) _) =>
-          apply: VS.Lemmas.subset_union3
-        end).
+    Lemma size_subB bs0 bs1 :
+      size (subB bs0 bs1) = minn (size bs0) (size bs1) .
+    Proof .
+      rewrite /subB /sbbB /adcB /full_adder .
+      dcase (full_adder_zip (~~false) (zip bs0 (~~# bs1)%bits)) => [[c res] Hfull] .
+      move : (size_full_adder_zip (~~false) bs0 (~~#bs1)%bits) .
+      rewrite Hfull /= .
+      rewrite /invB size_map // .
+    Qed .
 
-  Ltac subexp_vars_app :=
-    match goal with
-    | H : is_true (subee ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
-      apply: (subeeee_trans _ H); clear H; simpl
-    | H : is_true (subbb ?b2 ?b3) |- is_true (subbb ?b1 ?b3) =>
-      apply: (subbbbb_trans _ H); clear H; simpl
-    | H : is_true (subeb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
-      apply: (subeeeb_trans _ H); clear H; simpl
-    | H : is_true (subee ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
-      apply: (subbeee_trans _ H); clear H; simpl
-    | H : is_true (subeb ?e2 ?e3) |- is_true (subbb ?e1 ?e3) =>
-      apply: (subbeeb_trans _ H); clear H; simpl
-    | H : is_true (subbe ?e2 ?e3) |- is_true (subee ?e1 ?e3) =>
-      apply: (subebbe_trans _ H); clear H; simpl
-    | H : is_true (subbb ?e2 ?e3) |- is_true (subeb ?e1 ?e3) =>
-      apply: (subebbb_trans _ H); clear H; simpl
-    | H : is_true (subbe ?e2 ?e3) |- is_true (subbe ?e1 ?e3) =>
-      apply: (subbbbe_trans _ H); clear H; simpl
-    | H : is_true (subee ?e1 ?e2) |- is_true (subee ?e1 ?e3) =>
-      apply: (subeeee_trans H); clear H; simpl
-    | H : is_true (subbb ?b1 ?b2) |- is_true (subbb ?b1 ?b3) =>
-      apply: (subbbbb_trans H); clear H; simpl
-    | subee_vars_subset :
-        (forall e1 e2 : exp,
-            is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
-      H : is_true (subee _ ?e)
-      |- is_true (VS.subset (VS.singleton ?v) (vars_exp ?e)) =>
-      replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
-      apply: subee_vars_subset
-    | subee_vars_subset :
-        (forall e1 e2 : exp,
-            is_true (subee e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_exp e2))),
-      H : is_true (subee _ ?e)
-      |- is_true (VS.subset (vars_exp _) (vars_exp ?e)) =>
-      apply: subee_vars_subset
-    | subeb_vars_subset :
-        (forall (e1 : exp) (e2 : bexp),
-            is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
-      H : is_true (subeb _ ?e)
-      |- is_true (VS.subset (VS.singleton ?v) (vars_bexp ?e)) =>
-      replace (VS.singleton v) with (vars_exp (Evar v)) by reflexivity;
-      apply: subeb_vars_subset
-    | subeb_vars_subset :
-        (forall (e1 : exp) (e2 : bexp),
-            is_true (subeb e1 e2) -> is_true (VS.subset (vars_exp e1) (vars_bexp e2))),
-      H : is_true (subeb _ ?e)
-      |- is_true (VS.subset (vars_exp _) (vars_bexp ?e)) =>
-      apply: subeb_vars_subset
-    | subbe_vars_subset :
-        (forall (b : bexp) (e : exp),
-            is_true (subbe b e) -> is_true (VS.subset (vars_bexp b) (vars_exp e))),
-      H : is_true (subee _ ?e)
-      |- is_true (VS.subset (vars_bexp _) (vars_exp ?e)) =>
-      apply: subbe_vars_subset
-    | subbb_vars_subset :
-        (forall b1 b2 : bexp,
-            is_true (subbb b1 b2) ->
-            is_true (VS.subset (vars_bexp b1) (vars_bexp b2))),
-      H : is_true (subeb _ ?e)
-      |- is_true (VS.subset _ (vars_bexp ?e)) =>
-      apply: subbb_vars_subset
-    end.
+    Lemma size_joinlsb T b (bs : seq T) :
+      size (joinlsb b bs) = (size bs) + 1 .
+    Proof .
+      elim : bs => [|d ds IH] .
+      - rewrite /joinlsb // .
+      - rewrite /joinlsb /= addn1 // .
+    Qed .
 
-  Ltac subexp_vars_decide :=
-    subexp_trans_decide
-    || (match goal with
-        | |- is_true (VS.subset ?vs ?vs) => exact: VS.Lemmas.subset_refl
-        | |- is_true (subee ?e ?e) => exact: subee_refl
-        | |- is_true (subbb ?e ?e) => exact: subbb_refl
-        end).
+    Lemma size_full_mul bs0 bs1 :
+      size (full_mul bs0 bs1) = (size bs0) + (size bs1) .
+    Proof .
+      elim : bs0 => [| b bs0 IH] .
+      - rewrite /full_mul add0n size_from_nat // .
+      - case b .
+        + rewrite /full_mul /= -/full_mul .
+          rewrite size_addB size_zext size_joinlsb IH .
+          rewrite addn1 addSn addnS addnC minnE .
+          rewrite subnn subn0 // .
+        + rewrite /full_mul /= -/full_mul .
+          rewrite IH addSn // .
+    Qed .
 
-  Ltac t_auto_hook ::= (subexp_vars_select || subexp_vars_app || subexp_vars_decide).
+    Lemma size_mulB bs0 bs1 :
+      size (mulB bs0 bs1) = size bs0 .
+    Proof .
+      rewrite /mulB size_low // .
+    Qed .
 
-  Lemma subee_vars_subset e1 e2 : subee e1 e2 -> VS.subset (vars_exp e1) (vars_exp e2)
-  with
-  subeb_vars_subset e b : subeb e b -> VS.subset (vars_exp e) (vars_bexp b)
-  with
-  subbe_vars_subset b e : subbe b e -> VS.subset (vars_bexp b) (vars_exp e)
-  with
-  subbb_vars_subset b1 b2 : subbb b1 b2 -> VS.subset (vars_bexp b1) (vars_bexp b2).
-  Proof.
-    case: e1; case: e2 => //=.
-    - move=> v1 v2; by t_auto.
-    - move=> _ e v H; by t_auto.
-    - move=> _ e1 e2 v; by t_auto.
-    - move=> b e1 e2 v; by t_auto.
-    - move=> op1 e1 op2 e2; by t_auto.
-    - move=> _ e1 e2 op e3; by t_auto.
-    - move=> b e1 e2 op e3; by t_auto.
-    - move=> _ e1 op e2 e3; by t_auto.
-    - move=> op1 e1 e2 op2 e3 e4; by t_auto.
-    - move=> b e1 e2 op e3 e4; by t_auto.
-    - move=> _ e1 b e2 e3 H; by t_auto.
-    - move=> _ e1 e2 b e3 e4; by t_auto.
-    - move=> b1 e1 e2 b2 e3 e4; by t_auto.
-    (* subeb_vars_subset *)
-    (* subbe_vars_subset *)
-    (* subbb_vars_subset *)
-  Abort.
+    Lemma size_shlB1 bs :
+      size (shlB1 bs) = size bs .
+    Proof .
+      rewrite /shlB1 .
+      rewrite size_dropmsb size_joinlsb addn1 subn1 // .
+    Qed .
 
-End Subexp.
+    Lemma size_shlB n bs :
+      size (shlB n bs) = size bs .
+    Proof .
+      elim : n => [|n IH] .
+      - rewrite /shlB // .
+      - rewrite /shlB /= size_shlB1 IH // .
+    Qed .
 
+    Lemma size_joinmsb T b (bs : seq T) :
+      size (joinmsb bs b) = size bs + 1 .
+    Proof .
+      elim : bs => [|d ds IH]; first done .
+      rewrite /joinmsb /= -/joinmsb IH !addn1 // .
+    Qed .
 
+    Lemma size_shrB1 bs :
+      size (shrB1 bs) = size bs .
+    Proof .
+      rewrite /shrB1 .
+      rewrite size_droplsb size_joinmsb .
+      rewrite addn1 subn1 // .
+    Qed .
 
-Section WellFormed.
+    Lemma size_shrB n bs :
+      size (shrB n bs) = size bs .
+    Proof .
+      elim : n => [| n IH ]; first done .
+      rewrite /shrB /= -/shrB .
+      rewrite size_shrB1 IH // .
+    Qed .
 
-  Fixpoint exp_size (e : exp) (te : TypEnv.t) : nat :=
-    match e with
-    | Evar v => TypEnv.vsize v te
-    | Econst n => size n
-    | Eunop op e =>
-      (match op with
-       | Unot => exp_size e te
-       | Uneg => exp_size e te
-       | Uextr i j => i - j + 1
-(*     | Uslice w1 w2 w3 => w2 *)
-       | Uhigh n => n
-       | Ulow n => n
-       | Uzext n => exp_size e te + n
-       | Usext n => exp_size e te + n
-       end)
-    | Ebinop op e1 e2 =>
-      (match op with
-       | Bconcat => exp_size e1 te + exp_size e2 te
-       | _ => max (exp_size e1 te) (exp_size e2 te)
-       end)
-    | Eite b e1 e2 => max (exp_size e1 te) (exp_size e2 te)
-    end.
+    Lemma size_sarB1 bs :
+      size (sarB1 bs) = size bs .
+    Proof .
+      rewrite /sarB1 size_droplsb size_joinmsb .
+      rewrite addn1 subn1 // .
+    Qed .
 
-  Fixpoint well_formed_exp (e : exp) (te : TypEnv.t) : bool :=
-    match e with
-    | Evar v => TypEnv.mem v te
-    | Econst _ => true
-    | Eunop op e => well_formed_exp e te
-    | Ebinop op e1 e2 =>
-      well_formed_exp e1 te && well_formed_exp e2 te &&
-                      (exp_size e1 te == exp_size e2 te)
-    | Eite b e1 e2 =>
-      well_formed_bexp b te && well_formed_exp e1 te && well_formed_exp e2 te &&
-                       (exp_size e1 te == exp_size e2 te)
-    end
-  with
-  well_formed_bexp (b : bexp) (te : TypEnv.t) : bool :=
-    match b with
-    | Bfalse
-    | Btrue => true
-    | Bbinop _ e1 e2 => well_formed_exp e1 te && well_formed_exp e2 te &&
-                                        (exp_size e1 te == exp_size e2 te)
-    | Blneg b => well_formed_bexp b te
-    | Bconj b1 b2
-    | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
-    end.
+    Lemma size_sarB n bs :
+      size (sarB n bs) = size bs .
+    Proof .
+      elim : n => [| n IH ]; first done .
+      rewrite /sarB /= -/sarB .
+      rewrite size_sarB1 IH // .
+    Qed .
 
-(* NBits Lemma *)
-  Lemma size_succB bs : size (succB bs) = size bs .
-  Proof .
-    elim : bs => [|b bs IH]; first done .
-    rewrite /succB -/succB .
-    case : b; rewrite /= IH // .
-  Qed .
-
-  Lemma size_full_adder_zip c bs0 bs1 :
-    size (full_adder_zip c (zip bs0 bs1)).2 =
-    minn (size bs0) (size bs1) .
-  Proof .
-    dcase (zip bs0 bs1) => [zs Hzip] .
-    rewrite -(size_zip bs0 bs1) Hzip .
-    elim : zs bs0 bs1 Hzip c => [|z zs IH] bs0 bs1 Hzip c; first done .
-    rewrite /full_adder_zip /= -/full_adder_zip /= .
-    dcase z => [[hd1 hd2] Hz] .
-    dcase (bool_adder c hd1 hd2) => [[c0 hd] Hadder] .
-    dcase (full_adder_zip c0 zs) => [[c1 tl] Hfull] /= .
-    move : Hzip; rewrite /zip .
-    case bs0; case bs1; rewrite /=; [done|done|done|rewrite -/zip] .
-    move => b bs d ds Hzs .
-    inversion Hzs .
-    move: (IH _ _ H1 c0) .
-    rewrite Hfull H1 /= => Htl .
-    rewrite Htl // .
-  Qed .
-
-  Lemma size_addB bs0 bs1 :
-    size (addB bs0 bs1) = minn (size bs0) (size bs1) .
-  Proof .
-    exact : size_full_adder_zip .
-  Qed .
-
-  Lemma size_subB bs0 bs1 :
-    size (subB bs0 bs1) = minn (size bs0) (size bs1) .
-  Proof .
-    rewrite /subB /sbbB /adcB /full_adder .
-    dcase (full_adder_zip (~~false) (zip bs0 (~~# bs1)%bits)) => [[c res] Hfull] .
-    move : (size_full_adder_zip (~~false) bs0 (~~#bs1)%bits) .
-    rewrite Hfull /= .
-    rewrite /invB size_map // .
-  Qed .
-
-  Lemma size_joinlsb T b (bs : seq T) :
-    size (joinlsb b bs) = (size bs) + 1 .
-  Proof .
-    elim : bs => [|d ds IH] .
-    - rewrite /joinlsb // .
-    - rewrite /joinlsb /= addn1 // .
-  Qed .
-
-  Lemma size_full_mul bs0 bs1 :
-    size (full_mul bs0 bs1) = (size bs0) + (size bs1) .
-  Proof .
-    elim : bs0 => [| b bs0 IH] .
-    - rewrite /full_mul add0n size_from_nat // .
-    - case b .
-      + rewrite /full_mul /= -/full_mul .
-        rewrite size_addB size_zext size_joinlsb IH .
-        rewrite addn1 addSn addnS addnC minnE .
-        rewrite subnn subn0 // .
-      + rewrite /full_mul /= -/full_mul .
-        rewrite IH addSn // .
-  Qed .
-
-  Lemma size_mulB bs0 bs1 :
-    size (mulB bs0 bs1) = size bs0 .
-  Proof .
-    rewrite /mulB size_low // .
-  Qed .
-
-  Lemma size_shlB1 bs :
-    size (shlB1 bs) = size bs .
-  Proof .
-    rewrite /shlB1 .
-    rewrite size_dropmsb size_joinlsb addn1 subn1 // .
-  Qed .
-
-  Lemma size_shlB n bs :
-    size (shlB n bs) = size bs .
-  Proof .
-    elim : n => [|n IH] .
-    - rewrite /shlB // .
-    - rewrite /shlB /= size_shlB1 IH // .
-  Qed .
-
-  Lemma size_joinmsb T b (bs : seq T) :
-    size (joinmsb bs b) = size bs + 1 .
-  Proof .
-    elim : bs => [|d ds IH]; first done .
-    rewrite /joinmsb /= -/joinmsb IH !addn1 // .
-  Qed .
-
-  Lemma size_shrB1 bs :
-    size (shrB1 bs) = size bs .
-  Proof .
-    rewrite /shrB1 .
-    rewrite size_droplsb size_joinmsb .
-    rewrite addn1 subn1 // .
-  Qed .
-
-  Lemma size_shrB n bs :
-    size (shrB n bs) = size bs .
-  Proof .
-    elim : n => [| n IH ]; first done .
-    rewrite /shrB /= -/shrB .
-    rewrite size_shrB1 IH // .
-  Qed .
-
-  Lemma size_sarB1 bs :
-    size (sarB1 bs) = size bs .
-  Proof .
-    rewrite /sarB1 size_droplsb size_joinmsb .
-    rewrite addn1 subn1 // .
-  Qed .
-
-  Lemma size_sarB n bs :
-    size (sarB n bs) = size bs .
-  Proof .
-    elim : n => [| n IH ]; first done .
-    rewrite /sarB /= -/sarB .
-    rewrite size_sarB1 IH // .
-  Qed .
-
-  Lemma eval_exp_size e te s :
-    well_formed_exp e te -> conform s te -> size (eval_exp e s) = exp_size e te.
-  Proof.
-    elim: e te s => //=.
-    - move=> v te s Hmem Hcon. by rewrite (Hcon _ Hmem).
-    - case => /= .
-      + move => e IH te s Hwf Hcon .
-        rewrite -(IH _ _ Hwf Hcon) /invB size_map // .
-      + move => e IH te s Hwf Hcon .
-        rewrite /negB /invB size_succB size_map (IH _ _ Hwf Hcon) // .
-      + move => e IH te s Hwf Hcon .
-        rewrite size_extract //.
-      + move => e IH te s Hwf Hcon .
-        rewrite size_high // .
-      + move => e IH te s Hwf Hcon .
-        rewrite size_low // .
-      + move => n e IH te s Hwf Hcon .
-        rewrite size_zext (IH _ _ Hwf Hcon) // .
-      + move => n e IH te s Hwf Hcon .
-        rewrite size_sext (IH _ _ Hwf Hcon) // .
-    - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /= .
-      + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-        rewrite Max.max_idempotent maxnE .
-        apply : subnKC; apply : leqnn .
-      + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-        rewrite Max.max_idempotent maxnE .
-        apply : subnKC; apply : leqnn .
-      + rewrite /xorB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-        rewrite Max.max_idempotent maxnE .
-        apply : subnKC; apply : leqnn .
-      + rewrite size_addB .
-        rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-        rewrite Max.max_idempotent minnE .
-        apply : subKn; apply : leqnn .
-      + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
-        rewrite (eqP Hsize) Max.max_idempotent minnE .
-        apply : subKn; apply : leqnn .
-      + rewrite size_mulB -(eqP Hsize) Max.max_idempotent (IH0 _ _ Hwf0 Hcon) // .
-      + (* TODO *)
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_shlB .
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_shrB .
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_sarB .
-        rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_cat .
-        rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
-        rewrite addnC // .
-    - move => c e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon .
-      case (eval_bexp c s);
-        [rewrite (IH0 _ _ Hwf0 Hcon) | rewrite (IH1 _ _ Hwf1 Hcon)];
+    Lemma eval_exp_size e te s :
+      well_formed_exp e te -> S.conform s te -> size (eval_exp e s) = exp_size e te.
+    Proof.
+      elim: e te s => //=.
+      - move=> v te s Hmem Hcon. by rewrite (S.conform_mem Hcon Hmem).
+      - case => /= .
+        + move => e IH te s Hwf Hcon .
+          rewrite -(IH _ _ Hwf Hcon) /invB size_map // .
+        + move => e IH te s Hwf Hcon .
+          rewrite /negB /invB size_succB size_map (IH _ _ Hwf Hcon) // .
+        + move => e IH te s Hwf Hcon .
+          rewrite size_extract //.
+        + move => e IH te s Hwf Hcon .
+          rewrite size_high // .
+        + move => e IH te s Hwf Hcon .
+          rewrite size_low // .
+        + move => n e IH te s Hwf Hcon .
+          rewrite size_zext (IH _ _ Hwf Hcon) // .
+        + move => n e IH te s Hwf Hcon .
+          rewrite size_sext (IH _ _ Hwf Hcon) // .
+      - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /= .
+        + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+          rewrite Max.max_idempotent maxnE .
+          apply : subnKC; apply : leqnn .
+        + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+          rewrite Max.max_idempotent maxnE .
+          apply : subnKC; apply : leqnn .
+        + rewrite /xorB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+          rewrite Max.max_idempotent maxnE .
+          apply : subnKC; apply : leqnn .
+        + rewrite size_addB .
+          rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
+          rewrite Max.max_idempotent minnE .
+          apply : subKn; apply : leqnn .
+        + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
+          rewrite (eqP Hsize) Max.max_idempotent minnE .
+          apply : subKn; apply : leqnn .
+        + rewrite size_mulB -(eqP Hsize) Max.max_idempotent (IH0 _ _ Hwf0 Hcon) // .
+        + (* TODO *)
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + (* TODO *)
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + (* TODO *)
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + rewrite size_shlB .
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + rewrite size_shrB .
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + rewrite size_sarB .
+          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
+          rewrite Max.max_idempotent // .
+        + rewrite size_cat .
+          rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
+          rewrite addnC // .
+      - move => c e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon .
+        case (eval_bexp c s);
+          [rewrite (IH0 _ _ Hwf0 Hcon) | rewrite (IH1 _ _ Hwf1 Hcon)];
           rewrite (eqP Hsize) Max.max_idempotent // .
-Qed .
+    Qed .
+
+  End WellFormed.
+
+End MakeQFBV.
 
 
-End WellFormed.
-
+Module QFBV := MakeQFBV SSAVarOrder SSAVS SSATE SSAStore.
