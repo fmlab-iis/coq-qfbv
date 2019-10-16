@@ -1,8 +1,8 @@
 
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import Var TypEnv QFBV CNF BBCommon.
-From ssrlib Require Import ZAriths Tactics.
+From BitBlasting Require Import TypEnv QFBV CNF BBCommon.
+From ssrlib Require Import Var ZAriths Tactics.
 From nbits Require Import NBits.
 
 Set Implicit Arguments.
@@ -30,18 +30,18 @@ Fixpoint mk_env_var' E g bs : env * generator * word :=
                     (E'', g'', hd::tl)
   end.
 
-Definition bit_blast_var (tenv : TypEnv.t) g (v : var) : generator * cnf * word :=
-  let (g', vs) := bit_blast_var' g (TypEnv.vsize v tenv) in
+Definition bit_blast_var (tenv : SSATE.env) g (v : ssavar) : generator * cnf * word :=
+  let (g', vs) := bit_blast_var' g (SSATE.vsize v tenv) in
   (g', [::], vs).
 
-Definition mk_env_var E g (bs : bits) (v : var) : env * generator * cnf * word :=
+Definition mk_env_var E g (bs : bits) (v : ssavar) : env * generator * cnf * word :=
   let '(E', g', vs) := mk_env_var' E g bs in
   (E', g', [::], vs).
 
 Lemma bit_blast_var_cnf_empty tenv g v g' cs lrs :
   bit_blast_var tenv g v = (g', cs, lrs) -> cs = [::].
 Proof.
-  rewrite /bit_blast_var. dcase (bit_blast_var' g (TypEnv.vsize v tenv)).
+  rewrite /bit_blast_var. dcase (bit_blast_var' g (SSATE.vsize v tenv)).
   move=> [g_v lrs_v] Hbb. by case=> _ <- _.
 Qed.
 
@@ -56,7 +56,7 @@ Proof.
 Qed.
 
 Lemma mk_env_var_is_bit_blast_var tenv E g bs v E' g' cs lrs :
-  size bs = TypEnv.vsize v tenv -> mk_env_var E g bs v = (E', g', cs, lrs) ->
+  size bs = SSATE.vsize v tenv -> mk_env_var E g bs v = (E', g', cs, lrs) ->
   bit_blast_var tenv g v = (g', cs, lrs).
 Proof.
   rewrite /mk_env_var /bit_blast_var. dcase (mk_env_var' E g bs).

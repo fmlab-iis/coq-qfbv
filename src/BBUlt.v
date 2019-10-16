@@ -1,6 +1,6 @@
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import Var QFBV CNF BBCommon BBEq.
+From BitBlasting Require Import QFBV CNF BBCommon BBEq.
 From ssrlib Require Import ZAriths Tactics Bools Seqs.
 From nbits Require Import NBits.
 

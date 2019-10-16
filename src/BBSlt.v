@@ -1,6 +1,6 @@
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
-From BitBlasting Require Import Var QFBV CNF BBCommon BBUlt.
+From BitBlasting Require Import QFBV CNF BBCommon BBUlt.
 From ssrlib Require Import ZAriths Seqs Tactics.
 From nbits Require Import NBits.
 
@@ -119,7 +119,6 @@ Proof.
   dcase (mk_env_ult E g tl1 tl2) => [[[[E_tl g_tl] cs_tl] r_tl] Henv_tl].
   case=> _ <- <- _ => Hgtt Hgls1 Hgls2.
   rewrite newer_than_cnf_catrev.
-Check newer_than_lits_splitmsl.
   move: (newer_than_lits_splitmsl Hgtt Hgls1). 
   rewrite Hls1 /fst /snd => /andP [Hgtl1 Hgs1].
   move: (newer_than_lits_splitmsl Hgtt Hgls2).

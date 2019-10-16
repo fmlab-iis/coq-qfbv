@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
-From BitBlasting Require Import Var QFBV CNF BBCommon.
+From BitBlasting Require Import QFBV CNF BBCommon.
 From ssrlib Require Import ZAriths Seqs Tactics.
 From nbits Require Import NBits.
 
@@ -100,7 +100,7 @@ Proof .
   by rewrite /mk_env_low; case => <- _ _ _ .
 Qed .
 
-Lemma mk_env_and_sat E g n ls E' g' cs lrs :
+Lemma mk_env_low_sat E g n ls E' g' cs lrs :
   mk_env_low E g n ls = (E', g', cs, lrs) ->
   newer_than_lits g ls -> interp_cnf E' cs .
 Proof .

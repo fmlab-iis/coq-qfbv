@@ -7,7 +7,7 @@
 
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import SsrOrdered ZAriths Seqs Lists Bools FSets.
+From ssrlib Require Import SsrOrder ZAriths Seqs Lists Bools FSets.
 From nbits Require Export NBits.
 
 Set Implicit Arguments.
@@ -1116,7 +1116,7 @@ Proof.
   apply: H1. rewrite H2. exact: eqxx.
 Qed.
 
-Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
+Module LiteralOrderMinimal <: SsrOrderMinimal.
   Definition t := lit_eqType.
   Definition eqn (x y : t) := x == y.
   Definition ltn (x y : t) := lit_lt x y.
@@ -1133,10 +1133,10 @@ Module LiteralOrderedMinimal <: SsrOrderedTypeMinimal.
           by move=> H; apply/eqP/idP: Heq; rewrite (z_of_lit_inj H) eqxx.
         apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
   Defined.
-End LiteralOrderedMinimal.
-Module LiteralOrdered <: SsrOrderedTypeWithFacts := MakeSsrOrderedType LiteralOrderedMinimal.
-Module ClauseOrdered <: SsrOrderedTypeWithFacts := SeqOrdered LiteralOrdered.
-Module ClauseSet := FSets.MakeTreeSet ClauseOrdered.
+End LiteralOrderMinimal.
+Module LiteralOrder <: SsrOrder := MakeSsrOrder LiteralOrderMinimal.
+Module ClauseOrder <: SsrOrder := SeqOrder LiteralOrder.
+Module ClauseSet := FSets.MakeTreeSet ClauseOrder.
 
 Definition cnf_imp_each E (cs1 cs2 : cnf) :=
   forall c2,
