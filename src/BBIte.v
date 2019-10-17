@@ -248,16 +248,20 @@ Proof .
 Qed .
 
 Lemma mk_env_ite_newer_cnf E g lc ls1 ls2 E' g' cs lrs :
-  size ls1 == size ls2 ->
   mk_env_ite E g lc ls1 ls2 = (E', g', cs, lrs) ->
+  newer_than_lit g lit_ff ->
   newer_than_lit g lc -> newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   newer_than_cnf g' cs .
 Proof .
-  rewrite /mk_env_ite => Hsize Henv Hnewlc Hnew1 Hnew2 .
+  rewrite /mk_env_ite => Henv Hnewff Hnewlc Hnew1 Hnew2 .
   apply: (mk_env_ite_zip_newer_cnf Henv) .
   - done .
-  - rewrite /extzip_ff unzip1_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
-  - rewrite /extzip_ff unzip2_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
+  - rewrite unzip1_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done .
+    apply /andP; split; done .
+  - rewrite unzip2_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done .
+    apply /andP; split; done .
 Qed .
 
 Lemma mk_env_ite1_preserve E g lc l1 l2 E' g' cs lr :
@@ -333,15 +337,18 @@ Proof .
 Qed .
 
 Lemma mk_env_ite_sat E g lc ls1 ls2 E' g' cs lrs :
-  size ls1 == size ls2 ->
   mk_env_ite E g lc ls1 ls2 = (E', g', cs, lrs) ->
-  newer_than_lit g lc ->
+  newer_than_lit g lit_tt -> newer_than_lit g lc ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   interp_cnf E' cs .
 Proof .
-  move => Hsize Henv Hglc Hgls1 Hgls2 .
+  move => Henv hgt Hglc Hgls1 Hgls2 .
   apply : (mk_env_ite_zip_sat Henv); first by done .
-  - rewrite /extzip_ff unzip1_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
-  - rewrite /extzip_ff unzip2_extzip_ss; [ done | by rewrite (eqP Hsize) ] .
+  - rewrite unzip1_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done .
+    apply /andP; split; done .
+  - rewrite unzip2_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done .
+    apply /andP; split; done .
 Qed .
 
