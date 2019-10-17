@@ -53,7 +53,6 @@ Section BBSmulo.
 
   Lemma mk_env_smulo_rec_newer_cnf E g ls1 ls2 E' g' cs lr_or lr_and_or:
     mk_env_smulo_rec E g ls1 ls2 = (E', g', cs, lr_or, lr_and_or) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
@@ -71,7 +70,6 @@ Section BBSmulo.
 
   Lemma mk_env_smulo_rec_sat E g ls1 ls2 E' g' cs lr_or lr_and_or:
     mk_env_smulo_rec E g ls1 ls2 = (E', g', cs, lr_or, lr_and_or) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
@@ -333,7 +331,6 @@ Section BBSmulo.
 
   Lemma mk_env_smulo_newer_cnf  E g ls1 ls2 E' g' cs lr:
     mk_env_smulo E g ls1 ls2 = (E', g', cs, lr) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
@@ -353,7 +350,7 @@ Section BBSmulo.
     dcase (mk_env_xor1 E_mul g_mul (lastd lit_ff mul) (lastd lit_ff (belastd mul)))
     => [[[[ E_xor1 g_xor1 ] cs_xor1] xor1] Henv_xor1].
     dcase (mk_env_or1 E_xor1 g_xor1 r_or_and_rec xor1) => [[[[ E_or1 g_or1 ] cs_or1] or1] Henv_or1].
-    case=> _ <- <- _. move=> Hsz Hgtt Hgls1 Hgls2.
+    case=> _ <- <- _. move=> Hgtt Hgls1 Hgls2.
     move: (newer_than_lits_splitmsl Hgtt Hgls1) => /= /andP [Hgls1tl Hgls1sign].
     move: (newer_than_lits_copy (size (belastd ls1)) Hgls1sign) => Hgls1signs.
     move: (mk_env_xor_newer_res Henv_xls1 Hgtt Hgls1tl Hgls1signs) => Hnew_xls1.
@@ -378,26 +375,7 @@ Section BBSmulo.
     move: (newer_than_lits_le_newer Hgls2 Hgxls1) => Hgx1ls2.
     move: (newer_than_lits_le_newer Hgx1ls2 Hgxls2) => Hgx2ls2.
     move: (mk_env_smulo_rec_newer_res Henv_rec Hgx2tt) => /andP [_ Hnew_rec_rec].
-    have /eqP Hsz_xls: size xls1 = size xls2.
-    {
-      have Hcopy: (size (belastd ls1) == size (copy (size (belastd ls1)) (lastd lit_ff ls1)))
-        by rewrite /copy size_nseq.
-      move: (mk_env_xor_size Henv_xls1 Hcopy) => /eqP ->.
-      have Hcopy2: (size (belastd ls2) == size (copy (size (belastd ls2)) (lastd lit_ff ls2)))
-        by rewrite /copy size_nseq.
-      move: (mk_env_xor_size Henv_xls2 Hcopy2) => /eqP -> .
-      exact: (eqP (size_belastd Hsz)).
-    }
-    have /eqP Hsz_xls_behead : size (behead xls1) = size (behead xls2).
-    {
-      rewrite !size_behead /=; f_equal.
-      exact: (eqP Hsz_xls).
-    }
-    have /eqP Hsz_xls_belastd: size (belastd xls1) = size (belastd xls2).
-    {
-      exact: (eqP (size_belastd Hsz_xls)).
-    }
-    move: (mk_env_smulo_rec_newer_cnf Henv_rec Hsz_xls_behead Hgx2tt Hnew_xls1 Hnew_xls2) => Hnewcnf_rec_rec.
+    move: (mk_env_smulo_rec_newer_cnf Henv_rec Hgx2tt Hnew_xls1 Hnew_xls2) => Hnewcnf_rec_rec.
     move: (mk_env_smulo_rec_newer_gen Henv_rec) => Hgx2grec.
     move: (newer_than_lit_le_newer Hgx2tt Hgx2grec) => Hgrectt.
     move: (newer_than_lits_le_newer Hgx2ls1 Hgx2grec) => Hgrecls1.
@@ -511,7 +489,6 @@ Section BBSmulo.
 
   Lemma mk_env_smulo_sat E g ls1 ls2 E' g' cs lr:
     mk_env_smulo E g ls1 ls2 = (E', g', cs, lr) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->  newer_than_lits g ls2 ->
     interp_cnf E' cs.
@@ -530,7 +507,7 @@ Section BBSmulo.
     dcase (mk_env_xor1 E_mul g_mul (lastd lit_ff mul) (lastd lit_ff (belastd mul)))
     => [[[[ E_xor1 g_xor1 ] cs_xor1] xor1] Henv_xor1].
     dcase (mk_env_or1 E_xor1 g_xor1 r_or_and_rec xor1) => [[[[ E_or1 g_or1 ] cs_or1] or1] Henv_or1].
-    case=> <- _ <- _. move=> Hsz Hgtt Hgls1 Hgls2.
+    case=> <- _ <- _. move=> Hgtt Hgls1 Hgls2.
     move: (newer_than_lits_splitmsl Hgtt Hgls1) => /= /andP [Hgls1tl Hgls1sign].
     move: (newer_than_lits_copy (size (belastd ls1)) Hgls1sign) => Hgls1signs.
     move: (mk_env_xor_newer_res Henv_xls1 Hgtt Hgls1tl Hgls1signs) => Hnew_xls1.
@@ -559,27 +536,8 @@ Section BBSmulo.
     move: (newer_than_lits_le_newer Hgls2 Hgxls1) => Hgx1ls2.
     move: (newer_than_lits_le_newer Hgx1ls2 Hgxls2) => Hgx2ls2.
     move: (mk_env_smulo_rec_newer_res Henv_rec Hgx2tt) => /andP [_ Hnew_rec_rec].
-    have /eqP Hsz_xls: size xls1 = size xls2.
-    {
-      have Hcopy: (size (belastd ls1) == size (copy (size (belastd ls1)) (lastd lit_ff ls1)))
-        by rewrite /copy size_nseq.
-      move: (mk_env_xor_size Henv_xls1 Hcopy) => /eqP ->.
-      have Hcopy2: (size (belastd ls2) == size (copy (size (belastd ls2)) (lastd lit_ff ls2)))
-        by rewrite /copy size_nseq.
-      move: (mk_env_xor_size Henv_xls2 Hcopy2) => /eqP -> .
-      exact: (eqP (size_belastd Hsz)).
-    }
-    have /eqP Hsz_xls_behead : size (behead xls1) = size (behead xls2).
-    {
-      rewrite !size_behead /=; f_equal.
-      exact: (eqP Hsz_xls).
-    }
-    have /eqP Hsz_xls_belastd: size (belastd xls1) = size (belastd xls2).
-    {
-      exact: (eqP (size_belastd Hsz_xls)).
-    }
-    move: (mk_env_smulo_rec_newer_cnf Henv_rec Hsz_xls_behead Hgx2tt Hnew_xls1 Hnew_xls2) => Hnewcnf_rec_rec.
-    move: (mk_env_smulo_rec_sat Henv_rec Hsz_xls_behead Hgx2tt Hnew_xls1 Hnew_xls2) => Hsat_rec_rec.
+    move: (mk_env_smulo_rec_newer_cnf Henv_rec Hgx2tt Hnew_xls1 Hnew_xls2) => Hnewcnf_rec_rec.
+    move: (mk_env_smulo_rec_sat Henv_rec Hgx2tt Hnew_xls1 Hnew_xls2) => Hsat_rec_rec.
     move: (mk_env_smulo_rec_preserve Henv_rec) => Hpre_rec.
     move: (mk_env_smulo_rec_newer_gen Henv_rec) => Hgx2grec.
     move: (newer_than_lit_le_newer Hgx2tt Hgx2grec) => Hgrectt.

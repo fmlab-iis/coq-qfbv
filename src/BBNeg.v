@@ -120,9 +120,7 @@ Proof.
   move : (mk_env_not_newer_res Hmknot Hnewls) => Hnotres.
   move : (mk_env_const_newer_res Hmkcon (newer_than_lit_le_newer Hnewtt Hggnot)) => Hconres.
   move : (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Hmknot)) => Hbbnotss. 
-  move : (bit_blast_const_size_ss (mk_env_const_is_bit_blast_const Hmkcon)) => Hbbconss.
-  rewrite size_from_nat Hbbnotss in Hbbconss.
-  move : (mk_env_add_sat Hmkadd  (newer_than_lits_le_newer Hnotres Hgnotgcon) Hconres (newer_than_lit_le_newer Hnewtt (pos_leb_trans Hggnot Hgnotgcon)) Hbbconss ) => Hcnfadd.
+  move : (mk_env_add_sat Hmkadd  (newer_than_lits_le_newer Hnotres Hgnotgcon) Hconres (newer_than_lit_le_newer Hnewtt (pos_leb_trans Hggnot Hgnotgcon))) => Hcnfadd.
   move : (mk_env_not_newer_cnf Hmknot Hnewls).
   rewrite /mk_env_const in Hmkcon.
   move : (mk_env_not_preserve Hmknot).
@@ -209,9 +207,7 @@ Proof.
   move : (mk_env_not_newer_res Hmknot Hgls) => Hgnotresnot.
   move : (mk_env_const_newer_res Hmkcon (newer_than_lit_le_newer Htt Hggnot)) => Hgconlrscon.
   move : (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Hmknot)) => Hnotss.
-  move : (bit_blast_const_size_ss (mk_env_const_is_bit_blast_const Hmkcon)) => Hconss.
-  rewrite size_from_nat Hnotss in Hconss.
-  rewrite (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgnotresnot Hgnotgcon) Hgconlrscon (newer_than_lit_le_newer Htt (pos_leb_trans Hggnot Hgnotgcon)) Hconss) /=.
+  rewrite (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgnotresnot Hgnotgcon) Hgconlrscon (newer_than_lit_le_newer Htt (pos_leb_trans Hggnot Hgnotgcon)) ) /=.
   move : (mk_env_not_newer_cnf Hmknot Hgls) => Hcnfnot.
   rewrite (newer_than_cnf_le_newer Hcnfnot (pos_leb_trans Hgnotgcon Hgcongadd)) /=.
   rewrite /mk_env_const in Hmkcon.

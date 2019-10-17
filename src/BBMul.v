@@ -441,7 +441,8 @@ Proof.
     dcase (mk_env_shl_int E_tl g_tl ls1 i) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkshlint].
     dcase (mk_env_add E_hd g_hd lrs_tl lrs_hd) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
     case Hmkand : (mk_env_and E_hd g_hd (copy (size ls1) ls2_hd) lrs_hd) => [[[E_and g_and] cs_and] lrs_and].
-    dcase (mk_env_add E_and g_and lrs_tl lrs_and) => [[[[E_add2 g_add2] cs_add2] lrs_add2] Hmkadd2]. move => Hres Htt Hgls1 Hgls2. 
+    dcase (mk_env_add E_and g_and lrs_tl lrs_and) => [[[[E_add2 g_add2] cs_add2] lrs_add2] Hmkadd2]. move => Hres Htt Hgls1 Hgls2.
+    generalize Htt; rewrite newer_than_lit_tt_ff => Hff .
     move/andP : Hgls2 => [Hgls2hd Hgls2tl].
     move : (IH _ _ _ _ _ _ _ _ Hmkmul Htt Hgls1 Hgls2tl) => Hg0cs0.
     move : (mk_env_mul_rec_newer_gen Hmkmul) => Hgg0.
@@ -454,7 +455,7 @@ Proof.
     move : (bit_blast_mul_rec_size_ss (mk_env_mul_rec_is_bit_blast_mul_rec Hmkmul)) => Hszmul.
     move : (bit_blast_shl_int_size_ss (mk_env_shl_int_is_bit_blast_shl_int Hmkshlint)) => Hszshl; rewrite Hszmul in Hszshl.
     move : (bit_blast_add_size_ss (mk_env_add_is_bit_blast_add Hmkadd) Hszshl) => Hszadd.
-    move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hg0ls Hg0g1) Hg1ls3 (newer_than_lit_le_newer Htt (pos_leb_trans Hgg0 Hg0g1)) Hszshl) => Hg2cs2.
+    move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hg0ls Hg0g1) Hg1ls3 (newer_than_lit_le_newer Htt (pos_leb_trans Hgg0 Hg0g1))) => Hg2cs2.
     move : (pos_leb_trans Hgg0 Hg0g1) => Hgg1.
     move : (pos_leb_trans Hg0g1 Hg1g2) => Hg0g2.
     move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
@@ -465,7 +466,7 @@ Proof.
     move : (Hg3ls5 (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls1)  (newer_than_lit_le_newer Hgls2hd Hgg1)) Hg1ls3) => {Hg3ls5}Hg3ls5.
     move : (bit_blast_and_size_ss (mk_env_and_is_bit_blast_and Hmkand))=> Hszand.
     rewrite size_nseq Hszmul in Hszand. move : (Hszand Hszshl) => {Hszand}Hszand.
-    move : (mk_env_add_newer_cnf Hmkadd2 (newer_than_lits_le_newer Hg0ls Hg0g3) Hg3ls5 (newer_than_lit_le_newer Htt Hgg3) Hszand) => Hg4cs4.
+    move : (mk_env_add_newer_cnf Hmkadd2 (newer_than_lits_le_newer Hg0ls Hg0g3) Hg3ls5 (newer_than_lit_le_newer Htt Hgg3)) => Hg4cs4.
     move : (mk_env_and_newer_cnf Hmkand) => Hg3cs3.
     move: (Hg3cs3 (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls1) (newer_than_lit_le_newer Hgls2hd Hgg1)) Hg1ls3) => {Hg3cs3}Hg3cs3.
     move : Hres.
@@ -643,8 +644,7 @@ Proof.
     move : (mk_env_mul_rec_newer_res Hmkmul Htt) => Hg0ls.
     move : (newer_than_lits_le_newer Hg0ls Hg0g1) => Hg1ls.
     move : (mk_env_shl_int_newer_res (newer_than_lit_le_newer Htt Hgg0) (newer_than_lits_le_newer Hgls1 Hgg0) Hmkshl) => Hg1ls3.
-    move : (bit_blast_mul_rec_size_ss (mk_env_mul_rec_is_bit_blast_mul_rec Hmkmul)). rewrite (bit_blast_shl_int_size_ss (mk_env_shl_int_is_bit_blast_shl_int Hmkshl)) => Hsz; symmetry in Hsz.
-    move : (mk_env_add_sat Hmkadd Hg1ls Hg1ls3 (newer_than_lit_le_newer Htt (pos_leb_trans Hgg0 Hg0g1)) Hsz) => HcnfE2cs2.
+    move : (mk_env_add_sat Hmkadd Hg1ls Hg1ls3 (newer_than_lit_le_newer Htt (pos_leb_trans Hgg0 Hg0g1))) => HcnfE2cs2.
     move : (mk_env_shl_int_sat Hmkshl (newer_than_lits_le_newer Hgls1 Hgg0)) => HcnfE1cs1.
     move : (mk_env_shl_int_newer_cnf Hmkshl (newer_than_lits_le_newer Hgls1 Hgg0)) => Hg1cs1. move : Hres.
     case (ls2_hd == lit_tt); case (ls2_hd == lit_ff);
@@ -671,7 +671,6 @@ Proof.
     move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_le_newer Hgcopyls2 Hgg1) Hg1ls3) => Hg3cs3.
     rewrite (env_preserve_cnf HE3E4g3 Hg3cs3) (mk_env_and_sat Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_le_newer Hgcopyls2 Hgg1) Hg1ls3) HE4cs4.
     done.
-    by rewrite -(bit_blast_and_size_ss (mk_env_and_is_bit_blast_and Hmkand)) size_nseq (bit_blast_mul_rec_size_ss (mk_env_mul_rec_is_bit_blast_mul_rec Hmkmul)).
 Qed.
 
 Lemma mk_env_mul_sat :
