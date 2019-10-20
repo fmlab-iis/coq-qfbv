@@ -69,7 +69,6 @@ Qed.
 
 Lemma mk_env_uaddo_newer_cnf E g ls1 ls2 E' g' cs lr:
   mk_env_uaddo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 ->
   newer_than_lits g ls2 ->
@@ -77,8 +76,9 @@ Lemma mk_env_uaddo_newer_cnf E g ls1 ls2 E' g' cs lr:
 Proof.
   rewrite /mk_env_uaddo.
   case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0].
-  case=> _ <- <- _ Hsz Hgtt Hgls1 Hgls2.
-  exact (mk_env_full_adder_newer_cnf Hmk Hgls1 Hgls2 Hgtt (eqP Hsz)).
+  case=> _ <- <- _ Hgtt Hgls1 Hgls2.
+  generalize Hgtt; rewrite newer_than_lit_tt_ff => Hgff .
+  exact (mk_env_full_adder_newer_cnf Hmk Hgls1 Hgls2 Hgtt Hgff).
 Qed.
 
 Lemma mk_env_uaddo_preserve E g ls1 ls2 E' g' cs lr :
@@ -93,7 +93,6 @@ Qed.
 
 Lemma mk_env_uaddo_sat E g ls1 ls2 E' g' cs lr :
   mk_env_uaddo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 ->
   newer_than_lits g ls2 ->
@@ -101,6 +100,6 @@ Lemma mk_env_uaddo_sat E g ls1 ls2 E' g' cs lr :
 Proof.
   rewrite /mk_env_uaddo.
   case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0].
-  move => [] <- _ <- _ Hsz Hgtt Hgls1 Hgls2.
-  exact: (mk_env_full_adder_sat Hmk Hgls1 Hgls2 Hgtt (eqP Hsz)).
+  move => [] <- _ <- _ Hgtt Hgls1 Hgls2.
+  exact: (mk_env_full_adder_sat Hmk Hgls1 Hgls2 Hgtt).
 Qed.

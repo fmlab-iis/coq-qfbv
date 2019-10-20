@@ -294,22 +294,23 @@ Section BBUmulo.
 
   Lemma mk_env_umulo_rec_newer_cnf E g ls1 ls2 E' g' cs lr_or lr_and_or:
     mk_env_umulo_rec E g ls1 ls2 = (E', g', cs, lr_or, lr_and_or) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
     newer_than_cnf g' cs.
   Proof.
-    move=> Hzip Hsz.
+    move=> Hzip .
     move: (mk_env_umulo_rec_zip_newer_cnf Hzip) => Hncnf_zip.
     move=> Hgtt Hgls1 Hgls2.
     apply: Hncnf_zip.
     - done.
-    - rewrite (unzip1_extzip_ll). done.
-        by rewrite (size_rev ls2) (eqP Hsz).
-    - rewrite (unzip2_extzip_rl).
-      exact: (newer_than_lits_rev Hgls2).
-        by rewrite (size_rev ls2) (eqP Hsz).
+    - rewrite unzip1_extzip newer_than_lits_cat
+              newer_than_lits_copy // Hgls1 // .
+    - rewrite unzip2_extzip newer_than_lits_cat
+              newer_than_lits_copy;
+        last by rewrite -newer_than_lit_tt_ff .
+      apply /andP; split; last done .
+      rewrite newer_than_lits_rev; done .
   Qed.
 
   Lemma mk_env_umulo_rec_zip_preserve E g lsp E' g' cs lr_or lr_and_or:
@@ -429,22 +430,25 @@ Section BBUmulo.
 
   Lemma mk_env_umulo_rec_sat E g ls1 ls2 E' g' cs lr_or lr_and_or:
     mk_env_umulo_rec E g ls1 ls2 = (E', g', cs, lr_or, lr_and_or) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
     interp_cnf E' cs.
   Proof.
-    move=> Hzip Hsz.
+    move=> Hzip .
     move: (mk_env_umulo_rec_zip_sat Hzip) => Hsat_zip.
     move=> Hgtt Hgls1 Hgls2.
     apply: Hsat_zip.
     - done.
-    - rewrite (unzip1_extzip_ll). done.
-        by rewrite (size_rev ls2) (eqP Hsz).
-    - rewrite (unzip2_extzip_rl).
-      exact: (newer_than_lits_rev Hgls2).
-        by rewrite (size_rev ls2) (eqP Hsz).
+    - rewrite unzip1_extzip newer_than_lits_cat
+              newer_than_lits_copy;
+        last by rewrite -newer_than_lit_tt_ff . 
+      apply /andP; split; done .
+    - rewrite unzip2_extzip newer_than_lits_cat
+              newer_than_lits_copy;
+        last by rewrite -newer_than_lit_tt_ff . 
+      apply /andP; split;
+        [by rewrite newer_than_lits_rev|done] .
   Qed.
 
   (* r <-> ls1 * ls2  >= 2^w *)
@@ -588,7 +592,6 @@ Section BBUmulo.
 
   Lemma mk_env_umulo_newer_cnf E g ls1 ls2 E' g' cs lr:
     mk_env_umulo E g ls1 ls2 = (E', g', cs, lr) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
@@ -600,7 +603,7 @@ Section BBUmulo.
     simpl snd.
     dcase (mk_env_umulo_rec E_wls2 g_wls2 (behead ls1) (behead ls2))=> [[[[[E_rec g_rec] cs_rec] r_or_rec] r_or_and_rec] Henv_rec].
     dcase (mk_env_mul E_rec g_rec lrs_wls1 lrs_wls2) => [[[[E_mul g_mul] cs_mul] lrs_mul] Henv_mul].
-    case=> _ <- <- _ => Hsz Hnew_gtt Hnew_gls1 Hnew_gls2.
+    case=> _ <- <- _ => Hnew_gtt Hnew_gls1 Hnew_gls2.
     rewrite !newer_than_cnf_catrev.
     move: (mk_env_zeroextend_newer_gen Henv_wls1) => H_gls1.
     move: (mk_env_zeroextend_newer_gen Henv_wls2) => H_gls12.
@@ -625,8 +628,7 @@ Section BBUmulo.
     move: (mk_env_zeroextend_newer_res Henv_wls2 Hnew_ggls1_gtt Hnew_ggls1_gls2) => H_gls2_lrs2.
     move: (newer_than_lits_splitlsl Hnew_ggls2_gtt Hnew_ggls2_gls1) => /= /andP [Hnew_ggls2_ls1low Hnew_ggls2_ls1high].
     move: (newer_than_lits_splitlsl Hnew_ggls2_gtt Hnew_ggls2_gls2) => /= /andP [Hnew_ggls2_ls12ow Hnew_ggls2_ls2high].
-    have Hsz_tl: (size (behead ls1) == size (behead ls2)) by rewrite !size_behead (eqP Hsz).
-    move: (mk_env_umulo_rec_newer_cnf Henv_rec Hsz_tl Hnew_ggls2_gtt Hnew_ggls2_ls1high Hnew_ggls2_ls2high) => Hnew_rec.
+    move: (mk_env_umulo_rec_newer_cnf Henv_rec Hnew_ggls2_gtt Hnew_ggls2_ls1high Hnew_ggls2_ls2high) => Hnew_rec.
     rewrite (newer_than_cnf_le_newer Hnew_rec H_grecgmul1).
     move: (newer_than_lits_le_newer H_gls2_lrs1 H_gls2rec) => tmp.
     move: (newer_than_lits_le_newer H_gls2_lrs2 H_gls2rec) => tmp2.
@@ -683,7 +685,6 @@ Section BBUmulo.
 
   Lemma mk_env_umulo_sat E g ls1 ls2 E' g' cs lr:
     mk_env_umulo E g ls1 ls2 = (E', g', cs, lr) ->
-    size ls1 == size ls2 ->
     newer_than_lit g lit_tt ->
     newer_than_lits g ls1 ->  newer_than_lits g ls2 ->
     interp_cnf E' cs.
@@ -694,7 +695,7 @@ Section BBUmulo.
     simpl snd.
     dcase (mk_env_umulo_rec E_wls2 g_wls2 (behead ls1) (behead ls2))=> [[[[[E_rec g_rec] cs_rec] r_or_rec] r_or_and_rec] Henv_rec].
     dcase (mk_env_mul E_rec g_rec lrs_wls1 lrs_wls2) => [[[[E_mul g_mul] cs_mul] lrs_mul] Henv_mul].
-    case=> <- _ <- _ => Hsz Hnew_gtt Hnew_gls1 Hnew_gls2.
+    case=> <- _ <- _ => Hnew_gtt Hnew_gls1 Hnew_gls2.
     rewrite !interp_cnf_catrev.
     move: (mk_env_zeroextend_newer_gen Henv_wls1) => H_ggls1.
     move: (mk_env_zeroextend_newer_gen Henv_wls2) => H_ggls12.
@@ -746,9 +747,8 @@ Section BBUmulo.
     move: (mk_env_zeroextend_newer_res Henv_wls2 Hnew_gls1tt Hnew_gls1ls2) => Hnew_gls2_lrs2.
     move: (newer_than_lits_splitlsl Hnew_gls2tt Hnew_gls2ls1) => /= /andP [Hnew_gls2ls1_low Hnew_gls2ls1_high].
     move: (newer_than_lits_splitlsl Hnew_gls2tt Hnew_gls2ls2) => /= /andP [Hnew_gls2ls2_low Hnew_gls2ls2_high].
-    have Hsz_tl: (size (behead ls1) == size (behead ls2)) by rewrite !size_behead (eqP Hsz).
-    move: (mk_env_umulo_rec_sat Henv_rec Hsz_tl Hnew_gls2tt Hnew_gls2ls1_high Hnew_gls2ls2_high) => Hicnf_rec_rec.
-    move: (mk_env_umulo_rec_newer_cnf Henv_rec Hsz_tl Hnew_gls2tt Hnew_gls2ls1_high Hnew_gls2ls2_high) => Hncnf_rec_rec.
+    move: (mk_env_umulo_rec_sat Henv_rec Hnew_gls2tt Hnew_gls2ls1_high Hnew_gls2ls2_high) => Hicnf_rec_rec.
+    move: (mk_env_umulo_rec_newer_cnf Henv_rec Hnew_gls2tt Hnew_gls2ls1_high Hnew_gls2ls2_high) => Hncnf_rec_rec.
     move: (newer_than_cnf_le_newer Hncnf_rec_rec H_grecmul) => Hncnf_mul_rec.
     rewrite (env_preserve_cnf Hpre_Ef Hncnf_mul_rec).
     rewrite (env_preserve_cnf Hpre_mul Hncnf_rec_rec).

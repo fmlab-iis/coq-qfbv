@@ -458,9 +458,7 @@ Proof .
         move : (mk_env_shl_rec_newer_gen Hrec) => Hggtl .
         move : (newer_than_lit_le_newer Hgnshd (pos_leb_trans Hggtl Hgtlghd)) => Hghdnshd .
         move : (mk_env_shl_int_newer_res (newer_than_lit_le_newer Hgtt Hggtl) Hgtllstl Hint) => Hghdlshd .
-        move : (size_mk_env_shl_int Hint) => -/eqP Hlstllshd .
-        rewrite eq_sym in Hlstllshd .
-        move : (mk_env_ite_newer_cnf Hlstllshd Hite Hghdnshd Hghdlshd (newer_than_lits_le_newer Hgtllstl Hgtlghd)) => Hgitecsite .
+        move : (mk_env_ite_newer_cnf Hite (newer_than_lit_le_newer Hgtt (pos_leb_trans Hggtl Hgtlghd)) Hghdnshd Hghdlshd (newer_than_lits_le_newer Hgtllstl Hgtlghd)) => Hgitecsite .
         by rewrite (newer_than_cnf_le_newer Hgtlcstl (pos_leb_trans Hgtlghd Hghdgite)) (newer_than_cnf_le_newer Hghdcshd Hghdgite) Hgitecsite .
 Qed .
 
@@ -565,9 +563,7 @@ Proof .
       * by case => <- _ <- _ .
       * case => <- _ <- _ .
         rewrite !interp_cnf_cat .
-        move : (size_mk_env_shl_int Hint) => -/eqP Hlstllshd .
-        rewrite eq_sym in Hlstllshd .
-        move : (mk_env_ite_sat Hlstllshd Hite (newer_than_lit_le_newer Hgnshd (pos_leb_trans Hggtl Hgtlghd)) Hghdlshd (newer_than_lits_le_newer Hgtllstl Hgtlghd)) => HEitecsite .
+        move : (mk_env_ite_sat Hite (newer_than_lit_le_newer Hgtt (pos_leb_trans Hggtl Hgtlghd)) (newer_than_lit_le_newer Hgnshd (pos_leb_trans Hggtl Hgtlghd)) Hghdlshd (newer_than_lits_le_newer Hgtllstl Hgtlghd)) => HEitecsite .
         rewrite (env_preserve_cnf HEhdEite Hghdcshd) .
         rewrite (env_preserve_cnf HEhdEite (newer_than_cnf_le_newer Hgtlcstl Hgtlghd)) .
         rewrite (env_preserve_cnf HEtlEhd Hgtlcstl) .

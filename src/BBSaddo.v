@@ -125,7 +125,6 @@ Qed.
 
 Lemma mk_env_saddo_newer_cnf E g ls1 ls2 E' g' cs lr :
   mk_env_saddo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   newer_than_cnf g' cs.
@@ -133,9 +132,10 @@ Proof.
   rewrite /mk_env_saddo /gen.
   case Hmkfadd : (mk_env_full_adder E g lit_ff ls1 ls2)
   => [[[[E_fadd g_fadd] cs_fadd] cout] r_fadd].
-  case=> _ <- <- _ Hsz Hgt Hgl1 Hgl2. rewrite /= !newer_than_cnf_catrev.
+  case=> _ <- <- _ Hgt Hgl1 Hgl2. rewrite /= !newer_than_cnf_catrev.
+  generalize Hgt; rewrite newer_than_lit_tt_ff => Hgff .
   (* newer_than_cnf (g_fadd+1) cs_fadd *)
-  move : (mk_env_full_adder_newer_cnf Hmkfadd Hgl1 Hgl2 Hgt (eqP Hsz)) => Hgfcf.
+  move : (mk_env_full_adder_newer_cnf Hmkfadd Hgl1 Hgl2 Hgt Hgff) => Hgfcf.
   move : (pos_leb_add_diag_r g_fadd 1) => Hgfg1.
   rewrite (newer_than_cnf_le_newer Hgfcf Hgfg1) /=.
   (* others *)
@@ -173,7 +173,6 @@ Qed.
 
 Lemma mk_env_saddo_sat E g ls1 ls2 E' g' cs lr :
   mk_env_saddo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   interp_cnf E' cs.
@@ -181,7 +180,8 @@ Proof.
   rewrite /mk_env_saddo /gen.
   case Henv_fa : (mk_env_full_adder E g lit_ff ls1 ls2)
   => [[[[E_fa g_fa] cs_fa] cout] r_fa].
-  case=> <- _ <- _ Hsz Hngg Hngls1 Hngls2.
+  case=> <- _ <- _ Hngg Hngls1 Hngls2.
+  generalize Hngg; rewrite newer_than_lit_tt_ff => Hgff .
   rewrite !interp_cnf_catrev.
   rewrite !interp_cnf_cons.
   remember (env_upd E_fa g_fa
@@ -189,9 +189,9 @@ Proof.
             ~~ interp_lit E_fa (lastd lit_ff r_fa)
             || ~~ interp_lit E_fa (lastd lit_ff ls1) && ~~ interp_lit E_fa (lastd lit_ff ls2) &&
                interp_lit E_fa (lastd lit_ff r_fa))) as Ef.
-  move: (mk_env_full_adder_sat Henv_fa Hngls1 Hngls2 Hngg (eqP Hsz)) => Hicnf_fa.
+  move: (mk_env_full_adder_sat Henv_fa Hngls1 Hngls2 Hngg Hgff) => Hicnf_fa.
   move: (mk_env_full_adder_newer_gen Henv_fa) => Hggfa.
-  move: (mk_env_full_adder_newer_cnf Henv_fa Hngls1 Hngls2 Hngg (eqP Hsz)) => H.
+  move: (mk_env_full_adder_newer_cnf Henv_fa Hngls1 Hngls2 Hngg Hgff) => H.
   move: (mk_env_full_adder_preserve Henv_fa) => Hpre_fa.
   have: (env_preserve E_fa Ef g_fa) => Hpre_ef.
   {

@@ -123,16 +123,15 @@ Qed.
 
 Lemma mk_env_ssubo_newer_cnf E g ls1 ls2 E' g' cs lr :
   mk_env_ssubo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   newer_than_cnf g' cs.
 Proof.
   rewrite /mk_env_ssubo /gen.
   dcase (mk_env_sub E g ls1 ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Henv_sub].
-  case=> _ <- <- _ Hsz Hgt Hgl1 Hgl2. rewrite /= !newer_than_cnf_catrev.
+  case=> _ <- <- _ Hgt Hgl1 Hgl2. rewrite /= !newer_than_cnf_catrev.
   (* newer_than_cnf (g_subdd+1) cs_subdd *)
-  move : (mk_env_sub_newer_cnf Henv_sub Hgt Hgl1 Hgl2 (eqP Hsz)) => Hgfcf.
+  move : (mk_env_sub_newer_cnf Henv_sub Hgt Hgl1 Hgl2) => Hgfcf.
   move : (pos_leb_add_diag_r g_sub 1) => Hgfg1.
   rewrite (newer_than_cnf_le_newer Hgfcf Hgfg1) /=.
   (* others *)
@@ -169,14 +168,13 @@ Qed.
 
 Lemma mk_env_ssubo_sat E g ls1 ls2 E' g' cs lr :
   mk_env_ssubo E g ls1 ls2 = (E', g', cs, lr) ->
-  size ls1 == size ls2 ->
   newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   interp_cnf E' cs.
 Proof.
   rewrite /mk_env_ssubo /gen.
   dcase (mk_env_sub E g ls1 ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Henv_sub].
-  case=> <- _ <- _ Hsz Hngg Hngls1 Hngls2.
+  case=> <- _ <- _ Hngg Hngls1 Hngls2.
   rewrite !interp_cnf_catrev.
   rewrite !interp_cnf_cons.
   remember (env_upd E_sub g_sub
@@ -184,9 +182,9 @@ Proof.
             interp_lit E_sub (lastd lit_ff lrs_sub)
             || interp_lit E_sub (lastd lit_ff ls1) && ~~ interp_lit E_sub (lastd lit_ff ls2) &&
                ~~ interp_lit E_sub (lastd lit_ff lrs_sub))) as Ef.
-  move: (mk_env_sub_sat Henv_sub Hngg Hngls1 Hngls2 (eqP Hsz)) => Hicnf_sub.
+  move: (mk_env_sub_sat Henv_sub Hngg Hngls1 Hngls2) => Hicnf_sub.
   move: (mk_env_sub_newer_gen Henv_sub) => Hggsub.
-  move: (mk_env_sub_newer_cnf Henv_sub Hngg Hngls1 Hngls2 (eqP Hsz)) => H.
+  move: (mk_env_sub_newer_cnf Henv_sub Hngg Hngls1 Hngls2) => H.
   move: (mk_env_sub_preserve Henv_sub) => Hpre_sub.
   have: (env_preserve E_sub Ef g_sub) => Hpre_ef.
   {

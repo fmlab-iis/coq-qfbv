@@ -378,11 +378,14 @@ Qed.
 Lemma mk_env_full_adder_newer_cnf  E g l1 l2 lcin E' g' cs lrs lcout:
   mk_env_full_adder E g lcin l1 l2 = (E', g', cs, lcout, lrs) ->
   newer_than_lits g l1 -> newer_than_lits g l2 ->
-  newer_than_lit g lcin -> size l1 = size l2 -> newer_than_cnf g' cs.
+  newer_than_lit g lcin -> newer_than_lit g lit_ff -> newer_than_cnf g' cs.
 Proof.
-  rewrite /mk_env_full_adder => Henv Hntl1 Hntl2 Hntlcin Hszeq.
-  apply mk_env_full_adder_zip_newer_cnf with E g (extzip_ff l1 l2) lcin E' lrs lcout;
-    [done|by rewrite unzip1_extzip_ss|by rewrite unzip2_extzip_ss|done].
+  rewrite /mk_env_full_adder => Henv Hntl1 Hntl2 Hntlcin Hff .
+  apply mk_env_full_adder_zip_newer_cnf with E g (extzip_ff l1 l2) lcin E' lrs lcout .
+  - done .
+  - rewrite unzip1_extzip newer_than_lits_cat Hntl1 newer_than_lits_copy // .
+  - rewrite unzip2_extzip newer_than_lits_cat Hntl2 newer_than_lits_copy // .
+  - done .
 Qed.
 
 Lemma mk_env_full_adder1_preserve E g l1 l2 lcin E' g' cs lrs lcout:
@@ -468,12 +471,20 @@ Qed.
 
 Lemma mk_env_full_adder_sat  E g l1 l2 lcin E' g' cs lrs lcout:
   mk_env_full_adder E g lcin l1 l2 = (E', g', cs, lcout, lrs) ->
-  newer_than_lits g l1 -> newer_than_lits g l2 -> newer_than_lit g lcin -> size l1 = size l2 ->
+  newer_than_lits g l1 -> newer_than_lits g l2 -> newer_than_lit g lcin -> newer_than_lit g lit_ff ->
   interp_cnf E' cs.
 Proof.
-  rewrite /mk_env_full_adder => Henv Hntl1 Hntl2 Hntlcin Hszeq.
-  apply mk_env_full_adder_zip_sat with E g (extzip_ff l1 l2) lcin g' lrs lcout;
-    [done|by rewrite unzip1_extzip_ss|by rewrite unzip2_extzip_ss|done].
+  rewrite /mk_env_full_adder => Henv Hntl1 Hntl2 Hntlcin Hgff.
+  apply mk_env_full_adder_zip_sat with
+      E g (extzip_ff l1 l2) lcin g' lrs lcout .
+  - done .
+  - rewrite unzip1_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done.
+    apply /andP; done .
+  - rewrite unzip2_extzip newer_than_lits_cat
+            newer_than_lits_copy; last done.
+    apply /andP; done .
+  - done .
 Qed.
 
 
@@ -547,13 +558,13 @@ Lemma mk_env_add_newer_cnf:
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
     newer_than_lit g lit_ff ->
-    size ls1 = size ls2 ->
     newer_than_cnf g' cs.
 Proof.
   move => E g ls1 ls2 E' g' cs lrs.
   rewrite /mk_env_add.
   case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] _ <- <- _ .
-  apply (mk_env_full_adder_newer_cnf Hmk).
+  move => Hls1 Hls2 Hff .
+  apply (mk_env_full_adder_newer_cnf Hmk Hls1 Hls2 Hff Hff) .
 Qed.
 
 Lemma mk_env_add_preserve :
@@ -570,9 +581,10 @@ Lemma mk_env_add_sat :
   forall E g ls1 ls2 E' g' cs lrs,
     mk_env_add E g ls1 ls2 = (E', g', cs, lrs) ->
     newer_than_lits g ls1 ->  newer_than_lits g ls2 -> newer_than_lit g lit_ff -> 
-    size ls1 = size ls2 -> interp_cnf E' cs.
+    interp_cnf E' cs.
 Proof.
   move => E g ls1 ls2 E' g' cs lrs.
   rewrite /mk_env_add.  case Hmk: (mk_env_full_adder E g lit_ff ls1 ls2) => [[[[E'0 g'0] cs0] cout] lrs0]. move => [] <- _ <- _.
-  apply (mk_env_full_adder_sat Hmk).
+  move => Hgls1 Hgls2 Hgff .
+  apply (mk_env_full_adder_sat Hmk Hgls1 Hgls2 Hgff Hgff).
 Qed.

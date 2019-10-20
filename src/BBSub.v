@@ -137,14 +137,14 @@ Lemma mk_env_sbb_newer_cnf :
     newer_than_lit g l_bin ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
-    size ls1 = size ls2 ->
+    newer_than_lit g lit_ff ->
     newer_than_cnf g' cs.
 Proof.
   move=> E g l_bin ls1 ls2 E' g' cs l_bout lrs. rewrite /mk_env_sbb.
   dcase (mk_env_not E g ls2) => [[[[E_not g_not] cs_not] lrs_not] Henv_not].
   dcase (mk_env_full_adder E_not g_not (neg_lit l_bin) ls1 lrs_not) =>
   [[[[[E_add g_add] cs_add] l_bout_add] lrs_add] Henv_add].
-  case=> _ <- <- _ _. move=> Hnew_gbin Hnew_gls1 Hnew_gls2 Hszeq.
+  case=> _ <- <- _ _. move=> Hnew_gbin Hnew_gls1 Hnew_gls2 Hgff .
   rewrite newer_than_cnf_cat.
   move: (mk_env_not_newer_cnf Henv_not Hnew_gls2) => Hnew_g_notcs_not.
   rewrite (newer_than_cnf_le_newer Hnew_g_notcs_not
@@ -155,9 +155,8 @@ Proof.
   move: (newer_than_lits_le_newer Hnew_gls2 Hgg_not) => Hnew_g_notls2.
   move: (newer_than_lit_le_newer Hnew_gbin Hgg_not) => Hnew_g_notbin.
   rewrite -newer_than_lit_neg in Hnew_g_notbin.
-  rewrite (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Henv_not)) in Hszeq.
-  exact : (mk_env_full_adder_newer_cnf Henv_add Hnew_g_notls1
-                                       (mk_env_not_newer_res Henv_not Hnew_gls2) Hnew_g_notbin Hszeq).
+    exact : (mk_env_full_adder_newer_cnf Henv_add Hnew_g_notls1
+                                       (mk_env_not_newer_res Henv_not Hnew_gls2) Hnew_g_notbin (newer_than_lit_le_newer Hgff Hgg_not)).
 Qed.
 
 Lemma mk_env_sbb_preserve :
@@ -182,14 +181,14 @@ Lemma mk_env_sbb_sat :
     newer_than_lit g l_bin ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
-    size ls1 = size ls2 ->
+    newer_than_lit g lit_ff ->
     interp_cnf E' cs.
 Proof.
   move=> E g l_bin ls1 ls2 E' g' cs l_bout lrs. rewrite /mk_env_sbb.
   dcase (mk_env_not E g ls2) => [[[[E_not g_not] cs_not] lrs_not] Henv_not].
   dcase (mk_env_full_adder E_not g_not (neg_lit l_bin) ls1 lrs_not) =>
   [[[[[E_add g_add] cs_add] l_bout_add] lrs_add] Henv_add].
-  case=> <- _ <- _ _. move=> Hnew_gbin Hnew_gls1 Hnew_gls2 Hszeq.
+  case=> <- _ <- _ _. move=> Hnew_gbin Hnew_gls1 Hnew_gls2 Hnew_gff.
   rewrite interp_cnf_cat.
   move: (mk_env_not_sat Henv_not Hnew_gls2) => Hcs_Enotcsnot.
   move: (mk_env_full_adder_preserve Henv_add) => Hpre.
@@ -200,8 +199,8 @@ Proof.
   move: (mk_env_not_newer_res Henv_not Hnew_gls2) => Hnew_gnotlrsnot.
   move: (newer_than_lit_le_newer Hnew_gbin Hggnot) => Hnew_gnotbin.
   rewrite -newer_than_lit_neg in Hnew_gnotbin.
-  rewrite (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Henv_not)) in Hszeq.
-  exact : (mk_env_full_adder_sat Henv_add Hnew_gnotls1 Hnew_gnotlrsnot Hnew_gnotbin Hszeq).
+  move : (newer_than_lit_le_newer Hnew_gff Hggnot) => Hnew_gnotff .
+  apply (mk_env_full_adder_sat Henv_add Hnew_gnotls1 Hnew_gnotlrsnot Hnew_gnotbin Hnew_gnotff).
 Qed.
 
 (* ===== bit_blast_sub ===== *)
@@ -286,21 +285,18 @@ Lemma mk_env_sub_newer_cnf:
     newer_than_lit g lit_ff ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
-    size ls1 = size ls2 ->
     newer_than_cnf g' cs.
 Proof.
   move => E g ls1 ls2 E' g' cs lrs.
   rewrite /mk_env_sub.
   case Hmkneg : (mk_env_neg E g ls2) => [[[E_neg g_neg] cs_neg] lrs_neg].
   case Hmkadd : (mk_env_add E_neg g_neg ls1 lrs_neg) => [[[E_add g_add] cs_add] lrs_add].
-  case => _ <- <- _ Htt Hgls1 Hgls2 Hszeq.
+  case => _ <- <- _ Htt Hgls1 Hgls2 .
   rewrite newer_than_cnf_cat.
   move : (mk_env_add_newer_gen Hmkadd) => Hgneggadd.
   move : (mk_env_neg_newer_gen Hmkneg) => Hggneg.
   move : (mk_env_neg_newer_res Hmkneg Htt Hgls2) => Hnegres.
-  move : (bit_blast_neg_size_ss (mk_env_neg_is_bit_blast_neg Hmkneg)) => Hnegss.
-  rewrite -Hszeq in Hnegss.
-  rewrite (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgls1 Hggneg) Hnegres (newer_than_lit_le_newer Htt Hggneg) Hnegss)/=.
+  rewrite (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgls1 Hggneg) Hnegres (newer_than_lit_le_newer Htt Hggneg))/=.
   move : (mk_env_neg_newer_cnf Hmkneg Htt Hgls2) => Hnegcnf.
   rewrite (newer_than_cnf_le_newer Hnegcnf Hgneggadd).
   done.
@@ -326,19 +322,17 @@ Qed.
 Lemma mk_env_sub_sat :
   forall E g ls1 ls2 E' g' cs lrs,
     mk_env_sub E g ls1 ls2 = (E', g', cs, lrs) ->
-    newer_than_lit g lit_ff -> newer_than_lits g ls1 ->  newer_than_lits g ls2 ->
-    size ls1 = size ls2 -> interp_cnf E' cs.
+    newer_than_lit g lit_ff -> newer_than_lits g ls1 ->  newer_than_lits g ls2 -> interp_cnf E' cs.
 Proof.
   move => E g ls1 ls2 E' g' cs lrs.
   rewrite /mk_env_sub.
   case Hmkneg : (mk_env_neg E g ls2) => [[[E_neg g_neg] cs_neg] lrs_neg].
   case Hmkadd : (mk_env_add E_neg g_neg ls1 lrs_neg) => [[[E_add g_add] cs_add] lrs_add].
-  case => <- _ <- _ Htt Hgls1 Hgls2 Hszeq.
+  case => <- _ <- _ Htt Hgls1 Hgls2.
   rewrite interp_cnf_cat.
   move : (mk_env_neg_newer_gen Hmkneg) => Hggneg.
   move : (mk_env_neg_newer_res Hmkneg Htt Hgls2) => Hnegres.
-  move : (bit_blast_neg_size_ss (mk_env_neg_is_bit_blast_neg Hmkneg)) => Hnegss. rewrite -Hszeq in Hnegss.
-  rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgls1 Hggneg) Hnegres (newer_than_lit_le_newer Htt Hggneg) Hnegss).
+  rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgls1 Hggneg) Hnegres (newer_than_lit_le_newer Htt Hggneg)).
   move : (mk_env_neg_sat Hmkneg Htt Hgls2)=> Hcnfneg.
   move : (mk_env_add_preserve Hmkadd) => HEnegEadd.
   move : (mk_env_neg_preserve Hmkneg) => HEEneg.
