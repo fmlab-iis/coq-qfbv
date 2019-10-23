@@ -48,4 +48,5 @@ src/BBExtract.v
 src/BBSlice.v
 src/BBConcat.v
 src/BBExport.v
-
+src/AdhereConform.v
+src/BitBlasting.v
