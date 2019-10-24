@@ -214,6 +214,11 @@ Proof.
     by rewrite (IH _ _ _ _ _ _ Henv_tl).
 Qed.
 
+Lemma mk_env_or_is_bit_blast_or E g ls1 ls2 E' g' cs lrs :
+  mk_env_or E g ls1 ls2 = (E', g', cs, lrs) ->
+  bit_blast_or g ls1 ls2 = (g', cs, lrs).
+Proof. exact: mk_env_or_zip_is_bit_blast_or_zip. Qed.
+
 Lemma mk_env_or_zip_newer_gen E g lsp E' g' cs lrs :
   mk_env_or_zip E g lsp = (E', g', cs, lrs) -> (g <=? g')%positive.
 Proof.

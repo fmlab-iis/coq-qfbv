@@ -3385,11 +3385,8 @@ Proof.
   case => <- _ <- <- <- .
   rewrite (IH0 _ _ _ _ _ _ _ _ _ _ Hcf0 Hwf0 Hmke0) .
   rewrite (IH1 _ _ _ _ _ _ _ _ _ _ Hcf1 Hwf1 Hmke1) .
-(*
   rewrite (mk_env_or_is_bit_blast_or Hmkr). reflexivity.
 Qed .
-*)
-Admitted .
 
 Lemma mk_env_exp_is_bit_blast_exp_xor :
   forall (e1 : QFBV.exp),
