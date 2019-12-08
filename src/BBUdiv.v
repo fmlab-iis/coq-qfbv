@@ -8,47 +8,17 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+From Coq Require List.
 
-(* ===== bit_blast_udiv ===== *)
 
-Fixpoint act_size' (b : bits) : nat :=
-  match b with
-  | [::] => 0
-  | bhd :: btl => if bhd then size b else act_size' btl
-  end.
 
-Definition act_size b := act_size' (rev b).
 
-Fixpoint act_sizel' (l : word) :=
-  match l with
-  |[::] => 0
-  | lhd :: ltl => if (lhd==lit_tt) then size l else act_sizel' ltl
-  end.
-
-Definition act_sizel l := act_sizel' (rev l).
-
-Fixpoint udivB_rec (n m : bits) i : bits * bits :=
-  match i with
-  | 0 => (zeros (size n), shrB (act_size n - (act_size m) + 1) n)
-  | S i' => 
-    let ai := nth false n (act_size n - i' - (act_size m)) in
-    let di := dropmsb (joinlsb ai (udivB_rec n m i').2 ) in
-    let bi := negb (ltn (to_nat di) (to_nat m)) in
-    let ri := if bi then subB di (zext (size di - size m) m) else di in
-    let qi := dropmsb (joinlsb bi (udivB_rec n m i').1) in
-    (qi, ri)
-  end.
-  
-Definition udivB (n m : bits) :=
-  if (m == zeros (size m)) then (zeros (size n), zeros (size n))
-  else  udivB_rec n m (act_size n - (act_size m) + 1).
-
-(*Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 4 13)).1).
-Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 4 13)).2).
-Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).1).
-Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).2).
- *)
-
+Lemma dropmsb_zeros : forall n, dropmsb (zeros n) = zeros n.-1.
+Proof.
+  move => n. case n. done.
+  move => n0. have->:(zeros n0.+1.-1=zeros n0) by rewrite-addn1-subn1 addnK.
+  by rewrite-zeros_rcons/dropmsb/=belastd_rcons. 
+Qed.
 
 
 Lemma to_nat_joinlsb a n : to_nat (joinlsb a n) = (to_nat n).*2 + a.
@@ -114,14 +84,6 @@ Qed.
 
 Lemma mulB_nil_r n : mulB n [::] = zeros (size n).
 Proof.  rewrite/mulB full_mul_nil_r/low size_zeros subnn cats0 take_oversize; last by rewrite size_zeros. done. Qed.
-       
-Lemma size_udivB1 n m : size (udivB n m).1 = size n.
-Proof.
-  rewrite/udivB.
-  case Hm0: (m == zeros (size m)); first by rewrite size_zeros.
-  elim ((act_size n - act_size m + 1)) =>[|sz IH]; first by rewrite/=size_zeros.
-  by rewrite/=size_dropmsb size_joinlsb IH addnK.
-Qed.
 
 Lemma zip_nil_r S T (p:seq S) : @zip S T p [::] = [::].
 Proof.
@@ -244,11 +206,7 @@ Proof.
   move : (IH n). rewrite/mulB/low size_addB size_joinlsb size_zext!size_full_mul addnAC addn1 subnDA subnn sub0n cats0. intros. rewrite addnC minnn subnDA subnAC subnn sub0n cats0. rewrite (take_nth false). 
 Admitted.
 
-Lemma udivB0 : forall m n, (udivB m (zeros n)) = (zeros (size m), zeros (size m)).
-Proof.
-  elim => [|mhd mtl IH]n /=. by rewrite/udivB size_zeros eq_refl/=.
-  by rewrite/udivB size_zeros eq_refl/=.
-Qed.
+
 
 Lemma subB_is_dropmsb_adcB_invB (p q: bits) : subB p q = dropmsb (adcB true p (invB q)).2.
 Proof. 
@@ -266,45 +224,7 @@ Admitted.
   
 Lemma subB0: forall m n, subB m (zeros n) = m.
 Proof.
-  
 Admitted.
-
-Lemma act_size'0: forall m , act_size' (zeros m) = 0.
-Proof. elim . done. intros. by rewrite-zeros_cons/=. 
-Qed.
-
-Lemma rev0 : forall m, rev (zeros m) = zeros m.
-Proof. elim. done. intros. by rewrite-zeros_cons rev_cons H zeros_rcons zeros_cons.
-Qed.
-
-Lemma act_size0: forall m , act_size (zeros m) = 0.
-Proof.
-  elim. done. intros. by rewrite/act_size rev0 act_size'0. Qed.
-
-Lemma act_size_nil : act_size nil = 0.
-Proof. done. Qed.
-
-
-
-Lemma size_udivB_rec : forall  n m , size (udivB_rec n m (act_size n - act_size m + 1)).2 = size n.
-Proof.
-  intros.
-  elim ((act_size n - act_size m + 1)) =>[|sz IH]; first by rewrite shrB_size.
-  rewrite/=. case Hhd : (to_nat
-         (dropmsb
-            (joinlsb (nth false n (act_size n - sz - act_size m)) (udivB_rec n m sz).2)) <
-       to_nat m).
-  by rewrite/= size_dropmsb size_joinlsb IH addnK. 
-  rewrite /=QFBV.size_subB size_zext !size_dropmsb !size_joinlsb !IH !addnK minnE. 
-  by rewrite subnDA subnn subn0.
-Qed.
-
-Lemma size_udivB2 : forall n m , size (udivB n m).2 = size n.
-Proof.
-  rewrite/udivB. intros.
-  case Hm0: (m == zeros (size m)); first by rewrite size_zeros.
-  apply size_udivB_rec.
-Qed.
   
 Lemma mulB0' : forall m n, mulB m (zeros n) = zeros (size m).
 Proof.
@@ -313,35 +233,156 @@ Proof.
   exfalso; apply Heq; apply Nats.ltn_lt; rewrite H; done.
   by rewrite size_cat size_zeros subnDA subnn take0 sub0n !cats0.
 Qed.
-Lemma dropmsb_zeros : forall n, dropmsb (zeros n) = zeros n.-1.
-Proof.
-  move => n. case n. done.
-  move => n0. have->:(zeros n0.+1.-1=zeros n0) by rewrite-addn1-subn1 addnK.
-  by rewrite-zeros_rcons/dropmsb/=belastd_rcons. 
+
+Lemma toNat_shlB1 : forall (p: bits), to_nat (shlB1 p) = div.modn ((to_nat p).*2) (2^size p).
+Proof. move => p. by rewrite /shlB1 to_nat_dropmsb to_nat_joinlsb size_joinlsb-subn1 addnK addn0-muln2.
 Qed.
 
-Lemma udivB_rec0 : forall n m, udivB (zeros n) m = (zeros n, zeros n).
+Lemma toNat_shlBn:
+  forall n k, k < n -> to_nat (shlB k (from_nat n 1) ) = 2 ^ k.
 Proof.
-  intros. rewrite/udivB act_size0 sub0n add0n. case Hm : (m == zeros (size m)).
-  by rewrite size_zeros.
-  elim n. rewrite /=. apply negbT in Hm; rewrite -ltB0n ltB_to_nat/= in Hm. by rewrite/= Hm/= /shrB1/=/droplsb/=/joinlsb/dropmsb.
-  intros. rewrite/= zeros_cons act_size0 subnn sub0n add0n nth0/=.
-  rewrite/ shrB1/=. have-> : (to_nat (dropmsb (joinlsb b0 (droplsb (b0 :: joinmsb (zeros n0) b0)))) = 0). by rewrite to_nat_dropmsb to_nat_joinlsb to_nat_droplsb/= to_nat_joinmsb mul0n to_nat_zeros size_droplsb/=size_joinmsb size_zeros div.mod0n. 
-  apply negbT in Hm; rewrite -ltB0n ltB_to_nat/= in Hm. rewrite Hm/=.
-  rewrite size_zeros droplsb_joinlsb/=/joinmsb zeros_rcons joinlsb_false_zeros.
-  rewrite dropmsb_zeros-2!addn1-subn1-addnBA; last done. by rewrite subnn addn0 zeros_cons addn1.
-Qed.
+Admitted.
 
-(*Lemma to_nat_not_zero: forall n, 0 <> to_nat n <-> n == zeros (size n) = false.
+Lemma shlB_dropmsb n (p: bits) : shlB n (dropmsb p) = dropmsb (shlB n p).
 Proof.
-  split.
-  elim n => [|nhd ntl IH]/=. done.
-  intro. SearchAbout cons.*)
+Admitted.
   
+
+(* ===== bit_blast_udiv ===== *)
+
+(*Fixpoint act_size' (b : bits) : nat :=
+  match b with
+  | [::] => 0
+  | bhd :: btl => if bhd then size b else act_size' btl
+  end.
+
+Definition act_size b := act_size' (rev b).
+
+Fixpoint act_sizel' (l : word) :=
+  match l with
+  |[::] => 0
+  | lhd :: ltl => if (lhd==lit_tt) then size l else act_sizel' ltl
+  end.
+
+Definition act_sizel l := act_sizel' (rev l).
+*)
+(*Fixpoint udivB_rec (n m : bits) i : bits * bits :=
+  match i with
+  | 0 => (zeros (size n), shrB (act_size n - (act_size m) + 1) n)
+  | S i' => 
+    let ai := nth false n (act_size n - i' - (act_size m)) in
+    let di := dropmsb (joinlsb ai (udivB_rec n m i').2 ) in
+    let bi := negb (ltn (to_nat di) (to_nat m)) in
+    let ri := if bi then subB di (zext (size di - size m) m) else di in
+    let qi := dropmsb (joinlsb bi (udivB_rec n m i').1) in
+    (qi, ri)
+  end.
+
+Definition udivB (n m : bits) :=
+  if (m == zeros (size m)) then (zeros (size n), zeros (size n))
+  else  udivB_rec n m `(act_size n - (act_size m) + 1).*)
+
+Fixpoint udivB_rec (n m : bits) (q r : bits): bits * bits :=
+  match n with
+  | [::] => (q, r)
+  | nhd :: ntl => let di := dropmsb (joinlsb nhd r) in
+                  let bi := negb (ltn (to_nat di) (to_nat m)) in
+                  let ri := if bi then subB di m else di in
+                  let qi := dropmsb (joinlsb bi q) in
+                  udivB_rec ntl m qi ri
+  end.
+Definition udivB (n m : bits) : bits * bits :=
+  if ((from_nat (size n) (to_nat m)) == zeros (size n)) then (zeros (size n), n)
+  else udivB_rec n (from_nat (size n) (to_nat m)) (zeros (size n)) (zeros (size n)).
+
+(*Definition udivB_extzip (zip : seq (bool * bool)) (q r : bits) : bits * bits :=
+  udivB_rec (rev (unzip1 zip)) (unzip2 zip) q r .
+
+Definition udivB (n m : bits) : bits * bits :=
+  if (m == zeros (size m)) then (zeros (maxn(size n)(size m)), unzip1 (extzip0 n m))
+  else udivB_extzip (extzip0 n m) (zeros (maxn(size n)(size m))) (zeros (maxn(size n)(size m))).*)
+ 
+Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 14 14)).1).
+Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 14 13)).2).
+Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).1).
+Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).2).
+
+
+Lemma size_udivB_rec n m q r : size (udivB_rec n m q r).1 = size q.
+Proof.
+  move : m q r.  elim n => [|nhd ntl IH]m q r/=; first done. 
+  rewrite (IH m (dropmsb (joinlsb (~~ (to_nat (dropmsb (joinlsb nhd r)) < to_nat m)) q))
+              (if ~~ (to_nat (dropmsb (joinlsb nhd r)) < to_nat m)
+               then (dropmsb (joinlsb nhd r) -# m)%bits
+               else dropmsb (joinlsb nhd r))).
+    by rewrite size_dropmsb size_joinlsb addnK.
+Qed.  
+
+Lemma size_udivB n m : size (udivB n m).1 = (size n).
+Proof.
+  rewrite/udivB. case Hm0: ((size n) -bits of (to_nat m)%bits == zeros (size n)); first by rewrite size_zeros.
+  by rewrite (size_udivB_rec n (size n) -bits of (to_nat m)%bits (zeros (size n)) (zeros (size n))) size_zeros.
+Qed.
+
+
+  Lemma udivB0 : forall n m, (udivB m (zeros n)) = (zeros (size m), m).
+Proof.
+  intros; rewrite/udivB. by rewrite to_nat_zeros from_natn0 eq_refl/=.
+Qed.
+
+
+Lemma udivB_rec0_aux : forall n(m : bits) s,
+    ~~(m==zeros(size m)) -> udivB_rec (zeros n) m (zeros s) (zeros s)= (zeros s, zeros s).
+Proof.
+  elim. intros; first by done.
+  intros. rewrite-zeros_cons/=to_nat_dropmsb to_nat_joinlsb to_nat_zeros div.mod0n. 
+  move : (to_nat_zero m). move: H0; rewrite-eqbF_neg; move=>Hnotz; rewrite(eqP Hnotz)eqn0Ngt; move=>Htonat; rewrite Htonat/joinlsb zeros_cons dropmsb_zeros-pred_Sn. rewrite eqbF_neg in Hnotz.
+  exact :(H m s Hnotz).
+Qed.
+
+
+  
+Lemma udivB_rec0 : forall n (m : bits) q r ,
+    ~~(m==zeros(size m)) -> udivB_rec (zeros n.+1) m q (zeros r)= (shlB n.+1 q, (zeros r)).
+Proof.
+  intros. rewrite-zeros_cons/=to_nat_dropmsb to_nat_joinlsb to_nat_zeros div.mod0n.
+  move : (to_nat_zero m). move: H; rewrite-eqbF_neg; move=>Hnotz; rewrite(eqP Hnotz)eqn0Ngt; move=>Htonat; rewrite Htonat/joinlsb zeros_cons dropmsb_zeros-pred_Sn/shlB1. rewrite eqbF_neg in Hnotz.
+  move: q r. elim n; first done.  intros. rewrite-zeros_cons/=to_nat_dropmsb to_nat_joinlsb to_nat_zeros div.mod0n Htonat/joinlsb zeros_cons dropmsb_zeros-addn1-subn1 addnK.
+  move :(H (dropmsb (false :: q)) r). 
+  rewrite/shlB1/joinlsb. have->: ((dropmsb (false :: q) <<# n0)%bits = dropmsb (false :: (q <<# n0)%bits)).
+  rewrite/shlB/shlB1. elim n0; first done. rewrite/joinlsb/=; intros; by rewrite H0.
+  done.
+Qed.
+
+Lemma udiv0B : forall n (m: bits), ~~(from_nat n (to_nat m) == zeros n)-> udivB (zeros n) m = (zeros n, zeros n).
+Proof.
+  move => n m Hm. move : (negbTE Hm) => Hnot0. rewrite/udivB size_zeros Hnot0. 
+  move : Hnot0. elim n; first done.
+  move => ns Hudiv Hnot0. rewrite udivB_rec0; first by rewrite/shlB shlB_mul2exp mul0B.
+  by rewrite size_from_nat Hnot0.
+Qed.
+  
+Lemma size_uremB_rec : forall  n m q r, size m = size r -> size (udivB_rec n m q r).2 = size r.
+Proof.
+  elim =>[|nhd ntl IH]m q r Hsz; first done.
+  rewrite/=(IH m (dropmsb (joinlsb (~~ (to_nat (dropmsb (joinlsb nhd r)) < to_nat m)) q))
+       (if ~~ (to_nat (dropmsb (joinlsb nhd r)) < to_nat m)
+        then (dropmsb (joinlsb nhd r) -# m)%bits
+        else dropmsb (joinlsb nhd r)));
+  case H : ((to_nat (dropmsb (joinlsb nhd r)) < to_nat m)); try (by rewrite/=size_dropmsb size_joinlsb addnK|| by rewrite/=QFBV.size_subB size_dropmsb size_joinlsb addnK Hsz minnn).
+Qed.    
+
+Lemma size_uremB : forall n m , size (udivB n m).2 = size n.
+Proof.
+  rewrite/udivB. intros.
+  case Hm0: ((size n) -bits of (to_nat m)%bits == zeros (size n)); first done. 
+  rewrite size_uremB_rec; rewrite size_zeros; first done. by rewrite size_from_nat.
+Qed.  
+
 Lemma udivB_mulAC : forall d m n, (udivB d m).2 = zeros (size d) -> udivB m (mulB d n) = udivB (mulB m n) d.
 Proof.
-  elim =>[|dhd dtl IH] m n H; rewrite/udivB/=.
-  - by rewrite !size_mulB/mulB/=/low !take0 add0n sub0n zeros0 cats0/=.
+(*  elim =>[|dhd dtl IH] m n H; rewrite/udivB/=.
+  - rewrite !size_mulB/mulB/= /low !take0 add0n sub0n zeros0 cats0/=/extzip0!unzip1_extzip!sub0n!cats0. 
   - case Hz : (dhd :: dtl == b0 :: zeros (size dtl)).
     + rewrite (eqP Hz)zeros_cons size_mulB size_zeros !mul0B/=.
       case Hzeros: (b0 :: zeros (size dtl) == b0 :: zeros (size dtl)); rewrite !size_mulB; first done.
@@ -351,7 +392,7 @@ Proof.
         rewrite/= in Hl. rewrite Hl in Hz; discriminate.
         rewrite (eqP Hr) mulB0' act_size0 sub0n add0n. rewrite/=subn0 !act_size0 !sub0n add0n size_zeros nth0. have ->: (head false (zeros (size m))=false) by (case m=>[|mhd mtl]; by rewrite/=). rewrite/joinlsb/=/shrB1/= to_nat_dropmsb/=to_nat_droplsb/= to_nat_joinmsb mul0n to_nat_zeros addn0 div.mod0n. move : (to_nat_zero (dhd :: dtl))=> Heqz. rewrite Hz/= in Heqz. rewrite (neq0_lt0n Heqz)/= zeros_cons dropmsb_zeros. by rewrite/joinmsb zeros_rcons /droplsb/=zeros_cons dropmsb_zeros-addn1-subn1 addnK.
       * rewrite size_mulB mulnB_eq0 Hz/= in Hmul0.
-
+*)
 Admitted.
   
 Lemma to_nat_shrB1 : forall bs, to_nat (shrB1 bs) = div.divn (to_nat bs) 2.
@@ -366,139 +407,460 @@ Proof.
   elim n => [|ns IH]/=. by rewrite div.divn1.
   by rewrite to_nat_shrB1 IH-div.divnMA expnS mulnC. 
 Qed.
-  
-Lemma udivB_to_nat : forall p q, (*size p = size q ->*) (udivB p q).1 = from_nat (size p) (div.divn (to_nat p) (to_nat q)).
+
+Lemma ltn_neq0 : forall n m, n < m -> (m != 0).
 Proof.
-  elim =>[|phd ptl IH] q /=; rewrite/udivB/=.
-  - case H0: (q == zeros (size q)); first done. apply negbT in H0; rewrite-ltB0n ltB_to_nat/= in H0; by rewrite H0/=/joinlsb/dropmsb. 
-  - move : (IH q). rewrite/udivB. case H0: (q == zeros (size q)).
-    + by rewrite/=(eqP H0)to_nat_zeros div.divn0/=from_natn0/joinlsb.
-    + rewrite-div.divn2-div.divnMA!addn1/=. 
-      case Hsz : ((act_size (phd :: ptl) - act_size q)). move => IH1.
-      * rewrite subn0/=to_nat_dropmsb to_nat_joinlsb to_nat_shrB/=.
+  elim => [| ns IH] m/=. by rewrite lt0n.
+  - intro. rewrite-(eqP (Nats.lt_sub1r_add1l ns m)) in H; apply (IH m.-1) in H.
+    rewrite-lt0n (eqP (Nats.lt_sub1r_add1l 0 m)) in H. move : (ltn_trans (ltn0Sn 0) H). by rewrite lt0n.
+Qed.
+(*
+    Definition A:= Set->Set->Type.
+    Definition B := A->Type.
+    Definition C := B->Prop.
+    Check C. 
+    Definition id (T : Type) (x : T) : T := x. 
+    Check id (id (Set->Prop)).
+SearchAbout ltB.
+
+Lemma lt0B_size : forall b, ([::] <# b)%bits -> 0 < size b.
+Proof.
+  elim; first done. intros; by rewrite ltn0Sn.
+Qed.
+
+Lemma odd_to_nat_lsb : forall b, odd (to_nat b) =lsb b.
+Proof.
+  elim; first by rewrite/lsb/splitlsb/=.
+  move => a l IH.
+  rewrite/lsb/=odd_add odd_double-negb_eqb. case Ha : a; done.
+Qed.
+
+Inductive par : Set := open | close. Print cat. Print app.
+
+Inductive wp : list par -> Prop :=
+| wp0 : wp nil
+| wp1 : forall l, wp l -> wp (cons open (l ++ (close :: nil)))
+| wp2 : forall l1 l2, wp l1 -> wp l2 -> wp (l1 ++ l2).
+
+Theorem wp_oc : wp (cons open (cons close nil)).
+Proof.
+  have ->: (cons close nil = nil ++ (cons close nil)) . done.
+  apply wp1. apply wp0.
+Qed.
+
+Theorem wp_oc2 : wp (cons open (cons open (cons close (cons close nil)))).
+Proof.
+set l := (open:: (close::nil)). assert (wp l) by apply wp_oc.
+  apply wp1 with (l := (open:: (close::nil))). apply H.
+Qed.
+
+Lemma wp_o_head_c :
+forall l1 l2:list par,
+  wp l1 -> wp l2 -> wp (cons open (app l1 (cons close l2)%list))%list.
+Proof.
+  intros. have -> : (open :: (l1 ++ (close :: l2))%list = (open::(l1 ++ (close :: nil)))++l2). 
+  rewrite!app_comm_cons. SearchAbout app. erewrite <-app_assoc.  rewrite{3}/app. done.
+  apply wp2. apply wp1. apply H. apply H0.
+Qed.
+
+Require Import Relations.
+Section perms.
+Variable A : Set.
+
+ Inductive transpose : list A -> list A -> Prop :=
+   | transpose_hd :
+       forall (a b:A) (l:list A), transpose (a :: b :: l) (b :: a :: l)
+   | transpose_tl :
+       forall (a:A) (l l':list A),
+         transpose l l' -> transpose (a :: l) (a :: l').
+
+
+Inductive perm (l:list A) : list A -> Prop :=
+  | perm_id : perm l l
+  | perm_tr :
+      forall l' l'':list A, perm l l' -> transpose l' l'' -> perm l l''.
+
+
+Lemma perm_refl : reflexive _ perm. 
+Proof.
+  unfold reflexive; left.
+Qed.
+
+
+Lemma perm_intro_r :
+ forall l l1 l2:list A, transpose l l1 -> perm l1 l2 -> perm l l2.
+Proof.
+ intros l l1 l2 H H0; elim H0.
+ eapply perm_tr; eauto.
+ left.
+ intros l' l''; intros; right with l'; auto.
+Qed.
+
+Lemma perm_trans : transitive _ perm.
+Proof.
+ unfold transitive; intros l l' l'' H; generalize l''.
+ elim H.
+ trivial.
+ intros l'0 l''0 H0 H1; intros.
+  apply H1;eapply perm_intro_r; eauto.
+Qed.
+
+Lemma transpose_sym : forall l l':list A, transpose l l' -> transpose l' l.
+Proof.
+ intros l l' H;elim H; [ left | right; auto ].
+Qed.
+
+Lemma perm_sym : symmetric _ perm. 
+Proof.
+ unfold symmetric; intros l l' H; elim H. 
+ left.
+ intros; eapply perm_intro_r.
+ eapply transpose_sym; eauto.
+ auto.
+Qed.
+
+
+Theorem equiv_perm : equiv _ perm.
+Proof.
+ repeat split.
+ apply perm_refl.
+ apply perm_trans.
+ apply perm_sym.
+Qed.
+
+Inductive num : Type :=
+| zero : num
+| succ : num -> num
+| doub : num -> num.
+
+Inductive eqwal {A : Type} (x : A) : A -> Prop :=
+    eqw_refl : eqwal x x.
+
+Unset Elimination Schemes.
+
+Inductive nawt : Prop :=
+    | zewro : nawt
+    | sawc  : nawt -> nawt.
+
+Scheme nawt_ind := Induction for nawt Sort Prop.
+
+Check nawt_ind.
+
+Set Elimination Schemes.
+
+Fixpoint plaws (m n : nawt) : nawt :=
+    match m with
+      | zewro => n
+      | sawc m' => sawc (plaws m' n)
+    end.
+
+End perms.
+
+Theorem eqwal_sym {A : Type} (x y : A) : eqwal x y -> eqwal y x.
+Proof. intros H. destruct H. constructor. Qed.
+
+Theorem neutral_r : forall n : nawt, eqwal (plaws n zewro) n.
+Proof.
+intros. induction n as [|ns IH]; simpl.
+- done. - apply eqwal_sym in IH. destruct IH . constructor.
+Qed.
+
+Lemma predp : forall n: nat, (exists p: nat, n=S p) \/ n = 0.
+intros n. case n.
+right. done. intros p. left. exists p. reflexivity.
+Defined.
+
+Definition preds : forall n:nat, {p:nat | n = S p}+{n = 0}.
+intros n. case n.
+right. apply refl_equal.
+intros p. left. exists p. reflexivity.
+Defined.
+Extraction preds.
+Eval compute in (or False True). 
+Definition eq_decx (A:Type) := forall x y: A, {x = y}+{x <> y}.
+Eval compute in (Nat.eq_dec 1 1).
+Print Nat.eq_dec.
+Definition cmp_cmp : forall x y, {x>y}+{x<=y}. 
+intros x. induction x. right. done. intros y. move :(IHx (y-1))=> Hm. destruct Hm. left. have ->:(x.+1 = x+1) by rewrite addn1. 
+Admitted.
+Eval compute in (cmp_cmp 1 2).
+
+Module ccc.
+  From Coq Require Import ZArith OrderedType Bool.
+   Definition t := lit_eqType.
+  Definition eqn (x y : t) := x == y.
+  Definition ltn (x y : t) := lit_lt x y.
+  Definition ltn_trans := lit_lt_trans.
+  Definition ltn_not_eqn := lit_lt_not_eq.
+Definition compare (x y : t) : Compare ltn eqn x y.
+  Proof.
+    case Heq: (x == y).
+    - exact: (EQ Heq).
+    - case Hlt: (lit_lt x y).
+      + exact: (LT Hlt).
+      + apply: GT. move: (proj1 (Z.ltb_ge (z_of_lit x) (z_of_lit y)) Hlt) => {Hlt} Hlt.
+        have Hne: z_of_lit y <> z_of_lit x
+          by move=> H; apply/eqP/idP: Heq; rewrite (z_of_lit_inj H) eqxx.
+        apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
+  Defined.
+End ccc.
+
+Module ttt.
+Axiom f : nat -> option nat.
+Axiom H : nat -> bool.
+Axiom no_error_in_f : forall n,
+  H n = true -> exists u, f n = Some u.
+
+Lemma no_error_in_f_bis : forall n,
+  H n = true -> f n <> None.
+Proof.
+  intros. apply no_error_in_f in H0. destruct H0. rewrite H0. discriminate.
+Qed.
+
+Definition g n :=
+  match H n as b return H n = b -> _ with
+  | true => fun H =>
+    match f n as f0 return f n = f0 -> _ with
+    | Some n0 => fun _ => n0
+    | None => fun H0 => match no_error_in_f_bis  H H0 with end
+    end (Logic.eq_refl)
+  | false => fun _ => n
+  end Logic.eq_refl.
+
+
+Require Import Coq.Sorting.Sorted.
+Print Sorted.
+Print HdRel. 
+Function sort' (l : list Z): forall (R : Z -> Z -> Prop), {l': list Z | Sorted R l'}.
+intros. case l.
+- exists nil. done.
+- intros. case l0.
+  + exists (cons z nil). constructor; done. 
+  + 
+
+
+    move : (sort' [:: z, z0 & l1] R). intro. move : sort'0 l1. 
+    constructor. constructor. 
+
+Defined.  
+  refine (
+      fun (R: Z -> Z -> Prop) =>
+        match l with
+        | nil => _
+        | cons x l2 => _
+        end).
+  - exists nil. done.
+  - case l2.  exists (cons x nil). constructor; done.
+    refine (
+        fun (y: Z) (l3 : list Z) =>
+          match l3 with
+          | nil => fun _R : R => 
+          | cons z l4 => _ end).
+  - exists ()
+
+    
+Abort.
+
+Definition sort' : forall (l : list Z) (R : Z -> Z -> Prop), {l': list Z | Sorted R l'}. 
+  refine (
+      fun (l: list Z) (R: Z -> Z -> Prop) =>
+        match l with
+        | nil => _
+        | cons x l2 => _
+        end).
+  - exists nil. done.
+  - case l2.  exists (cons x nil). constructor; done.
+    refine (
+        fun (y: Z) (l3 : list Z) =>
+          match l3 with
+          | nil => 
+
+
+    
+Defined.
+
+
+End ttt.
+*)
+
+
+
+Lemma neq0_eq0_sizel : forall n (b : bits), b!=zeros (size b) -> from_nat n (to_nat b) == zeros n -> n < size b.
+Proof.
+  elim => [|ns IH] b/=; first by (rewrite-ltB0n eq_refl; move=> [Hneq Ht{Ht}]; exact (lt0B_size Hneq)).
+  move=>[Hneq Heq]. move : (IH (droplsb b)) => Hm. rewrite-(eqP (Nats.lt_sub1r_add1l ns (size b)))-subn1-size_droplsb. apply Hm; last rewrite to_nat_droplsb.
+  move : Hneq. rewrite-!to_nat_zero to_nat_droplsb-!lt0n half_gt0. move => Hgt0.
+  case Hoddb: (odd (to_nat b)); first by rewrite Hoddb eqseq_cons andFb in Heq.
+  rewrite Hoddb/joinlsb eqseq_cons andTb in Heq. rewrite Nats.ssrodd_odd-Nat.even_succ-Nat.negb_odd in Hoddb. move: (negbFE Hoddb)=>Hodd{Hoddb}. rewrite-Nats.ssrodd_odd in Hodd. rewrite-(ltn_add2r 1)2!addn1 in Hgt0. move : (odd_gt2 Hodd Hgt0)=> Hodd2.  move : (ltn_sub2r Hgt0 Hodd2). by rewrite!subn1/=. 
+  rewrite eqseq_cons in Heq. move/andP : Heq=>[Hb0 Hzeq]. done.
+Qed.
+
+Lemma udivB_def: forall q d r, ltB r d -> (udivB (addB (mulB q d) r) d).2 = r.
+Proof.
+Admitted.
+  
+Lemma udivB_rec_to_nat : forall nhd ntl m q r, to_nat (udivB_rec (nhd::ntl) m q r).1 = addn (div.divn (addn (to_nat (shlB (size ntl).+1 r)) (to_nat (nhd::ntl))) (to_nat m)) (to_nat q).
+Proof.
+Admitted.
+  
+Lemma udivB_to_nat : forall p q,  to_nat (udivB p q).1 = (div.divn (to_nat p) (to_nat (from_nat (size p) (to_nat q)))).
+Proof.
+  (*
+  intros. rewrite/udivB.
+  case H0 : ((size p) -bits of (to_nat q)%bits == zeros (size p));
+    first by rewrite/=(eqP H0) to_nat_zeros div.divn0. 
+  move : q H0. elim p =>[|phd ptl IH] q H0/=; first done.
+  have : (to_nat (dropmsb (zeros (size ptl).+1)) = 0) by rewrite to_nat_dropmsb to_nat_zeros div.mod0n.
+  rewrite/dropmsb/splitmsb/=; move => Hbelast; rewrite Hbelast-muln2 mul0n addn0/=.
+  case Hphd : phd; case Hoddq : (odd (to_nat q)); rewrite /=eqseq_cons Hoddq in H0; rewrite/=.
+  - have Hgt0 : (0 < (to_nat (size ptl) -bits of ((to_nat q)./2)%bits)). admit.
+    move : (muln_gt0 (to_nat (size ptl) -bits of ((to_nat q)./2)%bits) 2)=> Hgt0'; rewrite Hgt0(ltn0Sn 1)andTb muln2-(ltn_add2l 1)addn0 in Hgt0'.
+    rewrite Hgt0'/=.
+
+    
+    rewrite Hgt0' udivB_rec_to_nat/shlB shlB_mul2exp/=add0n/mulB/=size_belast size_zeros/low size_addB size_joinlsb. 
+*)
 Admitted.  
-  
-  
-Fixpoint bit_blast_udiv_rec g ls1 ls2 i : generator * cnf * word * word :=
-  match i with
-  | 0 => let '(g_shr, cs_shr, lrs_shr) := bit_blast_lshr_int g ls1 (act_sizel ls1 - act_sizel ls2 +1) in (g_shr, cs_shr, (copy (size ls1) lit_ff), lrs_shr)
-  | S i' =>
-    let ai := nth lit_ff ls1 (act_sizel ls1 - i' - act_sizel ls2 ) in
-    let '(g_udiv, cs_udiv, q_udiv, r_udiv) := bit_blast_udiv_rec g ls1 ls2 i' in
-    let di := dropmsl (joinlsl ai r_udiv) in
-    let '(g_ge, cs_ge, lrs_ge) := bit_blast_uge g_udiv di ls2 in
-    let qi := dropmsl (joinlsl lrs_ge q_udiv) in
+
+Lemma uremB_to_nat : forall p q , to_nat (udivB p q).2 = (div.modn (to_nat p) (to_nat q)).
+Proof.  
+Admitted.
+
+Fixpoint bit_blast_udiv_rec g ls1 ls2 cs qs rs: generator * cnf * word * word :=
+  match ls1 with
+  | [::] => (g, cs, qs, rs)
+  | ls_hd1 :: ls_tl1 =>
+    let di := dropmsl (joinlsl ls_hd1 rs) in
+    let '(g_ge, cs_ge, lrs_ge) := bit_blast_uge g di ls2 in
+    let qi := dropmsl (joinlsl lrs_ge qs) in
     if (lrs_ge==lit_tt) then
       let '(g_sub, cs_sub, lrs_sub) := bit_blast_sub g_ge di ls2 in
-      (g_sub, catrev (catrev cs_udiv cs_ge) cs_sub, qi, lrs_sub)
-    else if (lrs_ge == lit_ff) then (g_ge, catrev cs_udiv cs_ge, qi, di)
+      bit_blast_udiv_rec g_sub ls_tl1 ls2 (catrev (catrev cs cs_ge) cs_sub) qi lrs_sub
+    else if (lrs_ge == lit_ff) then bit_blast_udiv_rec g_ge ls_tl1 ls2 (catrev cs cs_ge) qi di
          else
            let '(g_and, cs_and, lrs_and) := bit_blast_and g_ge (copy (size ls2) lrs_ge) ls2 in
            let '(g_sub2, cs_sub2, lrs_sub2) := bit_blast_sub g_and di lrs_and in
-           (g_sub2, catrev (catrev (catrev cs_udiv cs_ge) cs_and) cs_sub2, qi, lrs_sub2)
+           bit_blast_udiv_rec g_sub2 ls_tl1 ls2 (catrev (catrev (catrev cs cs_ge) cs_and) cs_sub2) qi lrs_sub2
   end.
-
+ 
 Definition bit_blast_udiv g ls1 ls2 :=
   if ls2 == copy (size ls2) lit_ff then
-    (g, [::], copy (size ls1) lit_ff, copy (size ls1) lit_ff)
+    (g, [::], copy (size ls1) lit_ff, ls1)
     else
-      bit_blast_udiv_rec g ls1 ls2 (act_sizel ls1 -act_sizel ls2 +1).
+      bit_blast_udiv_rec g ls1 ls2 [::] (copy (size ls1) lit_ff) (copy (size ls1) lit_ff).
 
-Fixpoint mk_env_udiv_rec E g ls1 ls2 i : env * generator * cnf * word * word :=
-  match i with
-  | 0 => let '(E_shr, g_shr, cs_shr, lrs_shr) := mk_env_lshr_int E g ls1 (act_sizel ls1 - act_sizel ls2 +1) in (E_shr, g_shr, cs_shr, (copy (size ls1) lit_ff), lrs_shr)
-  | S i' =>
-    let ai := nth lit_ff ls1 (act_sizel ls1 - i' - act_sizel ls2 ) in
-    let '(E_udiv, g_udiv, cs_udiv, q_udiv, r_udiv) := mk_env_udiv_rec E g ls1 ls2 i' in
-    let di := dropmsl (joinlsl ai r_udiv) in
-    let '(E_ge, g_ge, cs_ge, lrs_ge) := mk_env_uge E g_udiv di ls2 in
-    let qi := dropmsl (joinlsl lrs_ge q_udiv) in
+Fixpoint mk_env_udiv_rec (E: env) (g:generator) ls1 ls2 cs qs rs : env * generator * cnf * word * word :=
+  match ls1 with
+  | [::] => (E, g, cs, qs, rs)
+  | ls1_hd :: ls1_tl =>
+    let di := dropmsl (joinlsl ls1_hd rs) in
+    let '(E_ge, g_ge, cs_ge, lrs_ge) := mk_env_uge E g di ls2 in
+    let qi := dropmsl (joinlsl lrs_ge qs) in
     if (lrs_ge == lit_tt) then
-      let '(E_sub, g_sub, cs_sub, lrs_sub) := mk_env_sub E g_ge di ls2 in
-      (E_sub, g_sub, catrev (catrev cs_udiv cs_ge) cs_sub, qi, lrs_sub)
-    else if (lrs_ge == lit_ff) then (E_ge, g_ge, catrev cs_udiv cs_ge, qi, di)
+      let '(E_sub, g_sub, cs_sub, lrs_sub) := mk_env_sub E_ge g_ge di ls2 in
+      mk_env_udiv_rec E_sub g_sub ls1_tl ls2 (catrev (catrev cs cs_ge) cs_sub) qi lrs_sub
+    else if (lrs_ge == lit_ff) then mk_env_udiv_rec E_ge g_ge ls1_tl ls2 (catrev cs cs_ge) qi di
          else
            let '(E_and, g_and, cs_and, lrs_and) := mk_env_and E_ge g_ge (copy (size ls2) lrs_ge) ls2 in
            let '(E_sub2, g_sub2, cs_sub2, lrs_sub2) := mk_env_sub E_and g_and di lrs_and in
-           (E_sub2, g_sub2, catrev (catrev (catrev cs_udiv cs_ge) cs_and) cs_sub2, qi, lrs_sub2)
+           mk_env_udiv_rec E_sub2 g_sub2 ls1_tl ls2 (catrev (catrev (catrev cs cs_ge) cs_and) cs_sub2) qi lrs_sub2
   end.
 
 Definition mk_env_udiv E g ls1 ls2 :=
   if ls2 == copy (size ls2) lit_ff then
-    (E, g, [::], copy (size ls1) lit_ff, copy (size ls1) lit_ff)
+    (E, g, [::], copy (size ls1) lit_ff, ls1)
     else
-      mk_env_udiv_rec E g ls1 ls2 (act_sizel ls1 -act_sizel ls2 +1).
+      mk_env_udiv_rec E g ls1 ls2 [::] (copy (size ls1) lit_ff) (copy (size ls1) lit_ff).
 
-Lemma enc_bits_act_size : forall E bs ls, enc_bits E ls bs -> act_sizel ls = act_size bs.
+Lemma bit_blast_sub_size_ss : forall g ls1 ls2 g' cs' lrs,
+    bit_blast_sub g ls1 ls2  = (g', cs', lrs) -> size ls1 = size ls2 -> size lrs = size ls2.
 Proof.
-Admitted.
+  move => g ls1 ls2 g' cs lrs. rewrite/bit_blast_sub.
+  case Hbbneg : (BBNeg.bit_blast_neg g ls2) => [[g_neg cs_neg] lrs_neg].
+  case Hbbadd : (bit_blast_add g_neg ls1 lrs_neg) => [[ g_add cs_add] lrs_add].
+  case => _ _ <- Hsz12. move: (bit_blast_neg_size_ss Hbbneg)=>Hszneg; rewrite Hszneg in Hsz12. rewrite-( bit_blast_add_size_ss Hbbadd Hsz12). by rewrite Hszneg Hsz12.
+Qed.
 
-Lemma bit_blast_udiv_size : forall  i g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 ,bit_blast_udiv_rec g ls1 ls2 i = (g', cs, qlrs, rlrs) -> enc_bits E ls1 bs1 ->
-  enc_bits E ls2 bs2 -> size rlrs = size ls2.
+Lemma bit_blast_udiv_rec_size_ss : forall g ls1 ls2 g' cs qs rs cs' qlrs rlrs  ,
+    bit_blast_udiv_rec g ls1 ls2 cs qs rs = (g', cs', qlrs, rlrs) ->
+    (*size ls1 = size ls2 -> *) size qs = size ls2 -> size rs = size ls2 ->
+    (*enc_bits E ls1 bs1 ->  enc_bits E ls2 bs2 ->*) (size qlrs = size ls2 /\ size rlrs = size ls2).
 Proof.
-Admitted.
-  
-Lemma bit_blast_udiv_rec_correct : forall i g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 ,
-  bit_blast_udiv_rec g ls1 ls2 i = (g', cs, qlrs, rlrs) ->
+  move => g ls1; move : g.
+  elim ls1 => [|ls1hd ls1tl IH] g ls2 g' cs qs rs cs' qlrs rlrs  Hbbdiv Hszqs Hszrs ; move : Hbbdiv; rewrite/bit_blast_udiv/=.
+  case => _ _ <- <-; done.
+  case Hbbuge: (bit_blast_uge g (dropmsl (joinlsl ls1hd rs)) ls2)=> [[g_ge cs_ge] lrs_ge].
+  case Hgett : (lrs_ge == lit_tt).
+  case Hbbsub : (bit_blast_sub g_ge (dropmsl (joinlsl ls1hd rs)) ls2) => [[g_sub cs_sub] lrs_sub].
+  move => Hbbdiv. 
+  move : (IH g_sub ls2 g' (catrev (catrev cs cs_ge) cs_sub) (dropmsl (joinlsl lrs_ge qs)) lrs_sub cs' qlrs rlrs  Hbbdiv)=> Hm. apply Hm. by rewrite size_dropmsl size_joinlsl addnK.
+  move : (bit_blast_sub_size_ss Hbbsub)=>Hszsub. rewrite size_dropmsl size_joinlsl addnK in Hszsub; exact (Hszsub Hszrs). 
+  case Hgeff: (lrs_ge == lit_ff).
+  move => Hbbdiv.
+  move : (IH g_ge ls2 g' (catrev cs cs_ge) (dropmsl (joinlsl lrs_ge qs)) (dropmsl (joinlsl ls1hd rs)) cs' qlrs rlrs  Hbbdiv)=> Hm. rewrite!size_dropmsl!size_joinlsl!addnK in Hm.
+  exact : (Hm Hszqs Hszrs ).
+  case Hbband : (bit_blast_and g_ge (copy (size ls2) lrs_ge) ls2) => [[g_and cs_and] lrs_and].
+  case Hbbsub2 : (bit_blast_sub g_and (dropmsl (joinlsl ls1hd rs)) lrs_and) => [[g_sub2 cs_sub2] lrs_sub2].
+  move => Hbbdiv.
+  move : (IH g_sub2 ls2 g' (catrev (catrev (catrev cs cs_ge) cs_and) cs_sub2) (dropmsl (joinlsl lrs_ge qs)) lrs_sub2 cs' qlrs rlrs  Hbbdiv).
+  move : (bit_blast_sub_size_ss Hbbsub2). move : (bit_blast_and_size_ss Hbband). 
+  rewrite!size_dropmsl!size_joinlsl!addnK size_nseq. 
+  move => Hszand Hszsub Hszdiv. rewrite -Hszand in Hszsub; last done. exact : (Hszdiv Hszqs (Hszsub Hszrs) ).
+Qed.
+
+Lemma bit_blast_udiv_size_ss : forall g ls1 ls2 g' cs qlrs rlrs ,
+    bit_blast_udiv g ls1 ls2 = (g', cs, qlrs, rlrs) -> size ls1 = size ls2->
+    (size qlrs = size ls2 /\ size rlrs = size ls2).
+Proof.
+  move => g ls1 ls2 g' cs qlrs rlrs .
+  rewrite/bit_blast_udiv. case Hls2 : (ls2 == copy (size ls2) lit_ff).
+  case => _ _ <- <-. move => Hsz . by rewrite size_nseq Hsz.
+  move => Hbbudiv Hsz .
+  have Hcopy1: size (copy (size ls1) lit_ff) = size ls2 by rewrite size_nseq Hsz.
+  exact : (bit_blast_udiv_rec_size_ss Hbbudiv Hcopy1 Hcopy1 ). 
+Qed.
+
+Lemma bit_blast_udiv_rec_correct : forall g ls1 ls2 g' cs cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr,
+  bit_blast_udiv_rec g ls1 ls2 cs lqs lrs = (g', cs', qlrs, rlrs) ->
   enc_bits E ls1 bs1 ->
   enc_bits E ls2 bs2 ->
-  interp_cnf E (add_prelude cs) ->
-  enc_bits E qlrs (udivB_rec bs1 bs2 i).1 /\
-  enc_bits E rlrs (udivB_rec bs1 bs2 i).2.
+  enc_bits E lqs bsq->
+  enc_bits E lrs bsr ->
+  interp_cnf E (add_prelude cs') ->
+  enc_bits E qlrs (udivB_rec bs1 bs2 bsq bsr).1 /\
+  enc_bits E rlrs (udivB_rec bs1 bs2 bsq bsr).2.
 Proof.
-  elim => [|n IH]g ls1 ls2 g' cs qlrs rlrs E bs1 bs2/=. 
-  -  case Hbblshr : (bit_blast_lshr_int g ls1 (act_sizel ls1 - act_sizel ls2 + 1)) => [[g_shr cs_shr] lsr_shr]. case => _ <- <- <- Henc1 Henc2 Hcs. split.
-    by rewrite/zeros (enc_bits_size Henc1) (enc_bits_copy _ (add_prelude_enc_bit_ff Hcs)).
-    move:  (bit_blast_lshr_int_correct Hbblshr Henc1 Hcs). by rewrite (enc_bits_act_size Henc1) (enc_bits_act_size Henc2).
-  - case Hbbudiv : (bit_blast_udiv_rec g ls1 ls2 n) => [[[g_udiv cs_udiv] q_udiv] r_udiv].
-    case Hbbuge : (bit_blast_uge g_udiv (dropmsl (joinlsl (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2)) r_udiv)) ls2) => [[g_ge cs_ge] lrs_ge].
-    case Hbbsub : (bit_blast_sub g_ge (dropmsl (joinlsl (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2 )) r_udiv)) ls2)=> [[g_sub cs_sub] lrs_sub].
-    case Hbband : (bit_blast_and g_ge (copy (size ls2) lrs_ge) ls2) => [[g_and cs_and] lrs_and].
-    case Hbbsub2 : (bit_blast_sub g_and (dropmsl (joinlsl (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2)) r_udiv))lrs_and) =>[[g_sub2 cs_sub2] lrs_sub2].
-    case Htt : (lrs_ge == lit_tt); last case Hff: (lrs_ge == lit_ff).
-    + case => _ <- <- <-Henc1 Henc2. rewrite!add_prelude_catrev. move => Hcnf; split_andb_hyps.
-      move : (IH _ _ _ _ _ _ _ _ _ _ Hbbudiv Henc1 Henc2 H)=>[Hq Hr].
-      rewrite (eqP Htt).
-      have Htonat: ((to_nat(dropmsb(joinlsb (nth false bs1 (act_size bs1 - n - act_size bs2))(udivB_rec bs1 bs2 n).2)) < to_nat bs2) = false). admit.
-      rewrite Htonat (enc_bits_dropmsb (add_prelude_tt H)). split. done.
-      rewrite/=size_dropmsb size_joinlsb.
-      assert (enc_bits E (dropmsl (joinlsl (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2 )) r_udiv)) (dropmsb (joinlsb (nth b0 bs1 (act_size bs1 - n - act_size bs2 )) (udivB_rec bs1 bs2 n).2))) as Hencdrop. admit.
-      assert (size (dropmsl (joinlsl (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2 )) r_udiv)) = size ls2) as Hsize.
-      by rewrite size_dropmsl size_joinlsl addnK (bit_blast_udiv_size Hbbudiv Henc1 Henc2).
-      move : (bit_blast_sub_correct Hbbsub Hencdrop Henc2 H0 Hsize).
-      assert (size (udivB_rec bs1 bs2 n).2 = size bs2). admit.
-      rewrite H2 addnK subnn zext0. done.
-      by rewrite/=(enc_bits_joinlsb)/= (add_prelude_enc_bit_tt H) Hq.
-    + case => _ <- <- <-Henc1 Henc2. rewrite!add_prelude_catrev. move => Hcnf; split_andb_hyps.
-      move : (IH _ _ _ _ _ _ _ _ _ _ Hbbudiv Henc1 Henc2 H)=>[Hq Hr].
-      rewrite (eqP Hff).
-      have Htonat:((to_nat
-              (dropmsb
-                 (joinlsb (nth false bs1 (act_size bs1 - n - act_size bs2)) (udivB_rec bs1 bs2 n).2)) <
-            to_nat bs2)= true). admit.
-      rewrite Htonat/= (enc_bits_dropmsb (add_prelude_tt H)). split; first done.
-      apply (enc_bits_dropmsb (add_prelude_tt H)).
-      rewrite  (enc_bits_joinlsb).
-      assert (enc_bit E (nth lit_ff ls1 (act_sizel ls1 - n - act_sizel ls2))
-    (nth false bs1 (act_size bs1 - n - act_size bs2))) as Henc_nth. admit.
-      by rewrite Henc_nth Hr.
-      by rewrite (enc_bits_joinlsb) (add_prelude_enc_bit_ff H) Hq. 
-    + case => _ <- <- <-Henc1 Henc2. rewrite!add_prelude_catrev. move => Hcnf; split_andb_hyps.
-      move : (IH _ _ _ _ _ _ _ _ _ _ Hbbudiv Henc1 Henc2 H)=>[Hq Hr].
-      assert (enc_bit E lrs_ge (~~(to_nat
-              (dropmsb
-                 (joinlsb (nth false bs1 (act_size bs1 - n - act_size bs2)) (udivB_rec bs1 bs2 n).2)) <
-            to_nat bs2))) as Henge. admit.
-      rewrite(enc_bits_dropmsb (add_prelude_tt H)). split; first done.
-      case Htonat:(to_nat
-         (dropmsb
-            (joinlsb (nth false bs1 (act_size bs1 - n - act_size bs2)) (udivB_rec bs1 bs2 n).2)) <
-       to_nat bs2).
-      rewrite/=. admit.      
-      rewrite size_dropmsb size_joinlsb/=.
-      assert (size (udivB_rec bs1 bs2 n).2 = size bs2). admit.
-      rewrite H3 addnK subnn zext0. admit.
-      by rewrite enc_bits_joinlsb Henge Hq. 
+  move => g ls1; move :g.
+  elim ls1 => [|ls1_hd ls1_tl IH] g ls2 g' cs cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr/=. 
+  - case => _ _ <- <-.  move => Henc1 Henc2 Hencq Hencr Hcs.
+    rewrite enc_bits_nil_l in Henc1. by rewrite (eqP Henc1)/= Hencq Hencr.
+  - case Hbbuge : (bit_blast_uge g (dropmsl (joinlsl ls1_hd lrs)) ls2) => [[g_ge cs_ge] lrs_ge].
+    case Hgett : (lrs_ge == lit_tt).
+    case Hbbsub : (bit_blast_sub g_ge (dropmsl (joinlsl ls1_hd lrs)) ls2) => [[ge_sub cs_sub] lrs_sub].
+    move => Hbbdiv Henc1 Henc2 Hencq Hencr Hcs. 
+    move : (enc_bits_splitlsb (add_prelude_tt Hcs) Henc1) => /andP[Hls1hd Hls1tl].
+    rewrite/= in Hls1tl.
+Abort.
+
+Variable div_pair :
+  forall a b : Z, (0 < b)%Z -> { p:Z*Z | a = (p.1 * b + snd p)%Z}.
+Definition dp (a b : Z):= { p:Z*Z | a = (p.1 * b + snd p)%Z /\ (0 <= p.2 < b)%Z}.
+Definition bz := {b:Z|(0<b)%Z}. Check bz. Definition ga (b: bz):= let (a,_) := b in a. Check prod.
+Definition div_pair' (a : Z) (x : {b:Z|(0<b)%Z}) : Z * Z :=
+  match x with
+  | exist b h => let (v, _) := div_pair a h in v
+  end.
+Extraction  div_pair.
+Variable bb : Z. Variable bh: Prop.
+Variable bc : Z -> Z -> Type.
+Definition ss n:= sig (n<>1).
+Eval compute in (div_pair' 1%Z (let bb:bz:= _ in bb)).
+Check div_pair'.  Eval compute in (div_pair 0%Z Z.lt_0_1). 
+     elim . intros. done.
+    intros. rewrite addSn. rewrite-addn1. rewrite-addnA.
+    apply H in H0.
+    SearchAbout enc_bits.
+    
 Admitted.
 
 
