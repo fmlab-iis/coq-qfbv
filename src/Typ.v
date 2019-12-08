@@ -1,6 +1,7 @@
 
 From Coq Require Import Arith RelationClasses OrderedType.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
+From nbits Require Import NBits.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -155,6 +156,52 @@ Section Typ.
       + exact: (EQ Heq).
       + apply: GT. rewrite typ_ltn_neqAlt Hlt eq_sym Heq. done.
   Defined.
+
+
+
+  (* Other functions *)
+
+  (* A bit type is an unsigned type of size 1 *)
+  Definition Tbit := Tuint 1.
+
+  Definition is_unsigned (ty : typ) : bool :=
+    match ty with
+    | Tuint _ => true
+    | _ => false
+    end.
+
+  Definition is_signed (ty : typ) : bool :=
+    match ty with
+    | Tsint _ => true
+    | _ => false
+    end.
+
+  Lemma not_signed_is_unsigned ty : ~~ is_signed ty = is_unsigned ty.
+  Proof. by case: ty. Qed.
+
+  Lemma not_unsigned_is_signed ty : ~~ is_unsigned ty = is_signed ty.
+  Proof. by case: ty. Qed.
+
+  Definition unsigned_typ (ty : typ) : typ :=
+    match ty with
+    | Tuint w
+    | Tsint w => Tuint w
+    end.
+
+  Definition double_typ (ty : typ) : typ :=
+    match ty with
+    | Tuint w => Tuint (2 * w)
+    | Tsint w => Tsint (2 * w)
+    end.
+
+  Definition compatible (t1 t2 : typ) : bool :=
+    sizeof_typ t1 == sizeof_typ t2.
+
+  Definition tcast (bs : bits) (fty : typ) (tty : typ) : bits :=
+    match fty with
+    | Tuint w => ucastB bs (sizeof_typ tty)
+    | Tsint w => scastB bs (sizeof_typ tty)
+    end.
 
 End Typ.
 

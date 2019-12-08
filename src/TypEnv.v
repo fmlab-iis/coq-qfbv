@@ -1,7 +1,7 @@
 
 From mathcomp Require Import ssreflect ssrbool eqtype.
 From BitBlasting Require Import Typ.
-From ssrlib Require Import SsrOrder FMaps.
+From ssrlib Require Import SsrOrder FMaps Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -27,6 +27,13 @@ Module Type TypEnv <: SsrFMap.
      default type. *)
   Parameter vsize : SE.t -> env -> nat.
 
+  Axiom find_some_vtyp :
+    forall {x : SE.t} {ty : typ} {e : env}, find x e = Some ty -> vtyp x e = ty.
+  Axiom find_none_vtyp :
+    forall {x : SE.t} {e : env}, find x e = None -> vtyp x e = deftyp.
+  Axiom vtyp_find :
+    forall {x : SE.t} {ty : typ} {e : env},
+      (vtyp x e == ty) = (find x e == Some ty) || ((find x e == None) && (ty == deftyp)).
   Axiom vtyp_add_eq :
     forall {x y : SE.t} {ty : typ} {e : env}, x == y -> vtyp x (add y ty e) = ty.
   Axiom vtyp_add_neq :
@@ -69,6 +76,23 @@ Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
      If a variable is not in the typing environment, return the size of the
      default type. *)
   Definition vsize (v : V.t) (e : env) : nat := sizeof_typ (vtyp v e).
+
+  Lemma find_some_vtyp {x ty e} : find x e = Some ty -> vtyp x e = ty.
+  Proof. move=> H. rewrite /vtyp H. reflexivity. Qed.
+
+  Lemma find_none_vtyp {x e} : find x e = None -> vtyp x e = deftyp.
+  Proof. move=> H. rewrite /vtyp H. reflexivity. Qed.
+
+  Lemma vtyp_find {x ty e} :
+    (vtyp x e == ty) = (find x e == Some ty) || ((find x e == None) && (ty == deftyp)).
+  Proof.
+    dcase (find x e); case.
+    - move=> a Hfind. rewrite (find_some_vtyp Hfind) /= orbF. case Heq: (a == ty).
+      + by rewrite (eqP Heq) eqxx.
+      + symmetry. apply/eqP => H. case: H => H. rewrite H eqxx in Heq. discriminate.
+    - move=> Hnone. rewrite (find_none_vtyp Hnone) eqxx /=. rewrite eq_sym.
+      reflexivity.
+  Qed.
 
   Lemma vtyp_add_eq {x y ty e} : x == y -> vtyp x (add y ty e) = ty.
   Proof. rewrite /vtyp /add => H. by rewrite (Lemmas.find_add_eq H). Qed.

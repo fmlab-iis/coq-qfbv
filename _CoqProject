@@ -48,4 +48,12 @@ src/BBExtract.v
 src/BBSlice.v
 src/BBConcat.v
 src/BBExport.v
-
+src/AdhereConform.v
+src/BitBlastingDef.v
+src/BitBlastingNewer.v
+src/BitBlastingPreserve.v
+src/BitBlastingConsistent.v
+src/BitBlastingCorrect.v
+src/BitBlastingSat.v
+src/BitBlastingMkEnv.v
+src/BitBlasting.v
