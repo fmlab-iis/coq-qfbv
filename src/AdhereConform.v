@@ -53,7 +53,7 @@ Section Conform .
       + move => e0 IH Hwf Hcf .
         rewrite -(IH Hwf Hcf) /invB size_map // .
       + move => e0 IH Hwf Hcf .
-        rewrite -(IH Hwf Hcf) /negB /invB QFBV.size_succB size_map // .
+        rewrite -(IH Hwf Hcf) /negB /invB size_succB size_map // .
       + move => i j e0 _ _ _; rewrite size_extract // .
       + move => n e0 _ _ _; rewrite size_high // .
       + move => n e0 _ _ _; rewrite size_low // .
@@ -71,11 +71,11 @@ Section Conform .
         rewrite Max.max_idempotent maxnE subnKC // .
       + rewrite /xorB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
         rewrite Max.max_idempotent maxnE subnKC // .
-      + rewrite QFBV.size_addB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
+      + rewrite size_addB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
         rewrite Max.max_idempotent minnE subKn // .
-      + rewrite QFBV.size_subB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
+      + rewrite size_subB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
         rewrite Max.max_idempotent minnE subKn // .
-      + rewrite QFBV.size_mulB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
+      + rewrite size_mulB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
         rewrite Max.max_idempotent // .
       + (* TODO *)
         rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
@@ -83,11 +83,11 @@ Section Conform .
         rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
       + (* TODO *)
         rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + rewrite QFBV.size_shlB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
+      + rewrite size_shlB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
         rewrite Max.max_idempotent // .
-      + rewrite QFBV.size_shrB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
+      + rewrite size_shrB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
         rewrite Max.max_idempotent // .
-      + rewrite QFBV.size_sarB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
+      + rewrite size_sarB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
         rewrite Max.max_idempotent // .
       + rewrite size_cat (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) addnC // .
     - move => b e0 IH0 e1 IH1
