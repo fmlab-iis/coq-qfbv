@@ -9,9 +9,9 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 From Coq Require List.
+About div.divn.
 
-
-
+(* Lemmas *)
 
 Lemma dropmsb_zeros : forall n, dropmsb (zeros n) = zeros n.-1.
 Proof.
@@ -1005,4 +1005,15 @@ Proof.
     move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g3 Hg3g4)) => Hg0g4.
     move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
     move : (mk_env_uge_sat Hmkuge (newer_than_lit_le_newer Htt Hgg0)).
+    have Hff : (newer_than_lit g lit_ff) by rewrite -newer_than_lit_tt_ff; done. 
+    move : (mk_env_sub_sat Hmksub (newer_than_lit_le_newer Hff Hgg1)).
+    have : (newer_than_lits g_hd (dropmsl (joinlsl ls1hd lrs_tl))).
+    apply newer_than_lits_dropmsl; apply newer_than_lits_joinlsl.
+    (*exact (newer_than_lit_le_newer Hls1hd Hgg1).*)
+
+
+
+    
 Admitted.
+
+

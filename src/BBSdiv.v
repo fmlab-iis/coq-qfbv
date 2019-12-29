@@ -18,7 +18,8 @@ Definition sdivB bs1 bs2 : bits * bits :=
 
 Definition bit_blast_abs g ls : generator * cnf * word :=
   if (msl ls == lit_tt) then  bit_blast_neg g ls
-  else (g, [::], ls).
+  else if (msl ls == lit_tt) then (g, [::], ls)
+       else .
 
 Definition bit_blast_sdiv g ls1 ls2 : generator * cnf * word * word :=
   let '(g_abs1, cs_abs1, lrs_abs1) := bit_blast_abs g ls1 in
