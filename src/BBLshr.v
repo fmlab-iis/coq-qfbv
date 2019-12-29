@@ -10,27 +10,27 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 (* shr lemmas *)
-Lemma shrB_add bs i j :
-  shrB i (shrB j bs) = shrB (i + j) bs .
-Proof .
-  by rewrite /shrB iter_add .
-Qed .
+(* Lemma shrB_add bs i j : *)
+(*   shrB i (shrB j bs) = shrB (i + j) bs . *)
+(* Proof . *)
+(*   by rewrite /shrB iter_add . *)
+(* Qed . *)
 
-Lemma size_joinmsb T b (bs : seq T) :
-  size (joinmsb bs b) = (size bs) + 1 .
-Proof .
-  elim : bs => [| c' bs Hbs] .
-  - by rewrite /= .
-  - by rewrite /joinmsb size_rcons /= addn1 .
-Qed .
+(* Lemma size_joinmsb T b (bs : seq T) : *)
+(*   size (joinmsb bs b) = (size bs) + 1 . *)
+(* Proof . *)
+(*   elim : bs => [| c' bs Hbs] . *)
+(*   - by rewrite /= . *)
+(*   - by rewrite /joinmsb size_rcons /= addn1 . *)
+(* Qed . *)
 
-Lemma shrB1_size bs :
-  size (shrB1 bs) = size bs .
-Proof .
-  elim : bs => [| b bs Hbs] .
-  - done .
-  - by rewrite /shrB1 size_joinmsb /= addn1 .
-Qed .
+(* Lemma shrB1_size bs : *)
+(*   size (shrB1 bs) = size bs . *)
+(* Proof . *)
+(*   elim : bs => [| b bs Hbs] . *)
+(*   - done . *)
+(*   - by rewrite /shrB1 size_joinmsb /= addn1 . *)
+(* Qed . *)
 
 Lemma size_droplsl (ls : word) :
   size (droplsl ls) = size ls - 1 .
@@ -48,14 +48,14 @@ Proof .
   - by rewrite /joinmsl /= size_rcons addn1 .
 Qed .
 
-Lemma shrB_size n bs :
-  size (shrB n bs) = size bs .
-Proof .
-  rewrite /shrB /iter .
-  elim: n; first done .
-  move => n IH .
-  by rewrite shrB1_size .
-Qed .
+(* Lemma shrB_size n bs : *)
+(*   size (shrB n bs) = size bs . *)
+(* Proof . *)
+(*   rewrite /shrB /iter . *)
+(*   elim: n; first done . *)
+(*   move => n IH . *)
+(*   by rewrite shrB1_size . *)
+(* Qed . *)
 
 (* ===== bit_blast_lshr ===== *)
 

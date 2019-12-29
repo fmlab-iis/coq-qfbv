@@ -10,28 +10,28 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 (* sar lemmas *)
-Lemma sarB_add bs i j :
-  sarB i (sarB j bs) = sarB (i + j) bs .
-Proof .
-  by rewrite /sarB iter_add .
-Qed .
+(* Lemma sarB_add bs i j : *)
+(*   sarB i (sarB j bs) = sarB (i + j) bs . *)
+(* Proof . *)
+(*   by rewrite /sarB iter_add . *)
+(* Qed . *)
 
-Lemma sarB1_size bs :
-  size (sarB1 bs) = size bs .
-Proof .
-  elim : bs => [| b bs Hbs] .
-  - done .
-  - by rewrite /sarB1 size_joinmsb /= addn1 .
-Qed .
+(* Lemma sarB1_size bs : *)
+(*   size (sarB1 bs) = size bs . *)
+(* Proof . *)
+(*   elim : bs => [| b bs Hbs] . *)
+(*   - done . *)
+(*   - by rewrite /sarB1 size_joinmsb /= addn1 . *)
+(* Qed . *)
 
-Lemma sarB_size n bs :
-  size (sarB n bs) = size bs .
-Proof .
-  rewrite /sarB /iter .
-  elim: n; first done .
-  move => n IH .
-  by rewrite sarB1_size .
-Qed .
+(* Lemma sarB_size n bs : *)
+(*   size (sarB n bs) = size bs . *)
+(* Proof . *)
+(*   rewrite /sarB /iter . *)
+(*   elim: n; first done . *)
+(*   move => n IH . *)
+(*   by rewrite sarB1_size . *)
+(* Qed . *)
 
 Lemma enc_bit_msb E ls bs :
   interp_lit E lit_tt -> enc_bits E ls bs ->

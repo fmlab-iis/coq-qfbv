@@ -8,9 +8,9 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-Lemma subB_equiv_addB_negB (p q : bits) : subB p q = addB p (negB q).
-Proof.
-Admitted.
+(* Lemma subB_equiv_addB_negB (p q : bits) : subB p q = addB p (negB q). *)
+(* Proof. *)
+(* Admitted. *)
 
 Lemma bit_blast_neg_size_ss :
   forall ls g g' (cs: cnf) (lrs: seq literal),

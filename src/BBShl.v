@@ -10,11 +10,11 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 (* shl lemmas *)
-Lemma shlB_add bs i j :
-  shlB i (shlB j bs) = shlB (i + j) bs .
-Proof .
-  by rewrite /shlB iter_add .
-Qed .
+(* Lemma shlB_add bs i j : *)
+(*   shlB i (shlB j bs) = shlB (i + j) bs . *)
+(* Proof . *)
+(*   by rewrite /shlB iter_add . *)
+(* Qed . *)
 
 Lemma size_joinlsb T b (bs : seq T) :
   size (joinlsb b bs) = (size bs) + 1 .
@@ -22,13 +22,13 @@ Proof .
   by rewrite /= addn1 .
 Qed .
 
-Lemma shlB1_size bs :
-  size (shlB1 bs) = size bs .
-Proof .
-  rewrite /shlB1 size_dropmsb size_joinlsb .
-  rewrite subn1 addn1 .
-  reflexivity .
-Qed .
+(* Lemma shlB1_size bs : *)
+(*   size (shlB1 bs) = size bs . *)
+(* Proof . *)
+(*   rewrite /shlB1 size_dropmsb size_joinlsb . *)
+(*   rewrite subn1 addn1 . *)
+(*   reflexivity . *)
+(* Qed . *)
 
 Lemma size_joinlsl T l (ls : seq T) :
   size (joinlsl l ls) = size ls + 1 .
@@ -44,14 +44,14 @@ Proof .
   - by rewrite subn1 -pred_Sn size_belast .
 Qed .
 
-Lemma shlB_size n bs :
-  size (shlB n bs) = size bs .
-Proof .
-  rewrite /shlB /iter .
-  elim: n; first done .
-  move => n IH .
-  by rewrite shlB1_size .
-Qed .
+(* Lemma shlB_size n bs : *)
+(*   size (shlB n bs) = size bs . *)
+(* Proof . *)
+(*   rewrite /shlB /iter . *)
+(*   elim: n; first done . *)
+(*   move => n IH . *)
+(*   by rewrite shlB1_size . *)
+(* Qed . *)
 
 (* ===== bit_blast_shl ===== *)
 
