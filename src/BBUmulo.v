@@ -8,6 +8,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+(* The algorithm is from https://www.researchgate.net/publication/3045091_Integer_multipliers_with_overflow_detection *)
+
 Section BBUmulo.
 
   Infix "++r" := catrev (right associativity, at level 60): seq_scope.
@@ -442,11 +444,11 @@ Section BBUmulo.
     - done.
     - rewrite unzip1_extzip newer_than_lits_cat
               newer_than_lits_copy;
-        last by rewrite -newer_than_lit_tt_ff . 
+        last by rewrite -newer_than_lit_tt_ff .
       apply /andP; split; done .
     - rewrite unzip2_extzip newer_than_lits_cat
               newer_than_lits_copy;
-        last by rewrite -newer_than_lit_tt_ff . 
+        last by rewrite -newer_than_lit_tt_ff .
       apply /andP; split;
         [by rewrite newer_than_lits_rev|done] .
   Qed.

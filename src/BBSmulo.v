@@ -8,6 +8,8 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+(* The algorithm is from https://www.researchgate.net/publication/3045091_Integer_multipliers_with_overflow_detection *)
+
 Section BBSmulo.
   Infix "++r" := catrev (right associativity, at level 60): seq_scope.
   (* ===== bit_blast_smulo ===== *)
