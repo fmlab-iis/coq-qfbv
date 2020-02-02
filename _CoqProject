@@ -8,6 +8,7 @@ src/State.v
 src/QFBV.v
 src/CNF.v
 src/BBCommon.v
+src/Cache.v
 src/BBVar.v
 src/BBConst.v
 src/BBNot.v
@@ -50,10 +51,18 @@ src/BBConcat.v
 src/BBExport.v
 src/AdhereConform.v
 src/BitBlastingDef.v
+src/BitBlastingCacheDef.v
+src/BitBlastingCacheWF.v
 src/BitBlastingNewer.v
+src/BitBlastingCacheNewer.v
 src/BitBlastingPreserve.v
+src/BitBlastingCachePreserve.v
 src/BitBlastingConsistent.v
+src/BitBlastingCacheConsistent.v
 src/BitBlastingCorrect.v
+src/BitBlastingCacheCorrect.v
 src/BitBlastingSat.v
+src/BitBlastingCacheSat.v
 src/BitBlastingMkEnv.v
+src/BitBlastingCacheMkEnv.v
 src/BitBlasting.v
