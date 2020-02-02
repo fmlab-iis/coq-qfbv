@@ -329,8 +329,10 @@ Fixpoint udivB_rec (n m : bits) (q r : bits): bits * bits :=
                   let qi := dropmsb (joinlsb bi q) in
                   udivB_rec ntl m qi ri
   end.
-Definition udivB (n m : bits) : bits * bits :=
-  if ((from_nat (size n) (to_nat m)) == zeros (size n)) then (zeros (size n), n)
+
+Definition udivB (n' m : bits) : bits * bits :=
+  let n := rev n' in
+  if ((from_nat (size n) (to_nat m)) == zeros (size n)) then (zeros (size n), n')
   else udivB_rec n (from_nat (size n) (to_nat m)) (zeros (size n)) (zeros (size n)).
 
 (*Definition udivB_extzip (zip : seq (bool * bool)) (q r : bits) : bits * bits :=
@@ -340,10 +342,10 @@ Definition udivB (n m : bits) : bits * bits :=
   if (m == zeros (size m)) then (zeros (maxn(size n)(size m)), unzip1 (extzip0 n m))
   else udivB_extzip (extzip0 n m) (zeros (maxn(size n)(size m))) (zeros (maxn(size n)(size m))).*)
 
-Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 14 14)).1).
-Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 14 13)).2).
-Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).1).
-Eval compute in (to_nat (udivB (from_nat 15 15) (from_nat 3 2)).2).
+Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 4 13)).1).
+Eval compute in (to_nat (udivB (from_nat 8 185) (from_nat 4 13)).2).
+Eval compute in (to_nat (udivB (from_nat 8 156) (from_nat 3 2)).1).
+Eval compute in (to_nat (udivB (from_nat 8 16) (from_nat 3 2)).2).
 
 
 Lemma size_udivB_rec n m q r : size (udivB_rec n m q r).1 = size q.
@@ -358,8 +360,8 @@ Qed.
 
 Lemma size_udivB n m : size (udivB n m).1 = (size n).
 Proof.
-  rewrite/udivB. case Hm0: ((size n) -bits of (to_nat m)%bits == zeros (size n)); first by rewrite size_zeros.
-  by rewrite (size_udivB_rec n (size n) -bits of (to_nat m)%bits (zeros (size n)) (zeros (size n))) size_zeros.
+  rewrite/udivB. case Hm0: ((size (rev n)) -bits of (to_nat m)%bits == zeros (size (rev n))); first by rewrite size_rev size_zeros.
+  by rewrite size_udivB_rec size_zeros size_rev.
 Qed.
 
 Lemma udivB_rec0r : forall m n q r,  (udivB_rec m (zeros n) q r) = (addB (shlB (size m) q) (zext (size q - size m) (ones (size m))), addB (shlB (size m) r) (zext (size r - size m) (rev m))).
@@ -381,7 +383,7 @@ Admitted.
   
 Lemma udivB0 : forall n m, (udivB m (zeros n)) = (zeros (size m), m).
 Proof.
-  intros; rewrite/udivB. by rewrite to_nat_zeros from_natn0 eq_refl/=.
+  intros; rewrite/udivB. by rewrite to_nat_zeros from_natn0 eq_refl size_rev. 
 Qed.
 
 
@@ -408,11 +410,15 @@ Proof.
   done.
 Qed.
 
+Lemma rev_copy : forall T n (b: T), rev (copy n b) = copy n b.
+Proof.
+Admitted.
+  
 Lemma udiv0B : forall n (m: bits), ~~(from_nat n (to_nat m) == zeros n)-> udivB (zeros n) m = (zeros n, zeros n).
 Proof.
-  move => n m Hm. move : (negbTE Hm) => Hnot0. rewrite/udivB size_zeros Hnot0. 
+  move => n m Hm. move : (negbTE Hm) => Hnot0. rewrite/udivB size_rev size_zeros Hnot0. 
   move : Hnot0. elim n; first done.
-  move => ns Hudiv Hnot0. rewrite udivB_rec0; first by rewrite/shlB shlB_mul2exp mul0B.
+  move => ns Hudiv Hnot0.  rewrite rev_copy udivB_rec0; first by rewrite/shlB shlB_mul2exp mul0B.
   by rewrite size_from_nat Hnot0.
 Qed.
   
@@ -429,8 +435,8 @@ Qed.
 Lemma size_uremB : forall n m , size (udivB n m).2 = size n.
 Proof.
   rewrite/udivB. intros.
-  case Hm0: ((size n) -bits of (to_nat m)%bits == zeros (size n)); first done. 
-  rewrite size_uremB_rec; rewrite size_zeros; first done. by rewrite size_from_nat.
+  case Hm0: ((size (rev n)) -bits of (to_nat m)%bits == zeros (size (rev n))); first done. 
+  rewrite size_rev size_uremB_rec; rewrite size_zeros; first done. by rewrite size_from_nat.
 Qed.  
 
 Lemma udivB_mulAC : forall d m n, (udivB d m).2 = zeros (size d) -> udivB m (mulB d n) = udivB (mulB m n) d.
@@ -533,10 +539,9 @@ Lemma udivB1: forall p, udivB p (from_nat (size p) 1) = (p, from_nat (size p) 0)
 Proof.
   elim=>[| ph pt IH]/=; first done. 
   rewrite/udivB!from_natn0 to_nat_joinlsb to_nat_zeros-muln2 mul0n add0n.
-  rewrite-from_natn0 -from_nat_bounded_eq; [|by rewrite/=Nats.expn2_gt1|by rewrite Nats.expn2_gt0].
+  rewrite-from_natn0 -from_nat_bounded_eq; [|by rewrite/=size_rev Nats.expn2_gt1|by rewrite size_rev Nats.expn2_gt0].
   rewrite/udivB in IH.
-  rewrite/=!from_natn0 to_nat_zeros-!muln2 mul0n addn0 to_nat_belast_0 mul0n addn0. 
-  case ph; rewrite/=.
+  rewrite/=!from_natn0 size_rev/=. 
 Admitted.
   
 Lemma shrB_div2exp:  forall i p , (iter i shrB1 p, from_nat (size p) 0) = udivB p (from_nat (size p) (2^ i)%nat).
@@ -575,7 +580,8 @@ Proof.
 Admitted.
 
 (*
-Fixpoint bit_blast_udiv_rec g ls1 ls2 cs qs rs: generator * cnf * word * word :=
+Fixpoint bit_blast_udiv_rec_t g ls1 ls2 cs qs rs: generator * cnf * word * word :=
+
   match ls1 with
   | [::] => (g, cs, qs, rs)
   | ls_hd1 :: ls_tl1 =>
@@ -584,15 +590,16 @@ Fixpoint bit_blast_udiv_rec g ls1 ls2 cs qs rs: generator * cnf * word * word :=
     let qi := dropmsl (joinlsl lrs_ge qs) in
     if (lrs_ge==lit_tt) then
       let '(g_sub, cs_sub, lrs_sub) := bit_blast_sub g_ge di ls2 in
-      bit_blast_udiv_rec g_sub ls_tl1 ls2 (catrev (catrev cs cs_ge) cs_sub) qi lrs_sub
-    else if (lrs_ge == lit_ff) then bit_blast_udiv_rec g_ge ls_tl1 ls2 (catrev cs cs_ge) qi di
+      bit_blast_udiv_rec_t g_sub ls_tl1 ls2 (catrev (catrev cs cs_ge) cs_sub) qi lrs_sub
+    else if (lrs_ge == lit_ff) then bit_blast_udiv_rec_t g_ge ls_tl1 ls2 (catrev cs cs_ge) qi di
          else
            let '(g_and, cs_and, lrs_and) := bit_blast_and g_ge (copy (size ls2) lrs_ge) ls2 in
            let '(g_sub2, cs_sub2, lrs_sub2) := bit_blast_sub g_and di lrs_and in
-           bit_blast_udiv_rec g_sub2 ls_tl1 ls2 (catrev (catrev (catrev cs cs_ge) cs_and) cs_sub2) qi lrs_sub2
+           bit_blast_udiv_rec_t g_sub2 ls_tl1 ls2 (catrev (catrev (catrev cs cs_ge) cs_and) cs_sub2) qi lrs_sub2
   end.
 *)
 
+(*
 Fixpoint bit_blast_udiv_rec g ls1 ls2 qs rs :  generator * cnf * word * word :=
   match ls1 with
   | [::] => (g, [::], qs, rs)
@@ -610,8 +617,28 @@ Fixpoint bit_blast_udiv_rec g ls1 ls2 qs rs :  generator * cnf * word * word :=
               let '(g_sub2, cs_sub2, lrs_sub2) := bit_blast_sub g_and di lrs_and in
               (g_sub2, (catrev (catrev (catrev cs_tl cs_hd) cs_and) cs_sub2), qi, lrs_sub2)
   end.
+*)
 
-              
+
+Fixpoint bit_blast_udiv_rec g ls1 ls2 qs rs :  generator * cnf * word * word :=
+  match ls1 with
+  | [::] => (g, [::], qs, rs)
+  | ls1_hd :: ls1_tl =>
+    let di := dropmsl (joinlsl ls1_hd rs) in
+    let '(g_uge, cs_uge, lrs_uge) := bit_blast_uge g di ls2 in
+    let qi := dropmsl (joinlsl lrs_uge qs) in
+    if (lrs_uge == lit_tt) then
+      let '(g_sub, cs_sub, lrs_sub) := bit_blast_sub g_uge di ls2 in
+      let '(g_tl, cs_tl, lqs_tl, lrs_tl) := bit_blast_udiv_rec g_sub ls1_tl ls2 qi lrs_sub in
+      (g_tl, (catrev (catrev cs_tl cs_sub) cs_uge), lqs_tl, lrs_tl)
+    else if (lrs_uge == lit_ff) then
+           let '(g_tl, cs_tl, lqs_tl, lrs_tl) := bit_blast_udiv_rec g_uge ls1_tl ls2 qi di in
+           (g_tl, catrev cs_tl cs_uge, lqs_tl, lrs_tl)
+         else let '(g_and, cs_and, lrs_and) := bit_blast_and g_uge (copy (size ls2) lrs_uge) ls2 in
+              let '(g_sub2, cs_sub2, lrs_sub2) := bit_blast_sub g_and di lrs_and in
+              let '(g_tl, cs_tl, lrs_tl, lqs_tl) := bit_blast_udiv_rec g_sub2 ls1_tl ls2 qi lrs_sub2 in
+              (g_tl, (catrev (catrev (catrev cs_tl cs_sub2) cs_and) cs_uge), lrs_tl, lqs_tl)
+  end.             
  
 Definition bit_blast_udiv g ls1 ls2 :=
   if ls2 == copy (size ls2) lit_ff then
@@ -619,7 +646,27 @@ Definition bit_blast_udiv g ls1 ls2 :=
     else
       bit_blast_udiv_rec g ls1 ls2 (copy (size ls1) lit_ff) (copy (size ls1) lit_ff).
 
+Fixpoint mk_env_udiv_rec E g ls1 ls2 qs rs : env * generator * cnf * word * word :=
+  match ls1 with
+  | [::] => (E, g, [::], qs, rs)
+  | ls1_hd :: ls1_tl =>
+    let di := dropmsl (joinlsl ls1_hd rs) in
+    let '(E_uge, g_uge, cs_uge, lrs_uge) := mk_env_uge E g di ls2 in
+    let qi := dropmsl (joinlsl lrs_uge qs) in
+    if (lrs_uge == lit_tt) then
+      let '(E_sub, g_sub, cs_sub, lrs_sub) := mk_env_sub E_uge g_uge di ls2 in
+      let '(E_tl, g_tl, cs_tl, lqs_tl, lrs_tl) := mk_env_udiv_rec E_sub g_sub ls1_tl ls2 qi lrs_sub in
+      (E_tl, g_tl, (catrev (catrev cs_tl cs_sub) cs_uge), lqs_tl, lrs_tl)
+    else if (lrs_uge == lit_ff) then
+           let '(E_tl, g_tl, cs_tl, lqs_tl, lrs_tl) := mk_env_udiv_rec E_uge g_uge ls1_tl ls2 qi di in
+           (E_tl, g_tl, catrev cs_tl cs_uge, lqs_tl, lrs_tl)
+         else let '(E_and, g_and, cs_and, lrs_and) := mk_env_and E_uge g_uge (copy (size ls2) lrs_uge) ls2 in
+              let '(E_sub2, g_sub2, cs_sub2, lrs_sub2) := mk_env_sub E_and g_and di lrs_and in
+              let '(E_tl, g_tl, cs_tl, lrs_tl, lqs_tl) := mk_env_udiv_rec E_sub2 g_sub2 ls1_tl ls2 qi lrs_sub2 in
+              (E_tl, g_tl, (catrev (catrev (catrev cs_tl cs_sub2) cs_and) cs_uge), lrs_tl, lqs_tl)
+  end.       
 
+(*
 Fixpoint mk_env_udiv_rec (E: env) (g:generator) ls1 ls2 qs rs : env * generator * cnf * word * word :=
   match ls1 with
   | [::] => (E, g, [::], qs, rs)
@@ -637,6 +684,7 @@ Fixpoint mk_env_udiv_rec (E: env) (g:generator) ls1 ls2 qs rs : env * generator 
               let '(E_sub2, g_sub2, cs_sub2, lrs_sub2) := mk_env_sub E_and g_and di lrs_and in
               (E_sub2, g_sub2, (catrev (catrev (catrev cs_tl cs_hd) cs_and) cs_sub2), qi, lrs_sub2)
   end.
+*)
 
 Definition mk_env_udiv E g ls1 ls2 :=
   if ls2 == copy (size ls2) lit_ff then
@@ -661,21 +709,26 @@ Proof.
   move => g ls1; move : g.
   elim ls1 => [|ls1hd ls1tl IH] g ls2 g' qs rs cs' qlrs rlrs  Hbbdiv Hszqs Hszrs ; move : Hbbdiv; rewrite/bit_blast_udiv/=.
   case => _ _ <- <-; done.
-  case Hbbdiv : (bit_blast_udiv_rec g ls1tl ls2 qs rs) => [[[g_tl cs_tl] lrs_tl] lqs_tl].
-  case Hbbuge: (bit_blast_uge g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2)=> [[g_hd cs_hd] lrs_hd].
-  move : (IH _ _ _ _ _ _ _ _ Hbbdiv Hszqs Hszrs) => [Hszlrstl Hszlqstl].
-  case Hhdtt : (lrs_hd == lit_tt).
-  case Hbbsub : (bit_blast_sub g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[g_sub cs_sub] lrs_sub].
-  case => _ _ <- <-. rewrite size_dropmsl size_joinlsl addnK.
-  have Hszlrstl' :size (dropmsl (joinlsl ls1hd lrs_tl)) = size ls2 by rewrite size_dropmsl size_joinlsl addnK Hszlrstl.
-  by rewrite Hszlqstl (bit_blast_sub_size_ss Hbbsub Hszlrstl'). 
-  case Hhdff :(lrs_hd == lit_ff).
-  case => _ _ <- <-. by rewrite !size_dropmsl !size_joinlsl !addnK. 
+  (*case Hbbdiv : (bit_blast_udiv_rec g ls1tl ls2 qs rs) => [[[g_tl cs_tl] lrs_tl] lqs_tl].*)
+  case Hbbuge: (bit_blast_uge g (dropmsl (joinlsl ls1hd rs)) ls2)=> [[g_hd cs_hd] lrs_hd].
+  case Hbbsub : (bit_blast_sub g_hd (dropmsl (joinlsl ls1hd rs)) ls2) => [[g_sub cs_sub] lrs_sub].
   case Hbband : (bit_blast_and g_hd (copy (size ls2) lrs_hd) ls2) => [[g_and cs_and] lrs_and].
-  case Hbbsub2 : (bit_blast_sub g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and)=> [[g_sub2 cs_sub2] lrs_sub2].
-  case => _ _ <- <-. rewrite size_dropmsl size_joinlsl addnK.
-  have Hszlrstl' :size (dropmsl (joinlsl ls1hd lrs_tl)) = size lrs_and by (rewrite size_dropmsl size_joinlsl addnK Hszlrstl -(bit_blast_and_size_ss Hbband); rewrite size_nseq).
-  by rewrite (bit_blast_sub_size_ss Hbbsub2 Hszlrstl') Hszlqstl -Hszlrstl' size_dropmsl size_joinlsl addnK Hszlrstl. 
+  case Hbbsub2 : (bit_blast_sub g_and (dropmsl (joinlsl ls1hd rs)) lrs_and) => [[g_sub2 cs_sub2] lrs_sub2].
+  case Hbbdiv : (bit_blast_udiv_rec g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd qs)) lrs_sub) => [[[g_tl cs_tl] lrs_tl] lqs_tl].
+  case Hbbdiv2 : (bit_blast_udiv_rec g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd qs)) (dropmsl (joinlsl ls1hd rs))) => [[[g_tl2 cs_tl2] lrs_tl2] lqs_tl2].
+  case Hbbdiv3 : (bit_blast_udiv_rec g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd qs)) lrs_sub2)=> [[[g_tl3 cs_tl3] lrs_tl3] lqs_tl3].
+  have Hszdj : (size (dropmsl (joinlsl lrs_hd qs)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK Hszqs.
+  have Hszdj2: (size (dropmsl (joinlsl ls1hd rs)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK Hszrs.
+  move : (bit_blast_sub_size_ss Hbbsub Hszdj2) => Hszsub.
+  have Hszcp : (size (copy (size ls2) lrs_hd) = size ls2 ) by rewrite size_nseq.
+  move : (bit_blast_and_size_ss Hbband Hszcp) => Hszand. 
+  have Hszdj3 : (size (dropmsl (joinlsl ls1hd rs)) = size lrs_and) by rewrite size_dropmsl size_joinlsl addnK Hszrs -Hszand size_nseq.
+  move : (bit_blast_sub_size_ss Hbbsub2 Hszdj3) => Hszsub2. generalize Hszsub2; move => Hszsub3. rewrite -Hszdj3 size_dropmsl size_joinlsl addnK Hszrs in Hszsub3.
+  move : (IH _ _ _ _ _ _ _ _ Hbbdiv Hszdj Hszsub) => [Hszlrstl Hszlqstl]. 
+  move : (IH _ _ _ _ _ _ _ _ Hbbdiv2 Hszdj Hszdj2) => [Hszlrstl2 Hszlqstl2]. 
+  move : (IH _ _ _ _ _ _ _ _ Hbbdiv3 Hszdj Hszsub3) => [Hszlrstl3 Hszlqstl3]. 
+  case Hhdtt : (lrs_hd == lit_tt). (case => _ _ <- <-). done.
+  case Hhdff :(lrs_hd == lit_ff); case => _ _ <- <-; done.
 Qed.
 
 Lemma bit_blast_udiv_size_ss : forall g ls1 ls2 g' cs qlrs rlrs ,
@@ -690,34 +743,56 @@ Proof.
   exact : (bit_blast_udiv_rec_size_ss Hbbudiv Hcopy1 Hcopy1 ). 
 Qed.
 
-Lemma bit_blast_udiv_rec_correct : forall g ls1 ls2 g' cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr,
-  bit_blast_udiv_rec g ls1 ls2 lqs lrs = (g', cs', qlrs, rlrs) ->
-  enc_bits E ls1 bs1 ->
-  enc_bits E ls2 bs2 ->
-  enc_bits E lqs bsq->
-  enc_bits E lrs bsr ->
-  interp_cnf E (add_prelude cs') ->
-  enc_bits E qlrs (udivB_rec bs1 bs2 bsq bsr).1 /\
-  enc_bits E rlrs (udivB_rec bs1 bs2 bsq bsr).2.
+Lemma add_prelude_enc_bit_is_true:
+  forall (E : env) (cs : seq (seq literal)) (b : bool_eqType),
+    interp_cnf E (add_prelude cs) -> enc_bit E lit_tt b = (b == true).
 Proof.
-  move => g ls1; move :g.
-  elim ls1 => [|ls1_hd ls1_tl IH] g ls2 g' cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr/=. 
-  - case => _ _ <- <-.  move => Henc1 Henc2 Hencq Hencr Hcs.
+  intros. case b; rewrite eqb_id; exact :(add_prelude_enc_bit_true _ H).
+Qed.
+
+Lemma bit_blast_udiv_rec_correct : forall g ls1 ls2 g' cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr,
+    bit_blast_udiv_rec g ls1 ls2 lqs lrs = (g', cs', qlrs, rlrs) ->
+    size lqs = size ls2 -> size lrs = size ls2 ->
+    enc_bits E ls1 bs1 ->
+    enc_bits E ls2 bs2 ->
+    enc_bits E lqs bsq->
+    enc_bits E lrs bsr ->
+    interp_cnf E (add_prelude cs') ->
+    enc_bits E qlrs (udivB_rec bs1 bs2 bsq bsr).1 /\
+    enc_bits E rlrs (udivB_rec bs1 bs2 bsq bsr).2.
+Proof.
+  (*move => g ls1; move :g.
+  elim ls1 => [|ls1_hd ls1_tl IH] g ls2 g' cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr/=;
+  elim bs1 => [|bs1_hd bs1_tl IHm]; try discriminate.
+  - case => _ _ <- <-.  move => Hszlqs Hszlrs Henc1 Henc2 Hencq Hencr Hcs.
     rewrite enc_bits_nil_l in Henc1. by rewrite (eqP Henc1)/= Hencq Hencr.
-  -
+  - rewrite/=.
     case Hbbudiv : (bit_blast_udiv_rec g ls1_tl ls2 lqs lrs) => [[[g_tl cs_tl] lqs_tl] lrs_tl].
     case Hbbuge : (bit_blast_uge g_tl (dropmsl (joinlsl ls1_hd lqs_tl)) ls2) => [[g_ge cs_ge] lrs_ge].
+    case Hbbsub : (bit_blast_sub g_ge (dropmsl (joinlsl ls1_hd lqs_tl)) ls2) => [[g_sub cs_sub] lrs_sub].
+    case Hbband : (bit_blast_and g_ge (copy (size ls2) lrs_ge) ls2) => [[g_and cs_and] lrs_and].
+    case Hbbsub2 : (bit_blast_sub g_and (dropmsl (joinlsl ls1_hd lqs_tl)) lrs_and ) => [[g_sub2 cs_sub2] lrs_sub2].
     case Hgett : (lrs_ge == lit_tt).
-    case Hbbsub : (bit_blast_sub g_ge (dropmsl (joinlsl ls1_hd lqs_tl)) ls2) => [[ge_sub cs_sub] lrs_sub].
     case => _ <- <- <-.
-    move => Henc1 Henc2 Hencq Hencr Hcs. 
+    move => Hszlqs Hszlrs Henc1 Henc2 Hencq Hencr Hcs.
+    move: (bit_blast_udiv_rec_size_ss Hbbudiv Hszlqs Hszlrs) => [Hszlqstl Hszlrstl].
+    have Hszand : size (dropmsl (joinlsl ls1_hd lqs_tl)) = size ls2 by rewrite size_dropmsl size_joinlsl addnK Hszlqstl.
     move : (enc_bits_splitlsb (add_prelude_tt Hcs) Henc1) => /andP[Hls1hd Hls1tl].
-    rewrite/= in Hls1tl. 
-    move : (add_prelude_tt Hcs) => Htt.
-    have Hencsubls1: (enc_bits E (dropmsl (joinlsl ls1_hd lrs)) (dropmsb (joinlsb (lsb bs1) bsr))).
+    rewrite/= in Hls1tl. generalize Hcs; move => Hcs2.
+    rewrite 2!add_prelude_catrev in Hcs. move/andP : Hcs => [Hcstl Hcssub]. move/andP : Hcstl => [Hcstl Hcsge].
+    rewrite add_prelude_expand in Hcs2. move/andP : Hcs2 => [Htt Hcs2].
+    move : (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Hbbudiv Hszlqs Hszlrs Hls1tl Henc2 Hencq Hencr Hcstl) => [IHlqs IHlrs].
+    have Hencge : (enc_bit E lrs_ge true) by (move/eqP : Hgett => Hgett; rewrite Hgett; exact : (add_prelude_enc_bit_tt Hcsge)).
+    rewrite enc_bits_cons in Henc1; move/andP: Henc1 => [Henc1hd Henc1tl].
+    have Hencdj: (enc_bits E (dropmsl (joinlsl ls1_hd lqs_tl)) (dropmsb (joinlsb bs1_hd(udivB_rec bs1_tl bs2 bsq bsr).1))) by (apply (enc_bits_dropmsb Htt); rewrite enc_bits_joinlsb IHlqs Henc1hd). 
+    move : (bit_blast_uge_correct Hbbuge Hszand Hencdj Henc2 Hcsge) => Henclrsge.
+    rewrite interp_cnf_catrev in  Hcs.
+    
+    have Hencsubls1: (enc_bits E (dropmsl (joinlsl ls1_hd lrs)) (dropmsb (joinlsb (lsb (bs1_hd :: bs1_tl)) bsr))).
     apply (enc_bits_dropmsb Htt). rewrite enc_bits_joinlsb Hencr.
     move : (enc_bits_lsl Htt Henc1); rewrite/lsl/=; move => Henc1hd. by rewrite Henc1hd.
-    
+    move : (bit_blast_uge_correct). Hbbuge Hszand Hencssubls1). _ _ _ _ _  Hbbuge).
+*)
 Admitted.
 
 Lemma enc_bits_ff : forall E cs n, interp_cnf E (add_prelude cs) -> enc_bits E (copy n lit_ff) (zeros n).
@@ -733,6 +808,7 @@ Lemma bit_blast_udiv_correct g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 :
   enc_bits E qlrs (udivB bs1 bs2).1 /\
   enc_bits E rlrs (udivB bs1 bs2).2.
 Proof.
+(*
   rewrite/udivB/bit_blast_udiv.
   case Hzb: (bs2 == zeros (size bs2)); case Hzl: (ls2 == copy (size ls2) lit_ff).
   case => _ _ <- <-.
@@ -742,6 +818,7 @@ Proof.
   move : (bit_blast_udiv_rec_correct H H0 H1 Hff Hff H2).
   move : (enc_bits_ff (size bs2) H2)=> Hencff. move : (enc_bits_size H0)=> Hencsz1. move : (enc_bits_size H1)=> Hencsz2. rewrite size_zeros in Hencsz2.
   rewrite Hencsz1 udivB_rec0r size_zeros subnn !zext0. 
+*)
 Admitted.
 
 Lemma mk_env_udiv_rec_is_bit_blast_udiv_rec: forall ls1 E g ls2 lq lr g' cs qlrs rlrs E',
@@ -750,16 +827,17 @@ Lemma mk_env_udiv_rec_is_bit_blast_udiv_rec: forall ls1 E g ls2 lq lr g' cs qlrs
 Proof.
   elim => [| ls1hd ls1tl IH] E g ls2 lq lr g' cs qlrs rlrs E'.
   - rewrite/=. by case => _ <- <- <- <-.
-  - rewrite/=.
-    dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
-    dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
-    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+  - rewrite/=. 
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
-    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
-    rewrite (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv) (mk_env_uge_is_bit_blast_uge Hmkuge) (mk_env_sub_is_bit_blast_sub Hmksub) (mk_env_and_is_bit_blast_and Hmkand) (mk_env_sub_is_bit_blast_sub Hmksub2). 
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) => [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) => [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
+    rewrite (mk_env_uge_is_bit_blast_uge Hmkuge) (mk_env_sub_is_bit_blast_sub Hmksub) (mk_env_and_is_bit_blast_and Hmkand) (mk_env_sub_is_bit_blast_sub Hmksub2) (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv) (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2) (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3). 
     case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); by  move => [] _<- <- <- <-.
 Qed.
-
 
 Lemma mk_env_udiv_is_bit_blast_udiv : forall ls1 E g ls2 g' cs qlrs rlrs E',
   mk_env_udiv E g ls1 ls2 = (E', g', cs, qlrs, rlrs) ->
@@ -778,19 +856,24 @@ Proof.
   elim  => [| ls1hd ls1tl IH] E g ls2 lq lr E' g' cs lqs lrs.
   - move => [] _ <- _ _ _. exact: Pos.leb_refl.
   - rewrite/=.
-    dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
-    dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
-    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+    (*dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].*)
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
-    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
-    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv) => Hgg0.
-    move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
-    move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
-    move : (mk_env_and_newer_gen Hmkand) => Hg1g3.
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) => [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) => [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv) => Hg2g5.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2) => Hg0g5.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3) => Hg4g5.
+    move : (mk_env_uge_newer_gen Hmkuge) => Hgg0.
+    move : (mk_env_sub_newer_gen Hmksub) => Hg0g2.
+    move : (mk_env_and_newer_gen Hmkand) => Hg0g3.
     move : (mk_env_sub_newer_gen Hmksub2) => Hg3g4.
-    move : (pos_leb_trans Hgg0  Hg0g1) => Hgg1.
-    move : (pos_leb_trans Hgg0 (pos_leb_trans Hg0g1 Hg1g2)) => Hgg2.
-    move : (pos_leb_trans (pos_leb_trans Hgg0 Hg0g1) (pos_leb_trans Hg1g3 Hg3g4)) => Hgg4.
+    move : (pos_leb_trans Hgg0 Hg0g5) => Hgg5.
+    move : (pos_leb_trans Hgg0 (pos_leb_trans Hg0g2 Hg2g5)) => Hgg52.
+    move : (pos_leb_trans (pos_leb_trans Hgg0 Hg0g3) (pos_leb_trans Hg3g4 Hg4g5)) => Hgg53.
     case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); (move => [] _ <- _ _ _; try exact).
 Qed.
 
@@ -817,37 +900,48 @@ Proof.
   elim  => [| ls1hd ls1tl IH] E g ls2 lq lr E' g' cs lqs lrs.
   - rewrite /=. case => _ <- _ <- <-.  move => Htt Hls1 Hls2 Hlq Hlr. by rewrite Hlq Hlr.
   - rewrite/=.
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+    dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) => [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) => [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
+    (*
     dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
     dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
     dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
-    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].*)
     move => Hres Htt Hls1 Hls2 Hlq Hlr.  move/andP: Hls1 => [Hls1hd Hls1tl].
-    move/andP : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv Htt Hls1tl Hls2 Hlq Hlr) => [Hg0lq Hg0lr].
-    move : (mk_env_uge_newer_res Hmkuge) => Hg1ls2.
+    generalize Hres.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hg2g5.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv2) => Hg0g5.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv3) => Hg4g5.
+    move : (mk_env_uge_newer_gen Hmkuge) => Hgg0.
+    move : (mk_env_sub_newer_gen Hmksub) => Hg0g2.
+    move : (mk_env_and_newer_gen Hmkand) => Hg0g3.
+    move : (mk_env_sub_newer_gen Hmksub2) => Hg3g4.
+    move : (pos_leb_trans Hgg0 Hg0g5) => Hgg5.
+    move : (pos_leb_trans Hgg0 (pos_leb_trans Hg0g2 Hg2g5)) => Hgg52.
+    move : (pos_leb_trans (pos_leb_trans Hgg0 Hg0g3) (pos_leb_trans Hg3g4 Hg4g5)) => Hgg53.
+    move : (pos_leb_trans Hgg0 (pos_leb_trans Hg0g3 Hg3g4 )) => Hgg4.
+    move : ((pos_leb_trans Hg0g3 Hg3g4 )) => Hg0g4.
+    move : (mk_env_uge_newer_res Hmkuge) => Hg0ls2.
     move : (mk_env_sub_newer_res Hmksub) => Hg2ls3.
     move : (mk_env_sub_newer_res Hmksub2) => Hg4ls5. 
-    generalize Hres.
-    move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
-    move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
-    move : (pos_leb_trans Hg0g1  Hg1g2) => Hg0g2.
-    move : (mk_env_and_newer_gen Hmkand) => Hg1g3.
-    move : (mk_env_sub_newer_gen Hmksub2) => Hg3g4.
-    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hgg0.
-    move : (pos_leb_trans Hgg0  Hg0g1) => Hgg1.
-    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g3 Hg3g4)) => Hg0g4.
-    move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
-    move : (newer_than_lit_le_newer Hg1ls2 Hg1g2) => Hg5ls6.
-    move : (newer_than_lits_le_newer Hg0lq Hg0g2) => Hg6ls7.
-    move : (newer_than_lits_le_newer Hg0lq Hg0g4) => Hg7ls8.
-    move : (newer_than_lit_le_newer Hg1ls2 Hg1g4) => Hg8ls9.
-    move : (newer_than_lits_le_newer Hg0lr Hg0g1) => Hg0ls0.
-    move : (newer_than_lit_le_newer Hls1hd Hgg1) => Hg9ls0.
-    move : (newer_than_lits_le_newer Hg0lq Hg0g1) => Hg1ls1.
-    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] _ <- _ <- <-;
-    [rewrite Hg2ls3 andTb newer_than_lits_dropmsl; last rewrite newer_than_lits_joinlsl; done|rewrite Hg2ls3 andTb newer_than_lits_dropmsl; last rewrite newer_than_lits_joinlsl; done|auto|rewrite Hg4ls5 andTb newer_than_lits_dropmsl; last rewrite newer_than_lits_joinlsl;  done].
-    rewrite newer_than_lits_dropmsl; last rewrite newer_than_lits_joinlsl; try done.
-    rewrite andTb newer_than_lits_dropmsl; last rewrite newer_than_lits_joinlsl; done.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl Hg0ls2 (newer_than_lits_le_newer Hlq Hgg0))) => Hdjlq.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl Hls1hd ( Hlr ))) => Hdjlr.
+    move : (newer_than_lits_le_newer Hdjlr Hgg0) => Hdjlrg0.
+    move/andP : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgg0 Hg0g2)) (newer_than_lits_le_newer Hls1tl (pos_leb_trans Hgg0 Hg0g2)) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hgg0 Hg0g2)) (newer_than_lits_le_newer Hdjlq Hg0g2)   Hg2ls3) => [Hg0lq Hg0lr].
+    move/andP : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2 (newer_than_lit_le_newer Htt  Hgg0) (newer_than_lits_le_newer Hls1tl (Hgg0 )) (newer_than_lits_le_newer Hls2 ( Hgg0 )) (Hdjlq ) Hdjlrg0  ) => [Hgtl2lq Hgtl2lr].
+    move/andP : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3 (newer_than_lit_le_newer Htt  Hgg4) (newer_than_lits_le_newer Hls1tl (Hgg4 )) (newer_than_lits_le_newer Hls2 ( Hgg4 )) (newer_than_lits_le_newer Hdjlq Hg0g4) Hg4ls5) => [Hgtl3lq Hgtl3lr].
+    move : (newer_than_lit_le_newer Hg0ls2 Hg0g2) => Hg5ls6.
+    move : (newer_than_lit_le_newer Hg0ls2 Hg0g3) => Hg8ls9.
+    move : (newer_than_lit_le_newer Hls1hd Hgg0) => Hg9ls0.
+    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] _ <- _ <- <-.
+    by rewrite Hg0lq Hg0lr. by rewrite Hg0lq Hg0lr.
+    by rewrite Hgtl2lq Hgtl2lr. by rewrite Hgtl3lq Hgtl3lr. 
 Qed.
 
 Lemma mk_env_udiv_newer_res :
@@ -878,43 +972,70 @@ Proof.
     elim  => [| ls1hd ls1tl IH] E g ls2 lq lr E' g' cs lqs lrs.
   - rewrite /=. case => _ <- <- _ _.  move => Htt Hls1 Hls2 Hlq Hlr Hszq Hszr. done. 
   - rewrite/=.
-    dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    (*dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
     dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
     dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
-    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].*)
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) =>[[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) =>
+    [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) =>
+    [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
     move => Hres Htt Hls1 Hls2 Hlq Hlr Hszq Hszr.  move/andP: Hls1 => [Hls1hd Hls1tl].
-    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv Htt Hls1tl Hls2 Hlq Hlr Hszq Hszr) => Hg0cs0.
-
     move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
     move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
     move : (pos_leb_trans Hg0g1  Hg1g2) => Hg0g2.
-    move : (mk_env_and_newer_gen Hmkand) => Hg1g3.
-    move : (mk_env_sub_newer_gen Hmksub2) => Hg3g4.
-    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hgg0.
-    move : (pos_leb_trans Hgg0  Hg0g1) => Hgg1.
-    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g3 Hg3g4)) => Hg0g4.
-    move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
-    move: (newer_than_lit_le_newer Htt Hgg1) => Httg1. rewrite newer_than_lit_tt_ff in Httg1.
-    move/andP : (mk_env_udiv_rec_newer_res Hmkudiv Htt Hls1tl Hls2 Hlq Hlr) => [Hlqstl Hlrstl].
-    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hls1hd Hgg1) (newer_than_lits_le_newer Hlrstl Hg0g1))) => Hdj.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hg2g3.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv2) => Hg2g3'.
+    move : (mk_env_and_newer_gen Hmkand) => Hg1g2''.
+    move : (mk_env_sub_newer_gen Hmksub2) => Hg2''g3''.
+    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g2 Hg2g3)) => Hg0g3.
+    move : (pos_leb_trans Hg1g2'' Hg2''g3'') => Hg1g3''.
+    move : (pos_leb_trans Hg0g1 Hg1g3'') => Hg0g3''.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv3) => Hg3''g4''.
+    move : (pos_leb_trans Hg1g3'' Hg3''g4'') => Hg1g4''.
+    move: (newer_than_lit_le_newer Htt Hg0g1) => Httg1. rewrite newer_than_lit_tt_ff in Httg1.
+    move : (mk_env_uge_newer_res Hmkuge) => Hlrshd.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hlrshd Hg1g2) (newer_than_lits_le_newer Hlq Hg0g2))) => Hdjlq.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl ( Hlrshd ) (newer_than_lits_le_newer Hlq Hg0g1))) => Hdjlq0.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl ( Hls1hd ) ( Hlr ))) => Hdjlr0.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hls1hd Hg0g2) (newer_than_lits_le_newer Hlr Hg0g2))) => Hdjlr.
+    move : (mk_env_sub_newer_res Hmksub) => Hlrssub.
+    move : (mk_env_sub_newer_res Hmksub2) => Hlrssub2.
+    move/andP : (mk_env_udiv_rec_newer_res Hmkudiv (newer_than_lit_le_newer Htt Hg0g2) (newer_than_lits_le_newer Hls1tl Hg0g2) (newer_than_lits_le_newer Hls2 Hg0g2) Hdjlq Hlrssub) => [Hlqstl Hlrstl].
+    (*move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hls1hd Hg0g1) (newer_than_lits_le_newer Hlrstl Hg0g1))) => Hdj.
     move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hls1hd Hgg0) Hlrstl)) => Hdjtl.
-    move : (newer_than_lits_le_newer Hls2 Hgg1) => Hg1ls2hd.
-    move : (bit_blast_udiv_rec_size_ss (mk_env_udiv_rec_is_bit_blast_udiv_rec Hmkudiv) Hszq Hszr) => [Hszrtl Hszqtl].
+    move : (newer_than_lits_le_newer Hls2 Hgg1) => Hg1ls2hd.*)
+    have Hszdjq : (size (dropmsl (joinlsl lrs_hd lq)) = size  ls2) by rewrite size_dropmsl size_joinlsl addnK.
+    have Hszdjr : (size (dropmsl (joinlsl ls1hd lr)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK.
+    move : (bit_blast_sub_size_ss (mk_env_sub_is_bit_blast_sub Hmksub) Hszdjr) => Hsz1.
+    have Hszcp : size (copy (size ls2) lrs_hd) = size ls2 by rewrite size_nseq.
+    move : (bit_blast_and_size_ss (mk_env_and_is_bit_blast_and Hmkand) Hszcp) => Hszcp0.
+    have  Hdjand : (size (dropmsl (joinlsl ls1hd lr)) = size lrs_and) by rewrite size_dropmsl size_joinlsl addnK Hszr -Hszcp0 size_nseq.
+    move : (bit_blast_sub_size_ss (mk_env_sub_is_bit_blast_sub Hmksub2) Hdjand) => Hsz2.
+    rewrite -Hszcp0 size_nseq in Hsz2.
+    move : (bit_blast_udiv_rec_size_ss (mk_env_udiv_rec_is_bit_blast_udiv_rec Hmkudiv) Hszdjq Hsz1) => [Hszrtl Hszqtl].
     have Hszdj : (size (dropmsl (joinlsl ls1hd lrs_tl)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK Hszrtl.
-    move : (mk_env_sub_newer_cnf Hmksub Httg1 Hdj Hg1ls2hd ) => Hg2ls3.
-    move : (newer_than_cnf_le_newer Hg0cs0 Hg0g2) => Hg2cs0.
-    move : (mk_env_uge_newer_cnf Hmkuge (newer_than_lit_le_newer Htt Hgg0) Hdjtl (newer_than_lits_le_newer Hls2 Hgg0)) => Hg1cs2.
-    move : (mk_env_uge_newer_res Hmkuge) => Hg1cs1.
+    move : (mk_env_sub_newer_cnf Hmksub Httg1 (newer_than_lits_le_newer Hdjlr0 Hg0g1) (newer_than_lits_le_newer Hls2 Hg0g1)) => Hg2ls3.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv (newer_than_lit_le_newer Htt Hg0g2) (newer_than_lits_le_newer Hls1tl Hg0g2) (newer_than_lits_le_newer Hls2 Hg0g2) Hdjlq Hlrssub Hszdjq Hsz1) => Hg0cs0.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2 (newer_than_lit_le_newer Htt Hg0g1) (newer_than_lits_le_newer Hls1tl Hg0g1) (newer_than_lits_le_newer Hls2 Hg0g1) Hdjlq0 (newer_than_lits_le_newer Hdjlr0 Hg0g1) Hszdjq Hszdjr) => Hg1cs1.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3 (newer_than_lit_le_newer Htt (Hg0g3'' )) (newer_than_lits_le_newer Hls1tl Hg0g3'') (newer_than_lits_le_newer Hls2 Hg0g3'') (newer_than_lits_le_newer Hdjlq0 Hg1g3'') Hlrssub2 Hszdjq Hsz2) => Hg3cs3.
+    move : (mk_env_uge_newer_cnf Hmkuge (Htt ) Hdjlr0 (Hls2 )) => Hg1cs2.
+    move : (mk_env_uge_newer_res Hmkuge) => Hg1rs1.
     move : (newer_than_cnf_le_newer Hg1cs2 Hg1g2) => Hg2cs2.
-    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls2) Hg1cs1) (newer_than_lits_le_newer Hls2 Hgg1)) => Hg3ls3.
-    move : (mk_env_sub_newer_cnf Hmksub2 (newer_than_lit_le_newer Httg1 Hg1g3) (newer_than_lits_le_newer Hdj Hg1g3) Hg3ls3) => Hg4cs5. (*rewrite Hszdj in Hg4cs5.*)
-    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls2) Hg1cs1) (newer_than_lits_le_newer Hls2 Hgg1)) => Hg3cs3.
-
+    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt Hg0g1) (newer_than_lits_copy (size ls2) Hg1rs1) (newer_than_lits_le_newer Hls2 Hg0g1)) => Hg3ls3.
+    move : (mk_env_sub_newer_cnf Hmksub2 (newer_than_lit_le_newer Httg1 Hg1g2'') (newer_than_lits_le_newer Hdjlr0 (pos_leb_trans Hg0g1 Hg1g2'')) Hg3ls3) => Hg4cs5. (*rewrite Hszdj in Hg4cs5.*)
+    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt Hg0g1) (newer_than_lits_copy (size ls2) Hg1rs1) (newer_than_lits_le_newer Hls2 Hg0g1)) => Hg4cs4.
     generalize Hres.
-    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] _ <- <- _ _; rewrite !newer_than_cnf_catrev; try by rewrite Hg2ls3 Hg2cs0 Hg2cs2.
-      by rewrite Hg1cs2 (newer_than_cnf_le_newer Hg0cs0  Hg0g1).
-      rewrite (newer_than_cnf_le_newer Hg3cs3 Hg3g4) (newer_than_cnf_le_newer Hg0cs0 Hg0g4) (newer_than_cnf_le_newer Hg1cs2 Hg1g4) Hg4cs5; first done.
+    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] _ <- <- _ _; rewrite !newer_than_cnf_catrev; 
+    try by rewrite Hg0cs0 (newer_than_cnf_le_newer Hg2ls3 Hg2g3) (newer_than_cnf_le_newer Hg2cs2 Hg2g3).
+    by rewrite Hg1cs1 (newer_than_cnf_le_newer Hg1cs2 Hg2g3').
+    by rewrite Hg3cs3 (newer_than_cnf_le_newer Hg4cs5 Hg3''g4'') (newer_than_cnf_le_newer Hg4cs4 (pos_leb_trans Hg2''g3'' Hg3''g4'')) (newer_than_cnf_le_newer Hg1cs2 Hg1g4'').
 Qed.
 
 Lemma mk_env_udiv_newer_cnf :
@@ -939,33 +1060,51 @@ Proof.
   elim => [|ls1hd ls1tl IH] E g ls2 lq lr E' g' cs lqs lrs.
   - by case => <- _ _ _. 
   - rewrite/=.
-    dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    (*dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
     dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
     dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
-    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].*)
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) =>[[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) =>
+    [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) =>
+    [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
     move => Hres .  
-    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv ) => HEE0g.
+    
     move : (mk_env_uge_preserve Hmkuge) => HE0E1g0.
     move : (mk_env_sub_preserve Hmksub) => HE1E2g1.
-    move : (mk_env_and_preserve Hmkand) => HE1E3g1.
-    move : (mk_env_sub_preserve Hmksub2) => HE3E4g3.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv ) => HE2E3g.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2 ) => HE2E3'g.
+    move : (mk_env_and_preserve Hmkand) => HE1E2''g1.
+    move : (mk_env_sub_preserve Hmksub2) => HE2''E3''g3.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3 ) => HE3''E4''g.
     move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
     move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
     move : (pos_leb_trans Hg0g1  Hg1g2) => Hg0g2.
-    move : (mk_env_and_newer_gen Hmkand) => Hg1g3.
-    move : (mk_env_sub_newer_gen Hmksub2) => Hg3g4.
-    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hgg0.
-    move : (pos_leb_trans Hgg0  Hg0g1) => Hgg1.
-    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g3 Hg3g4)) => Hg0g4.
-    move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
-    move : (env_preserve_trans HEE0g (env_preserve_le HE0E1g0 Hgg0)) => HEE1g.
-    move : (env_preserve_trans HEE1g (env_preserve_le HE1E2g1 Hgg1)) => HEE2g.
-    move : (env_preserve_trans HEE1g (env_preserve_le HE1E3g1 Hgg1 )) => HEE3g.
-    move : (env_preserve_trans HEE3g (env_preserve_le HE3E4g3 (pos_leb_trans Hgg1 Hg1g3))) => HEE4g.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hg2g3.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv2) => Hg2g3'.
+    move : (mk_env_and_newer_gen Hmkand) => Hg1g2''.
+    move : (mk_env_sub_newer_gen Hmksub2) => Hg2''g3''.
+    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g2 Hg2g3)) => Hg0g3.
+    move : (pos_leb_trans Hg1g2'' Hg2''g3'') => Hg1g3''.
+    move : (pos_leb_trans Hg0g1 Hg1g3'') => Hg0g3''.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv3) => Hg3''g4''.
+    move : (pos_leb_trans Hg1g3'' Hg3''g4'') => Hg1g4''.
     generalize Hres.
-    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] <- _ _ _ _; try done.
+    case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] <- _ _ _ _; 
+    try by (move : (env_preserve_trans HE0E1g0 (env_preserve_le HE1E2g1 Hg0g1)) => HE0E2g0;
+    exact : (env_preserve_trans HE0E2g0 (env_preserve_le HE2E3g Hg0g2))).
+    exact : (env_preserve_trans HE0E1g0 (env_preserve_le HE2E3'g Hg0g1)).
+    move : (env_preserve_trans HE0E1g0 (env_preserve_le HE1E2''g1 Hg0g1)) => HE0E2''g0.
+    move : (env_preserve_trans HE0E2''g0 (env_preserve_le HE2''E3''g3 (pos_leb_trans Hg0g1 Hg1g2''))) => HE0E3''g0.
+    exact : (env_preserve_trans HE0E3''g0 (env_preserve_le HE3''E4''g Hg0g3'')).
 Qed.
+
 
 Lemma mk_env_udiv_preserve :
   forall E g ls1 ls2 E' g' cs lqs lrs,
@@ -981,7 +1120,10 @@ Qed.
 Lemma mk_env_udiv_rec_sat :
   forall ls1 E g ls2 lq lr E' g' cs lqs lrs,
     mk_env_udiv_rec E g ls1 ls2 lq lr = (E', g', cs, lqs, lrs) ->
+    size lq = size ls2 -> size lr = size ls2 -> 
     newer_than_lit g lit_tt ->
+    newer_than_lits g lq ->
+    newer_than_lits g lr ->
     newer_than_lits g ls1 ->
     newer_than_lits g ls2 ->
     interp_cnf E' cs.
@@ -989,13 +1131,60 @@ Proof.
   elim => [|ls1hd ls1tl IH] E g ls2 lq lr E' g' cs lqs lrs.
   - by case => _ _ <- _ _ _ _.
   - rewrite/=.
+    dcase (mk_env_uge E g (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
+    dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lr)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
+    dcase (mk_env_udiv_rec E_sub g_sub ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub) =>[[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
+    dcase (mk_env_udiv_rec E_hd g_hd ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) (dropmsl (joinlsl ls1hd lr))) =>
+    [[[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] lqs_tl2] Hmkudiv2].
+    dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
+    dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lr)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
+    dcase (mk_env_udiv_rec E_sub2 g_sub2 ls1tl ls2 (dropmsl (joinlsl lrs_hd lq)) lrs_sub2) =>
+    [[[[[E_tl3 g_tl3] cs_tl3] lrs_tl3] lqs_tl3] Hmkudiv3].
+    (*
     dcase (mk_env_udiv_rec E g ls1tl ls2 lq lr) => [[[[[E_tl g_tl] cs_tl] lrs_tl] lqs_tl] Hmkudiv].
     dcase (mk_env_uge E_tl g_tl (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_hd g_hd] cs_hd] lrs_hd] Hmkuge].
     dcase (mk_env_sub E_hd g_hd (dropmsl (joinlsl ls1hd lrs_tl)) ls2) => [[[[E_sub g_sub] cs_sub] lrs_sub] Hmksub].
     dcase (mk_env_and E_hd g_hd (copy (size ls2) lrs_hd) ls2) => [[[[E_and g_and] cs_and] lrs_and] Hmkand].
     dcase (mk_env_sub E_and g_and (dropmsl (joinlsl ls1hd lrs_tl)) lrs_and) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hmksub2].
-    move => Hres Htt Hls1 Hls2. move/andP : Hls1 => [Hls1hd Hls1tl].
-    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv Htt Hls1tl Hls2 ) => HE0cs0.
+     *)
+    move=> Hres Hszq Hszr Htt Hlq Hlr Hls1 Hls2. move/andP : Hls1 => [Hls1hd Hls1tl].
+    have Hszdjq : (size (dropmsl (joinlsl lrs_hd lq)) = size  ls2) by rewrite size_dropmsl size_joinlsl addnK.
+    have Hszdjr : (size (dropmsl (joinlsl ls1hd lr)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK.
+    move : (bit_blast_sub_size_ss (mk_env_sub_is_bit_blast_sub Hmksub) Hszdjr) => Hsz1.
+    have Hszcp : size (copy (size ls2) lrs_hd) = size ls2 by rewrite size_nseq.
+    move : (bit_blast_and_size_ss (mk_env_and_is_bit_blast_and Hmkand) Hszcp) => Hszcp0.
+    have  Hdjand : (size (dropmsl (joinlsl ls1hd lr)) = size lrs_and) by rewrite size_dropmsl size_joinlsl addnK Hszr -Hszcp0 size_nseq.
+    move : (bit_blast_sub_size_ss (mk_env_sub_is_bit_blast_sub Hmksub2) Hdjand) => Hsz2.
+    rewrite -Hszcp0 size_nseq in Hsz2.
+    move : (bit_blast_udiv_rec_size_ss (mk_env_udiv_rec_is_bit_blast_udiv_rec Hmkudiv) Hszdjq Hsz1) => [Hszrtl Hszqtl].
+    have Hszdj : (size (dropmsl (joinlsl ls1hd lrs_tl)) = size ls2) by rewrite size_dropmsl size_joinlsl addnK Hszrtl.
+    move : (mk_env_uge_preserve Hmkuge) => HE0E1g0.
+    move : (mk_env_sub_preserve Hmksub) => HE1E2g1.
+    move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
+    move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
+    move : (pos_leb_trans Hg0g1  Hg1g2) => Hg0g2.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv) => Hg2g3.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv2) => Hg2g3'.
+    move : (mk_env_and_newer_gen Hmkand) => Hg1g2''.
+    move : (mk_env_sub_newer_gen Hmksub2) => Hg2''g3''.
+    move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g2 Hg2g3)) => Hg0g3.
+    move : (pos_leb_trans Hg1g2'' Hg2''g3'') => Hg1g3''.
+    move : (pos_leb_trans Hg0g1 Hg1g3'') => Hg0g3''.
+    move : (mk_env_udiv_rec_newer_gen Hmkudiv3) => Hg3''g4''.
+    move : (pos_leb_trans Hg1g3'' Hg3''g4'') => Hg1g4''.
+    move : (mk_env_uge_newer_res Hmkuge) => Hlrshd.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hlrshd Hg1g2) (newer_than_lits_le_newer Hlq Hg0g2))) => Hdjlq.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl ( Hlrshd ) (newer_than_lits_le_newer Hlq Hg0g1))) => Hdjlq0.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl ( Hls1hd ) ( Hlr ))) => Hdjlr0.
+    move : (newer_than_lits_dropmsl (newer_than_lits_joinlsl (newer_than_lit_le_newer Hls1hd Hg0g2) (newer_than_lits_le_newer Hlr Hg0g2))) => Hdjlr.
+    move : (mk_env_sub_newer_res Hmksub) => Hlrssub.
+    move : (mk_env_sub_newer_res Hmksub2) => Hlrssub2.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv Hszdjq Hsz1 (newer_than_lit_le_newer Htt Hg0g2) Hdjlq Hlrssub (newer_than_lits_le_newer Hls1tl Hg0g2) (newer_than_lits_le_newer Hls2 Hg0g2) )=> HE2E3g.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv2 Hszdjq Hszdjr (newer_than_lit_le_newer Htt Hg0g1) Hdjlq0 (newer_than_lits_le_newer Hdjlr0 Hg0g1) (newer_than_lits_le_newer Hls1tl Hg0g1) (newer_than_lits_le_newer Hls2 Hg0g1)) => HE2E3'g.
+    move : (IH _ _ _ _ _ _ _ _ _ _ Hmkudiv3 Hszdjq Hsz2 (newer_than_lit_le_newer Htt Hg0g3'') (newer_than_lits_le_newer Hdjlq0 Hg1g3'' ) Hlrssub2 (newer_than_lits_le_newer Hls1tl Hg0g3'') (newer_than_lits_le_newer Hls2 Hg0g3'')) => HE2E3'g3''.
+    move : (mk_env_and_preserve Hmkand) => HE1E2''g1.
+    move : (mk_env_sub_preserve Hmksub2) => HE2''E3''g3.
+    (*
     move : (mk_env_uge_newer_gen Hmkuge) => Hg0g1.
     move : (mk_env_sub_newer_gen Hmksub) => Hg1g2.
     move : (pos_leb_trans Hg0g1  Hg1g2) => Hg0g2.
@@ -1005,16 +1194,40 @@ Proof.
     move : (pos_leb_trans Hgg0  Hg0g1) => Hgg1.
     move : (pos_leb_trans Hg0g1 (pos_leb_trans Hg1g3 Hg3g4)) => Hg0g4.
     move : (pos_leb_trans Hg1g3 Hg3g4) => Hg1g4.
-    move : (mk_env_uge_sat Hmkuge (newer_than_lit_le_newer Htt Hgg0)).
+    move : (pos_leb_trans Hgg1 Hg1g3) => Hgg3.
+    move : (pos_leb_trans Hg0g1 Hg1g3) => Hg0g3.
+    move : (pos_leb_trans Hgg1 Hg1g4) => Hgg4.*)
+    move : (mk_env_uge_sat Hmkuge ( Htt )).
     have Hff : (newer_than_lit g lit_ff) by rewrite -newer_than_lit_tt_ff; done. 
-    move : (mk_env_sub_sat Hmksub (newer_than_lit_le_newer Hff Hgg1)).
-    have : (newer_than_lits g_hd (dropmsl (joinlsl ls1hd lrs_tl))).
+    move : (mk_env_sub_sat Hmksub (newer_than_lit_le_newer Hff Hg0g1)).
+    have Hgtllrstl : (newer_than_lits g_tl (dropmsl (joinlsl ls1hd lrs_tl))).
     apply newer_than_lits_dropmsl; apply newer_than_lits_joinlsl.
-    (*exact (newer_than_lit_le_newer Hls1hd Hgg1).*)
-
-
-
-    
 Admitted.
+    (*exact (newer_than_lit_le_newer Hls1hd Hg0g1).
+    move/andP : (mk_env_udiv_rec_newer_res Hmkudiv Htt Hls1tl Hls2 Hlq Hlr) => [Hgtllqstl  Hgtllrstl].
+    exact.
+    move => Hm1 Hm2. move : (Hm1 (newer_than_lits_le_newer Hgtllrstl Hg0g1) (newer_than_lits_le_newer Hls2 Hgg1)) =>HEsubcssub.
+    move : (Hm2 Hgtllrstl (newer_than_lits_le_newer Hls2 Hgg0)) => HEhdcshd.
+    move : (mk_env_udiv_rec_preserve Hmkudiv) => HEEtl.
+    move : (mk_env_uge_preserve Hmkuge) => HEtlEhd.
+    move : (mk_env_sub_preserve Hmksub) => HEhdEsub.
+    move : (mk_env_and_preserve Hmkand) => HEhdEand.
+    move : (mk_env_sub_preserve Hmksub2) => HEandEsub2.
+    move : (env_preserve_trans HEtlEhd (env_preserve_le HEhdEsub Hg0g1)) => HEtlEsubgtl.
+    move : (env_preserve_trans HEhdEand (env_preserve_le HEandEsub2 Hg1g3)) => HEhdEsub2ghd.
+    move : (env_preserve_trans HEtlEhd (env_preserve_le HEhdEsub2ghd Hg0g1)) => HEtlEsub2gtl.
+    move : (mk_env_udiv_rec_newer_cnf Hmkudiv Htt Hls1tl Hls2 Hlq Hlr Hszq Hszr) => Hgtlcstl.
+    move : (mk_env_uge_newer_cnf Hmkuge (newer_than_lit_le_newer Htt Hgg0) Hgtllrstl (newer_than_lits_le_newer Hls2 Hgg0)) => Hghdcshd.
+    move : Hres. case (lrs_hd == lit_tt); case (lrs_hd == lit_ff); move => [] <- _ <- _ _; rewrite !interp_cnf_catrev; try by rewrite (env_preserve_cnf HEtlEsubgtl Hgtlcstl) (env_preserve_cnf HEhdEsub Hghdcshd) HEsubcssub HE0cs0 HEhdcshd .
+    by rewrite (env_preserve_cnf HEtlEhd Hgtlcstl) HE0cs0 HEhdcshd.
+    move : (mk_env_uge_newer_res Hmkuge ) => Hghdlrshd.
+    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls2) Hghdlrshd) (newer_than_lits_le_newer Hls2 Hgg1)) => Hgandlrsand.
+    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls2) Hghdlrshd) (newer_than_lits_le_newer Hls2 Hgg1))=> Hgandcsand.
+    move : (mk_env_and_sat Hmkand (newer_than_lit_le_newer Htt Hgg1) (newer_than_lits_copy (size ls2) Hghdlrshd) (newer_than_lits_le_newer Hls2 Hgg1)) => HEandcsand.
+    rewrite (env_preserve_cnf HEhdEsub2ghd Hghdcshd) HEhdcshd.
+    rewrite (env_preserve_cnf HEandEsub2 Hgandcsand) HEandcsand .
+    rewrite (mk_env_sub_sat Hmksub2 (newer_than_lit_le_newer Htt Hgg3) (newer_than_lits_le_newer Hgtllrstl Hg0g3) Hgandlrsand).
+    by rewrite (env_preserve_cnf HEtlEsub2gtl Hgtlcstl) HE0cs0.
+Qed.*)
 
 
