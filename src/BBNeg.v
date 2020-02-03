@@ -48,13 +48,13 @@ Definition bit_blast_neg g ls : generator * cnf * word :=
   let '(g_not, cs_not, lrs_not) := bit_blast_not g ls in
   let '(g_con, cs_con, lrs_con) := bit_blast_const g_not (from_nat (size ls) 1) in
   let '(g_add, cs_add, lrs_add) := bit_blast_add g_con lrs_not lrs_con in
-  (g_add, cs_not++cs_con++cs_add, lrs_add).
+  (g_add, catrev cs_not (catrev cs_con cs_add), lrs_add).
 
 Definition mk_env_neg E g ls : env * generator * cnf * word :=
   let '(E_not, g_not, cs_not, lrs_not) := mk_env_not E g ls in
   let '(E_con, g_con, cs_con, lrs_con) := mk_env_const E_not g_not (from_nat (size ls) 1) in
   let '(E_add, g_add, cs_add, lrs_add) := mk_env_add E_con g_con lrs_not lrs_con in
-  (E_add, g_add, cs_not++cs_con++cs_add, lrs_add).
+  (E_add, g_add, catrev cs_not (catrev cs_con cs_add), lrs_add).
 
 
 Lemma bit_blast_neg_correct :
@@ -70,7 +70,7 @@ Proof.
   case Hcons : (bit_blast_const g_not (from_nat (size ls) 1)) => [[g_con cs_con] lrs_con].
   case Hadd : (bit_blast_add g_con lrs_not lrs_con) => [[g_add cs_add] lrs_add].
   move => [] _ <- <-.
-  rewrite !add_prelude_cat.
+  rewrite !add_prelude_catrev.
   move => Hencbs Hcnf.
   move/andP : Hcnf => [Hcnfnot /andP [Hcnfcon Hcnfadd]].
   move : (bit_blast_not_correct  Hnot Hencbs Hcnfnot) => Henclrs_not.
@@ -112,7 +112,7 @@ Proof.
   case Hmkcon : (mk_env_const E_not g_not (from_nat (size ls) 1)) => [[[E_con g_con] cs_con] lrs_con].
   case Hmkadd : (mk_env_add E_con g_con lrs_not lrs_con) => [[[E_add g_add] cs_add] lrs_add].
   move => [] <-  _ <- _ Hnewtt Hnewls.
-  rewrite !interp_cnf_cat.
+  rewrite !interp_cnf_catrev.
   move : (mk_env_not_sat Hmknot Hnewls) .
   move : (mk_env_const_sat Hmkcon) => Hcnfcon.
   move : (mk_env_not_newer_gen Hmknot)=> Hggnot.
@@ -200,7 +200,7 @@ Proof.
   case Hmkcon : (mk_env_const E_not g_not (from_nat (size ls) 1)) => [[[E_con g_con] cs_con] lrs_con].
   case Hmkadd : (mk_env_add E_con g_con lrs_not lrs_con) => [[[E_add g_add] cs_add] lrs_add].
   move => [] _ <- <- _ Htt Hgls.
-  rewrite !newer_than_cnf_cat.
+  rewrite !newer_than_cnf_catrev.
   move : (mk_env_not_newer_gen Hmknot) => Hggnot.
   move : (mk_env_const_newer_gen Hmkcon) => Hgnotgcon.
   move : (mk_env_add_newer_gen Hmkadd) => Hgcongadd.

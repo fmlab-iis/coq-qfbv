@@ -33,7 +33,7 @@ Definition bit_blast_full_adder1 g a1 a2 cin :=
           [:: cout; neg_lit a1; a2; neg_lit cin];
           [:: cout; a1; neg_lit a2; neg_lit cin]
       ] in
-  (g'', sum_cs++cout_cs, cout, r).
+  (g'', catrev sum_cs cout_cs, cout, r).
 
 Definition mk_env_full_adder1 E g a1 a2 cin :=
   let (g', r) := gen g in
@@ -63,7 +63,7 @@ Definition mk_env_full_adder1 E g a1 a2 cin :=
                      (((interp_lit E a1) && (interp_lit E a2))
                       || ((xorb (interp_lit E a1) (interp_lit E a2))
                             && (interp_lit E cin))) in
-  (E'', g'', sum_cs++cout_cs, cout, r).
+  (E'', g'', catrev sum_cs cout_cs, cout, r).
 
 Lemma bit_blast_full_adder1_correct1 :
   forall g b1 b2 bcin E l1 l2 lcin g' cs lcout lr ,
