@@ -102,9 +102,9 @@ Proof.
       => [[[[[m1 ca1] E1] g1] cs1] ls1].
       case Hmkr : (mk_env_not E1 g1 ls1) => [[[Er gr] csr] lsr].
       case=> _ <- <- _ <- _ Hgm Hgt Hwfca Hgca HrEca.
-      have Hcnf : interp_cnf Er (cs1 ++ csr).
+      have Hcnf : interp_cnf Er (catrev cs1 csr).
       {
-        rewrite !interp_cnf_cat.
+        rewrite !interp_cnf_catrev.
         (* interp_cnf Er cs1 *)
         move: (IH1 _ _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwfca Hgca HrEca) 
         => [HiE1c1 _].
@@ -323,9 +323,9 @@ Proof.
       move: (mk_env_exp_cache_newer_cache Hmke1 Hgm Hgt Hwfca Hgca) => Hg1ca1.
       move: (IH2 _ _ _ _ _ _ _ _ _ _ _ Hmke2 Hg1m1 Hg1t Hwfca1 Hg1ca1 HrE1ca1) 
       => [HiE2c2 HrE2ca2].
-      have Hcnf : interp_cnf Er (cs1 ++ cs2 ++ csr).
+      have Hcnf : interp_cnf Er (catrev cs1 (catrev cs2 csr)).
       {
-        rewrite !interp_cnf_cat.
+        rewrite !interp_cnf_catrev.
         (* interp_cnf Er cs1 *)
         move: (mk_env_exp_cache_preserve Hmke2) => HpE1E2g1.
         move: (mk_env_and_preserve Hmkr) => HpE2Erg2.
@@ -1417,9 +1417,9 @@ Proof.
       move: (mk_env_bexp_cache_newer_cache Hmke1 Hgm Hgt Hwfca Hgca) => Hg1ca1.
       move: (IH2 _ _ _ _ _ _ _ _ _ _ _ Hmke2 Hg1m1 Hg1t Hwfca1 Hg1ca1 HrE1ca1) 
       => [HiE2c2 HrE2ca2].
-      have Hcnf : interp_cnf oE (cs1 ++ cs2 ++ ocs).
+      have Hcnf : interp_cnf oE (catrev cs1 (catrev cs2 ocs)).
       {
-        rewrite !interp_cnf_cat.
+        rewrite !interp_cnf_catrev.
         move: (mk_env_bexp_cache_preserve Hmke2) => HE1E2g1.
         move: (mk_env_bexp_cache_newer_gen Hmke2) => Hg1g2.
         move: (mk_env_bexp_cache_newer_cnf Hmke1 Hgm Hgt Hwfca Hgca) => Hg1cs1.

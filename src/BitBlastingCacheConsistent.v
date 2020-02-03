@@ -207,4 +207,3 @@ Proof.
       * admit. (* apply : bit_blast_bexp_disj . *)
 Admitted.
 
-  

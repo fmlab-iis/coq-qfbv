@@ -89,7 +89,7 @@ Proof.
   case=> <- <- _ <- <-. move=> /andP [Hcf1 Hcf2] Hcons2.
   move: (vm_preserve_consistent (bit_blast_exp_cache_preserve He2) Hcons2) => Hcons1.
   move: (vm_preserve_consistent (bit_blast_exp_cache_preserve He1) Hcons1) => Hcons0.
-  rewrite !add_prelude_cat. move/andP=> [Hic1 /andP [Hic2 Hicr]] .
+  rewrite !add_prelude_catrev. move/andP=> [Hic1 /andP [Hic2 Hicr]] .
   move => /andP [/andP [Hwf1 Hwf2] _] .
   move=> Hwfca.
   move: (bit_blast_exp_cache_well_formed He1 Hwfca) => Hwfca1.
@@ -150,7 +150,7 @@ Proof.
   case Hblast1: (bit_blast_bexp_cache te m ca g e1) => [[[[m1 ca1] g1] cs1] r1].
   case Hblast2: (bit_blast_bexp_cache te m1 ca1 g1 e2) => [[[[m2 ca2] g2] cs2] r2].
   case=> <- <- _ <- <- /andP [Hcf1 Hcf2] Hcon.
-  rewrite !add_prelude_cat .
+  rewrite !add_prelude_catrev .
   move => /andP [Hcs1 /andP [Hcs2 Hocs]] /andP [Hwf1 Hwf2] .
   move: (vm_preserve_consistent (bit_blast_bexp_cache_preserve Hblast2) Hcon) 
   => Hcon1.
