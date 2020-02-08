@@ -1,8 +1,7 @@
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import FMaps Var.
-From BitBlasting Require Import QFBV CNF State.
-
+From ssrlib Require Import FMaps Var. 
+From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -184,3 +183,66 @@ Proof.
 Qed.    
 
 
+(* ==== bound by vm ==== *)
+
+Definition bound_ct (c : cache) (vm : vm) :=
+  (forall e ls, ExpMap.find e (cet c) = Some ls -> bound_exp e vm)
+  /\ forall e l, BexpMap.find e (cbt c) = Some l -> bound_bexp e vm.
+
+Definition bound_ht (c : cache) (vm : vm) :=
+  (forall e cs ls, ExpMap.find e (het c) = Some (cs, ls) -> bound_exp e vm)
+  /\ forall e cs l, BexpMap.find e (hbt c) = Some (cs, l) -> bound_bexp e vm.
+
+Definition bound := bound_ht.
+
+Lemma bound_well_formed_bound_ct :
+  forall c vm, bound c vm -> well_formed c -> bound_ct c vm.
+Proof.
+Admitted.
+
+Lemma bound_add_cet :
+  forall c vm e ls, bound c vm <-> bound (add_cet e ls c) vm.
+Proof.
+  move=> c vm e ls. by rewrite /bound. 
+Qed.
+
+Lemma bound_add_cbt :
+  forall c vm e l, bound c vm <-> bound (add_cbt e l c) vm.
+Proof.
+  move=> c vm e l. by rewrite /bound. 
+Qed.
+
+Lemma bound_add_het :
+  forall c vm e cs ls, bound c vm /\ bound_exp e vm -> bound (add_het e cs ls c) vm.
+Proof.
+  move=> c vm e cs ls [[Hbe Hbb] Hbnde]. rewrite /bound /=. split; last done.
+  move=> e0 cs0 ls0. case Heq : (e0 == e).
+  - rewrite (ExpMap.Lemmas.find_add_eq Heq). move/eqP: Heq => Heq.
+    rewrite Heq. done.
+  - move/negP: Heq => Heq. rewrite (ExpMap.Lemmas.find_add_neq Heq).
+    exact: Hbe.
+Qed.
+
+Lemma bound_add_hbt :
+  forall c vm e cs l, bound c vm /\ bound_bexp e vm -> bound (add_hbt e cs l c) vm.
+Proof.
+  move=> c vm e cs l [[Hbe Hbb] Hbnde]. rewrite /bound /=. split; first done.
+  move=> e0 cs0 l0. case Heq : (e0 == e).
+  - rewrite (BexpMap.Lemmas.find_add_eq Heq). move/eqP: Heq => Heq.
+    rewrite Heq. done.
+  - move/negP: Heq => Heq. rewrite (BexpMap.Lemmas.find_add_neq Heq).
+    exact: Hbb.
+Qed.
+
+Lemma bound_add_find_none :
+  forall c vm v ls,
+    bound c vm -> SSAVM.find v vm = None -> bound c (SSAVM.add v ls vm).
+Proof.
+  move=> c vm v ls [Hbe Hbb] Hfind. 
+  move: (vm_preserve_add_diag ls Hfind) => Hpre.
+  split. 
+  - move=> e0 cs0 ls0 Hfhet. move: (Hbe _ _ _ Hfhet) => Hbvm.
+    exact: (vm_preserve_bound_exp Hbvm Hpre).
+  - move=> e0 cs0 l0 Hfhbt. move: (Hbb _ _ _ Hfhbt) => Hbvm.
+    exact: (vm_preserve_bound_bexp Hbvm Hpre).
+Qed.
