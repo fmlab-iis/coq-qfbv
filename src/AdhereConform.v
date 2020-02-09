@@ -98,6 +98,13 @@ Section Conform .
       * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) Max.max_idempotent // .
   Qed .
 
+
+  Fixpoint conform_bexps (bs : seq QFBV.bexp) s te : bool :=
+    match bs with
+    | [::] => true
+    | b :: bs' => conform_bexp b s te && conform_bexps bs' s te
+    end.
+
 End Conform .
 
 Section Adhere .

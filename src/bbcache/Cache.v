@@ -23,12 +23,6 @@ Record cache :=
     cet : cexpm;
     cbt : cbexpm }.
 
-Definition well_formed (c : cache) : Prop := 
-  (forall e ls, ExpMap.find e (cet c) = Some ls 
-                -> exists cs, ExpMap.find e (het c) = Some (cs, ls))
-  /\ forall e l, BexpMap.find e (cbt c) = Some l
-                 -> exists cs, BexpMap.find e (hbt c) = Some (cs, l).
-
 Definition find_het e c := ExpMap.find e (het c).
 Definition find_hbt e c := BexpMap.find e (hbt c).
 Definition find_cet e c := ExpMap.find e (cet c).
@@ -54,6 +48,28 @@ Definition add_cbt e l c :=
      hbt := hbt c;
      cet := cet c;
      cbt := BexpMap.add e l (cbt c) |}.
+
+Definition reset_ct (c : cache) :=
+  {| het := het c;
+     hbt := hbt c;
+     cet := ExpMap.empty word;
+     cbt := BexpMap.empty literal |}.
+
+(* ==== well_formed ==== *)
+
+Definition well_formed (c : cache) : Prop := 
+  (forall e ls, ExpMap.find e (cet c) = Some ls 
+                -> exists cs, ExpMap.find e (het c) = Some (cs, ls))
+  /\ forall e l, BexpMap.find e (cbt c) = Some l
+                 -> exists cs, BexpMap.find e (hbt c) = Some (cs, l).
+
+Lemma reset_ct_well_formed :
+  forall c, well_formed (reset_ct c).
+Proof.
+  done.
+Qed.
+
+(* ==== regular === *)
 
 Definition regular (E : env) (c : cache) :=
   (forall e cs ls, ExpMap.find e (het c) = Some (cs, ls) -> interp_cnf E cs)
@@ -92,6 +108,14 @@ Proof.
   - move/negP: Heq => Heq. rewrite (BexpMap.Lemmas.find_add_neq Heq).
     exact: Hcb.
 Qed.
+
+Lemma regular_reset_ct :
+  forall E c, regular E c <-> regular E (reset_ct c).
+Proof.
+  move=> E c. by rewrite /regular.
+Qed.
+
+(* ==== correct ==== *)
 
 Definition correct_ct (E : env) (s : SSAStore.t) (c : cache) :=
   (forall e ls, ExpMap.find e (cet c) = Some ls -> enc_bits E ls (QFBV.eval_exp e s))
@@ -146,6 +170,14 @@ Proof.
     exact: Hcb.
 Qed.
 
+Lemma correct_reset_ct :
+  forall E s c, correct E s c <-> correct E s (reset_ct c).
+Proof.
+  move=> E s c. by rewrite /correct.
+Qed.
+
+(* ==== newer_than_cache ==== *)
+
 Definition newer_than_ct g (c : cache) :=
   (forall e ls, ExpMap.find e (cet c) = Some ls -> newer_than_lits g ls)
   /\ forall e l, BexpMap.find e (cbt c) = Some l -> newer_than_lit g l.
@@ -162,6 +194,12 @@ Lemma newer_than_cache_well_formed_newer_ct :
   forall g c, newer_than_cache g c -> well_formed c -> newer_than_ct g c.
 Proof.
 Admitted.
+
+Lemma newer_than_cache_reset_ct :
+  forall g c, newer_than_cache g c <-> newer_than_cache g (reset_ct c).
+Proof.
+  move=> g c. by rewrite /newer_than_cache.
+Qed.
 
 Lemma env_preserve_regular E E' g ca :
   env_preserve E E' g -> newer_than_cache g ca ->
@@ -232,6 +270,12 @@ Proof.
     rewrite Heq. done.
   - move/negP: Heq => Heq. rewrite (BexpMap.Lemmas.find_add_neq Heq).
     exact: Hbb.
+Qed.
+
+Lemma bound_reset_ct :
+  forall c vm, bound c vm <-> bound (reset_ct c) vm.
+Proof.
+  move=> c vm. by rewrite /bound.
 Qed.
 
 Lemma bound_add_find_none :

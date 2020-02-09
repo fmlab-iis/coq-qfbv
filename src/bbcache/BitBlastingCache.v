@@ -2,11 +2,12 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV CNF Cache BBExport 
-     AdhereConform BitBlastingCacheDef BitBlastingCacheNewer 
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
+     AdhereConform BitBlasting.
+From BBCache Require Import Cache BitBlastingCacheDef BitBlastingCacheNewer 
      BitBlastingCachePreserve BitBlastingCacheCorrect BitBlastingCacheMkEnv 
      BitBlastingCacheConsistent BitBlastingCacheSat BitBlastingCacheAdhere
-     BitBlastingCacheBound BitBlasting.
+     BitBlastingCacheBound.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -125,6 +126,7 @@ Proof.
   move=> e te m' ca' g' cs lr Hblast Hwf Hsat s Hcf.
   move: (unsat_implies_valid Hsat) => {Hsat} Hsat.
   move: (Hsat (mk_env_cache s e)) => {Hsat} Hsat.
+Check mk_env_cache_sat.
   move: (mk_env_cache_sat Hblast Hcf Hwf) => Hcs. move: (mk_env_cache_tt s e) => Htt.
   have Hprelude: interp_cnf (mk_env_cache s e) (add_prelude cs)
     by rewrite add_prelude_expand Hcs Htt.
@@ -158,10 +160,10 @@ Proof.
   => Hbound .
   move : (mk_state_conform_bexp E Hbound Hadm') => Hcf .
   move : (He (mk_state E m') Hcf) => {He} He .
-  Check bit_blast_bexp_cache_correct.
   move: (bit_blast_bexp_cache_correct Hblast Hcf (mk_state_consistent E m') 
                                       Hcs Hwf init_well_formed_cache
                                       (init_correct E (mk_state E m'))).
   rewrite /enc_bit => /eqP H. rewrite -H in He.
   rewrite He in Hlr. exact: not_false_is_true.
 Qed.
+

@@ -2,13 +2,13 @@
 -Q lib/coq-ssrlib/src ssrlib
 -Q lib/coq-nbits/src nbits
 -Q src BitBlasting
+-Q src/bbcache BBCache
 src/Typ.v
 src/TypEnv.v
 src/State.v
 src/QFBV.v
 src/CNF.v
 src/BBCommon.v
-src/Cache.v
 src/BBVar.v
 src/BBConst.v
 src/BBNot.v
@@ -51,20 +51,22 @@ src/BBConcat.v
 src/BBExport.v
 src/AdhereConform.v
 src/BitBlastingDef.v
-src/BitBlastingCacheDef.v
-src/BitBlastingCacheWF.v
-src/BitBlastingCacheAdhere.v
 src/BitBlastingNewer.v
-src/BitBlastingCacheNewer.v
 src/BitBlastingPreserve.v
-src/BitBlastingCachePreserve.v
-src/BitBlastingCacheBound.v
 src/BitBlastingConsistent.v
-src/BitBlastingCacheConsistent.v
 src/BitBlastingCorrect.v
-src/BitBlastingCacheCorrect.v
 src/BitBlastingSat.v
-src/BitBlastingCacheSat.v
 src/BitBlastingMkEnv.v
-src/BitBlastingCacheMkEnv.v
 src/BitBlasting.v
+src/bbcache/Cache.v
+src/bbcache/BitBlastingCacheDef.v
+src/bbcache/BitBlastingCacheWF.v
+src/bbcache/BitBlastingCacheAdhere.v
+src/bbcache/BitBlastingCacheNewer.v
+src/bbcache/BitBlastingCachePreserve.v
+src/bbcache/BitBlastingCacheBound.v
+src/bbcache/BitBlastingCacheConsistent.v
+src/bbcache/BitBlastingCacheCorrect.v
+src/bbcache/BitBlastingCacheSat.v
+src/bbcache/BitBlastingCacheMkEnv.v
+src/bbcache/BitBlastingCache.v
