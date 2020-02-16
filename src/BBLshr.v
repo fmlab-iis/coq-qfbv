@@ -154,12 +154,12 @@ Fixpoint bit_blast_lshr_rec g ls ns i : generator * cnf * word :=
     let '(g_tl, cs_tl, ls_tl) := bit_blast_lshr_rec g ls ns_tl (2 * i) in
     let '(g_hd, cs_hd, ls_hd) := bit_blast_lshr_int g_tl ls_tl i in
     if ns_hd == lit_tt then
-      (g_hd, cs_tl++cs_hd, ls_hd)
+      (g_hd, catrev cs_tl cs_hd, ls_hd)
     else if ns_hd == lit_ff then
            (g_tl, cs_tl, ls_tl)
          else
            let '(g_ite, cs_ite, ls_ite) := bit_blast_ite g_hd ns_hd ls_hd ls_tl in
-           (g_ite, cs_tl++cs_hd++cs_ite, ls_ite)
+           (g_ite, catrev cs_tl (catrev cs_hd cs_ite), ls_ite)
   end .
 
 Definition bit_blast_lshr g ls ns : generator * cnf * word :=
@@ -183,7 +183,7 @@ Proof .
     case Hlnshdtt : (lns_hd == lit_tt) .
     + case => _ <- <- Hlsbs Hlnsns Hcnf .
       move : Hlnsns; rewrite enc_bits_cons => /andP [Hlnsns_hd Hlnsns_tl] .
-      move : Hcnf; rewrite add_prelude_cat => /andP [Hcnfcs_tl Hcnfcs_hd] .
+      move : Hcnf; rewrite add_prelude_catrev => /andP [Hcnfcs_tl Hcnfcs_hd] .
       move : (IH _ _ _ _ Hshrrec Hlsbs Hlnsns_tl Hcnfcs_tl) => Hlstlnstl .
       move : (bit_blast_lshr_int_correct Hshrint Hlstlnstl Hcnfcs_hd) .
       rewrite shrB_add .
@@ -204,8 +204,8 @@ Proof .
         by rewrite mulnA muln2 /= .
       * dcase (bit_blast_ite g_hd lns_hd ls_hd ls_tl) => [[[g_ite cs_ite] ls_ite] Hite] .
         case => _ <- <- Hlsbs Hlnsns Hcnf .
-        move : Hcnf; rewrite add_prelude_cat => /andP [Hcnfcs_tl Hcnfcs_others] .
-        move : Hcnfcs_others; rewrite add_prelude_cat => /andP [Hcnfcs_hd Hcnfcs_ite] .
+        move : Hcnf; rewrite add_prelude_catrev => /andP [Hcnfcs_tl Hcnfcs_others] .
+        move : Hcnfcs_others; rewrite add_prelude_catrev => /andP [Hcnfcs_hd Hcnfcs_ite] .
         move : Hlnsns; rewrite enc_bits_cons => /andP [Hlnsns_hd Hlnsns_tl] .
         move : (IH _ _ _ _ Hshrrec Hlsbs Hlnsns_tl Hcnfcs_tl) => Hlstlbs .
         move : (bit_blast_lshr_int_correct Hshrint Hlstlbs Hcnfcs_hd) => Hlshdbs .
@@ -287,12 +287,12 @@ Fixpoint mk_env_lshr_rec E g ls ns i : env * generator * cnf * word :=
     let '(E_tl, g_tl, cs_tl, ls_tl) := mk_env_lshr_rec E g ls ns_tl (2 * i) in
     let '(E_hd, g_hd, cs_hd, ls_hd) := mk_env_lshr_int E_tl g_tl ls_tl i in
     if ns_hd == lit_tt then
-      (E_hd, g_hd, cs_tl++cs_hd, ls_hd)
+      (E_hd, g_hd, catrev cs_tl cs_hd, ls_hd)
     else if ns_hd == lit_ff then
            (E_tl, g_tl, cs_tl, ls_tl)
          else
            let '(E_ite, g_ite, cs_ite, ls_ite) := mk_env_ite E_hd g_hd ns_hd ls_hd ls_tl in
-           (E_ite, g_ite, cs_tl++cs_hd++cs_ite, ls_ite)
+           (E_ite, g_ite, catrev cs_tl (catrev cs_hd cs_ite), ls_ite)
   end .
 
 Definition mk_env_lshr E g ls ns : env * generator * cnf * word :=
@@ -450,11 +450,11 @@ Proof .
     move : (mk_env_lshr_int_newer_gen Hint) => Hgtlghd .
      case : (ns_hd == lit_tt) .
     + case => _ <- <- _ .
-      by rewrite newer_than_cnf_cat Hghdcshd (newer_than_cnf_le_newer Hgtlcstl Hgtlghd) .
+      by rewrite newer_than_cnf_catrev Hghdcshd (newer_than_cnf_le_newer Hgtlcstl Hgtlghd) .
     + case : (ns_hd == lit_ff) .
       * by case => _ <- <- _ .
       * case => _ <- <- _ .
-        rewrite !newer_than_cnf_cat .
+        rewrite !newer_than_cnf_catrev .
         move : (mk_env_ite_newer_gen Hite) => Hghdgite .
         move : (mk_env_lshr_rec_newer_gen Hrec) => Hggtl .
         move : (newer_than_lit_le_newer Hgnshd (pos_leb_trans Hggtl Hgtlghd)) => Hghdnshd .
@@ -558,12 +558,12 @@ Proof .
     move : (mk_env_lshr_int_newer_cnf Hint Hgtllstl) => Hghdcshd .
     case : (ns_hd == lit_tt) .
     + case => <- _ <- _ .
-      rewrite interp_cnf_cat (env_preserve_cnf HEtlEhd Hgtlcstl) .
+      rewrite interp_cnf_catrev (env_preserve_cnf HEtlEhd Hgtlcstl) .
         by t_auto_newer .
     + case : (ns_hd == lit_ff) .
       * by case => <- _ <- _ .
       * case => <- _ <- _ .
-        rewrite !interp_cnf_cat .
+        rewrite !interp_cnf_catrev .
         move : (mk_env_ite_sat Hite (newer_than_lit_le_newer Hgtt (pos_leb_trans Hggtl Hgtlghd)) (newer_than_lit_le_newer Hgnshd (pos_leb_trans Hggtl Hgtlghd)) Hghdlshd (newer_than_lits_le_newer Hgtllstl Hgtlghd)) => HEitecsite .
         rewrite (env_preserve_cnf HEhdEite Hghdcshd) .
         rewrite (env_preserve_cnf HEhdEite (newer_than_cnf_le_newer Hgtlcstl Hgtlghd)) .
