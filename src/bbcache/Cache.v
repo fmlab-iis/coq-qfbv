@@ -28,6 +28,27 @@ Definition find_hbt e c := BexpMap.find e (hbt c).
 Definition find_cet e c := ExpMap.find e (cet c).
 Definition find_cbt e c := BexpMap.find e (cbt c).
 
+Definition find_cnf_exp e c :=
+  match find_het e c with
+  | None => [::]
+  | Some (cs, ls) => cs
+  end.
+Definition find_cnf_bexp e c :=
+  match find_hbt e c with
+  | None => [::]
+  | Some (cs, l) => cs
+  end.
+Definition find_lits_exp e c :=
+  match find_het e c with
+  | None => [::lit_tt]
+  | Some (cs, ls) => ls
+  end.
+Definition find_lit_bexp e c :=
+  match find_hbt e c with
+  | None => lit_tt
+  | Some (cs, l) => l
+  end.
+
 Definition add_het e cs ls c := 
   {| het := ExpMap.add e (cs, ls) (het c);
      hbt := hbt c;
@@ -54,6 +75,46 @@ Definition reset_ct (c : cache) :=
      hbt := hbt c;
      cet := ExpMap.empty word;
      cbt := BexpMap.empty literal |}.
+
+Lemma find_het_add_het_eq :
+  forall e cs ls c, find_het e (add_het e cs ls c) = Some (cs, ls).
+Proof.
+  move=> e cs ls c. rewrite /find_het /add_het /=. 
+  by apply: ExpMap.Lemmas.find_add_eq.
+Qed.
+
+Lemma find_hbt_add_hbt_eq :
+  forall e cs l c, find_hbt e (add_hbt e cs l c) = Some (cs, l).
+Proof.
+  move=> e cs l c. rewrite /find_hbt /add_hbt /=. 
+  by apply: BexpMap.Lemmas.find_add_eq.
+Qed.
+
+Lemma find_cnf_exp_add_het_eq :
+  forall e cs ls c, find_cnf_exp e (add_het e cs ls c) = cs.
+Proof.
+  move=> e cs ls c. rewrite /find_cnf_exp find_het_add_het_eq. done.
+Qed.
+
+Lemma find_lits_exp_add_het_eq :
+  forall e cs ls c, find_lits_exp e (add_het e cs ls c) = ls.
+Proof.
+  move=> e cs ls c. rewrite /find_lits_exp find_het_add_het_eq. done.
+Qed.
+
+Lemma find_cnf_bexp_add_hbt_eq :
+  forall e cs l c, find_cnf_bexp e (add_hbt e cs l c) = cs.
+Proof.
+  move=> e cs l c. rewrite /find_cnf_bexp find_hbt_add_hbt_eq. done.
+Qed.
+
+Lemma find_lit_bexp_add_hbt_eq :
+  forall e cs l c, find_lit_bexp e (add_hbt e cs l c) = l.
+Proof.
+  move=> e cs l c. rewrite /find_lit_bexp find_hbt_add_hbt_eq. done.
+Qed.
+
+
 
 (* ==== well_formed ==== *)
 
@@ -176,6 +237,96 @@ Proof.
   move=> E s c. by rewrite /correct.
 Qed.
 
+
+Definition enc_correct_exp vm e cs ls :=
+  forall E s, consistent vm E s -> interp_cnf E (add_prelude cs)
+              -> enc_bits E ls (QFBV.eval_exp e s).
+
+Definition enc_correct_bexp vm e cs l :=
+  forall E s, consistent vm E s -> interp_cnf E (add_prelude cs)
+              -> enc_bit E l (QFBV.eval_bexp e s).
+
+Definition strong_correct (vm : vm) (c : cache) :=
+  (forall e cs ls, ExpMap.find e (het c) = Some (cs, ls) 
+                   -> enc_correct_exp vm e cs ls)
+  /\ forall e cs l, BexpMap.find e (hbt c) = Some (cs, l) 
+                    -> enc_correct_bexp vm e cs l.
+
+Lemma strong_correct_add_cet :
+  forall vm c e ls, strong_correct vm c <-> strong_correct vm (add_cet e ls c).
+Proof.
+  move=> vm c e ls. done.
+Qed.
+
+Lemma strong_correct_add_cbt :
+  forall vm c e l, strong_correct vm c <-> strong_correct vm (add_cbt e l c).
+Proof.
+  move=> vm c e l. done.
+Qed.
+
+Lemma strong_correct_add_het :
+  forall vm c e cs ls, strong_correct vm c /\ enc_correct_exp vm e cs ls ->
+                       strong_correct vm (add_het e cs ls c).
+Proof.
+  move=> vm c e cs ls [[Hce Hcb] Hence]. rewrite /strong_correct /=. 
+  split; last done.
+  move=> e0 cs0 ls0. case Heq : (e0 == e).
+  - rewrite (ExpMap.Lemmas.find_add_eq Heq). move/eqP: Heq => Heq.
+    rewrite Heq. case=> <- <-; done.
+  - move/negP: Heq => Heq. rewrite (ExpMap.Lemmas.find_add_neq Heq).
+    exact: Hce.
+Qed.
+
+Lemma strong_correct_add_hbt :
+  forall vm c e cs l, strong_correct vm c /\ enc_correct_bexp vm e cs l ->
+                      strong_correct vm (add_hbt e cs l c).
+Proof.
+  move=> vm c e cs l [[Hce Hcb] Hence]. rewrite /strong_correct /=.
+  split; first done.
+  move=> e0 cs0 l0. case Heq : (e0 == e).
+  - rewrite (BexpMap.Lemmas.find_add_eq Heq). move/eqP: Heq => Heq.
+    rewrite Heq. case=> <- <-; done.
+  - move/negP: Heq => Heq. rewrite (BexpMap.Lemmas.find_add_neq Heq).
+    exact: Hcb.
+Qed.
+
+Lemma strong_correct_reset_ct :
+  forall vm c, strong_correct vm c <-> strong_correct vm (reset_ct c).
+Proof.
+  move=> vm c. done. 
+Qed.
+
+Lemma vm_preserve_enc_correct_exp :
+  forall m m' e cs ls, 
+    vm_preserve m m' -> enc_correct_exp m e cs ls -> enc_correct_exp m' e cs ls.
+Proof.
+  move=> m m' e cs ls Hpmmp. rewrite /enc_correct_exp.
+  move=> Henc E s Hconmp Hics.
+  move: (vm_preserve_consistent Hpmmp Hconmp) => Hconm.
+  by apply: Henc.
+Qed.
+
+Lemma vm_preserve_enc_correct_bexp :
+  forall m m' e cs l, 
+    vm_preserve m m' -> enc_correct_bexp m e cs l -> enc_correct_bexp m' e cs l.
+Proof.
+  move=> m m' e cs l Hpmmp. rewrite /enc_correct_bexp.
+  move=> Henc E s Hconmp Hics.
+  move: (vm_preserve_consistent Hpmmp Hconmp) => Hconm.
+  by apply: Henc.
+Qed.
+
+Lemma vm_preserve_strong_correct :
+  forall m m' c, vm_preserve m m' -> strong_correct m c -> strong_correct m' c.
+Proof.
+  move=> m m' c Hpmmp [Hce Hcb]. rewrite /strong_correct. split.
+  - move=> e cs ls Hfind. move: (Hce _ _ _ Hfind) => Hencm.
+    by apply: (@vm_preserve_enc_correct_exp m).
+  - move=> e cs l Hfind. move: (Hcb _ _ _ Hfind) => Hencm.
+    by apply: (@vm_preserve_enc_correct_bexp m).
+Qed.
+
+
 (* ==== newer_than_cache ==== *)
 
 Definition newer_than_ct g (c : cache) :=
@@ -218,6 +369,25 @@ Proof.
       rewrite (env_preserve_cnf Henv Hgcs). exact: (H1 _ _ _ Hfind).
     + move: (Hgb _ _ _ Hfind) => /andP [Hgcs _].
       rewrite (env_preserve_cnf Henv Hgcs). exact: (H2 _ _ _ Hfind).
+Qed.    
+
+Lemma env_preserve_correct E E' s g ca :
+  env_preserve E E' g -> newer_than_cache g ca ->
+  correct E' s ca <-> correct E s ca.
+Proof.
+  move=> Henv [Hge Hgb]. rewrite /correct. split.
+  - apply env_preserve_sym in Henv. move=> [H1 H2]. 
+    split; move=> e cs ls Hfind.
+    + move: (Hge _ _ _ Hfind) => /andP [_ Hgls].
+      apply (env_preserve_enc_bits Henv Hgls). exact: (H1 _ _ _ Hfind).
+    + move: (Hgb _ _ _ Hfind) => /andP [_ Hgls].
+      apply (env_preserve_enc_bit Henv Hgls). exact: (H2 _ _ _ Hfind).
+  - move=> [H1 H2]. 
+    split; move=> e cs ls Hfind.
+    + move: (Hge _ _ _ Hfind) => /andP [_ Hgls].
+      apply (env_preserve_enc_bits Henv Hgls). exact: (H1 _ _ _ Hfind).
+    + move: (Hgb _ _ _ Hfind) => /andP [_ Hgls].
+      apply (env_preserve_enc_bit Henv Hgls). exact: (H2 _ _ _ Hfind).
 Qed.    
 
 

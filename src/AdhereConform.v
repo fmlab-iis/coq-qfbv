@@ -3,7 +3,7 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV BBCommon.
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBCommon.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -169,5 +169,42 @@ Section Bound .
     - move => b0 IH0 b1 IH1 vm vm' /andP [Hb0 Hb1] Hpsrv .
       rewrite (IH0 _ _ Hb0 Hpsrv) (IH1 _ _ Hb1 Hpsrv) // .
   Qed .
+
+  Lemma consistent_conform_exp :
+    forall e m te E s, bound_exp e m -> adhere m te ->
+                       consistent m E s -> conform_exp e s te
+  with
+  consistent_conform_bexp :
+    forall e m te E s, bound_bexp e m -> adhere m te ->
+                       consistent m E s -> conform_bexp e s te.
+  Proof .
+    (* consistent_conform_exp *)
+    elim; rewrite /= .
+    - move => v m te E s Hmem Had Hcon.
+      elim : (Had _ Hmem) => ls [Hfind Hsize] .
+      rewrite (eqP Hsize). 
+      move: (Hcon v). rewrite /consistent1 Hfind => Henc. 
+      apply /eqP. exact: (enc_bits_size Henc).
+    - done .
+    - done .
+    - elim => /= e0 IH0 e1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - move => c e0 IH0 e1 IH1 m te E s /andP [/andP [Hbndc Hbnd0] Hbnd1] Had Hcon.
+      rewrite (consistent_conform_bexp c _ _ _ _ Hbndc Had Hcon)
+              (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    (* consistent_conform_bexp *)
+    elim; rewrite /= .
+    - done .
+    - done .
+    - elim => e0 e1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (consistent_conform_exp e0 _ _ _ _ Hbnd0 Had Hcon)
+              (consistent_conform_exp e1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - done . 
+    - move => b0 IH0 b1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - move => b0 IH0 b1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+Qed .
+
   
 End Bound .
