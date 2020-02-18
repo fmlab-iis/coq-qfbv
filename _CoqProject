@@ -3,6 +3,7 @@
 -Q lib/coq-nbits/src nbits
 -Q src BitBlasting
 -Q src/bbcache BBCache
+-Q src/newBBCache newBBCache
 src/Typ.v
 src/TypEnv.v
 src/State.v
@@ -70,3 +71,4 @@ src/bbcache/BitBlastingCacheCorrect.v
 src/bbcache/BitBlastingCacheSat.v
 src/bbcache/BitBlastingCacheMkEnv.v
 src/bbcache/BitBlastingCache.v
+src/newBBCache/Cache.v
