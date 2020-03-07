@@ -192,7 +192,7 @@ Proof.
     move: (mk_env_bexps_ccache_newer_than_vm Hmktl) => Hgm.
     move: (mk_env_bexps_ccache_newer_than_tt Hmktl) => Hgtt.
     (* move: (mk_env_bexps_cache_well_formed Hmktl) => Hwfca. *)
-    move: (reset_ct_well_formed c) => Hwfrc.
+    move: (well_formed_reset_ct c) => Hwfrc.
     move: (mk_env_bexps_ccache_newer_than_cache Hmktl).
     rewrite CompCache.newer_than_cache_reset_ct => Hgrc.
     move: (mk_env_bexps_ccache_interp_cache Hmktl).

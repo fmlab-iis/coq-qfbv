@@ -52,7 +52,7 @@ Proof.
   move: (bit_blast_bexps_ccache_correct_cache Hbbes Hwfes) => Hcr.
   move: (correct_reset_ct Hcr) => {Hcr} Hcr.
   move: (bit_blast_bexp_ccache_correct Hbbe Hcfe (mk_state_consistent E m') 
-                                       Hwfe (reset_ct_well_formed c)
+                                       Hwfe (well_formed_reset_ct c)
                                        Hcs (interp_cache_ct_reset_ct E c) Hcr).
   rewrite /enc_bit => /eqP H. rewrite -H in He.
   rewrite He in Hlr. exact: not_false_is_true.

@@ -12,16 +12,17 @@ Import Prenex Implicits.
 Definition init_vm := SSAVM.empty word.
 Definition init_gen := (var_tt + 1)%positive.
 Definition init_env : env := fun _ => true.
-Definition init_ccache : compcache := 
-  {| ht := {| et := ExpMap.empty (cnf * word);
-              bt := BexpMap.empty (cnf * literal) |};
-     ct := {| et := ExpMap.empty (cnf * word);
-              bt := BexpMap.empty (cnf * literal) |} |}.
-Definition init_cache : cache := 
-  {| SimpCache.ht := {| CompTable.et := ExpMap.empty (cnf * word);
-              CompTable.bt := BexpMap.empty (cnf * literal) |};
-     SimpCache.ct := {| SimpTable.et := ExpMap.empty word;
-              SimpTable.bt := BexpMap.empty literal |} |}.
+Definition init_ccache : compcache := CompCache.empty.
+  (* {| ht := {| et := ExpMap.empty (cnf * word); *)
+  (*             bt := BexpMap.empty (cnf * literal) |}; *)
+  (*    ct := {| et := ExpMap.empty (cnf * word); *)
+  (*             bt := BexpMap.empty (cnf * literal) |} |}. *)
+Definition init_cache : cache := SimpCache.empty.
+  (* {| SimpCache.ht := CompTable.empty; *)
+  (*    (* {| CompTable.et := ExpMap.empty (cnf * word); *) *)
+  (*             (* CompTable.bt := BexpMap.empty (cnf * literal) |}; *) *)
+  (*    SimpCache.ct := {| SimpTable.et := ExpMap.empty word; *)
+  (*             SimpTable.bt := BexpMap.empty literal |} |}. *)
 
 Lemma init_newer_than_vm :
   newer_than_vm init_gen init_vm.

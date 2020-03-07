@@ -91,7 +91,7 @@ Proof.
   move: (bit_blast_bexps_ccache_correct_cache Hbbes Hwfes) => Hcr.
   move: (correct_reset_ct Hcr) => {Hcr} Hcr.
   move: (interp_cache_ct_reset_ct (mk_env_ccache s (e::es)) c) => Hic.
-  move: (reset_ct_well_formed c) => Hwfc.
+  move: (well_formed_reset_ct c) => Hwfc.
   move: (bit_blast_bexp_ccache_correct Hbbe Hcfe Hcon Hwfe Hwfc Hprelude Hic Hcr).
   rewrite /enc_bit. move=> /eqP <-.
   exact: Hsat.
