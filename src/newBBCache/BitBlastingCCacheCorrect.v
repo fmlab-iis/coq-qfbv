@@ -26,6 +26,28 @@ Ltac subexp_neq :=
 
 (* = bit_blast_exp_ccache_correct_cache and bit_blast_bexp_ccache_correct_cache = *)
 
+Lemma bit_blast_ebinop_correct op g bs1 bs2 E ls1 ls2 g' cs ls :
+  bit_blast_ebinop op g ls1 ls2 = (g', cs, ls) ->
+  enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 -> interp_cnf E (add_prelude cs) ->
+  size ls1 == size ls2 -> enc_bits E ls ((QFBV.ebinop_denote op) bs1 bs2).
+Proof.
+  move=> Hbb Henc1 Henc2 Hics /eqP Hsize; move: Hbb; case op => /= Hbb;
+    [ apply (bit_blast_and_correct Hbb) |
+      apply (bit_blast_or_correct Hbb) |
+      apply (bit_blast_xor_correct Hbb) |
+      apply (bit_blast_add_correct Hbb Henc1 Henc2) |
+      apply (bit_blast_sub_correct Hbb) |
+      apply (bit_blast_mul_correct Hbb) |
+      admit (* TODO: mod *) |
+      admit (* TODO: srem *) |
+      admit (* TODO: smod *) |
+      apply (bit_blast_shl_correct Hbb) |
+      apply (bit_blast_lshr_correct Hbb) |
+      apply (bit_blast_ashr_correct Hbb) |
+      apply (bit_blast_concat_correct Hbb) ];
+    done.
+Admitted.
+
 Lemma bit_blast_exp_ccache_correct_cache_nocet_var :
   forall (t : SSAVarOrder.t) (te : SSATE.env) (m : vm) (c : compcache)
          (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
@@ -53,28 +75,54 @@ Proof.
              by rewrite (SSAVM.Lemmas.find_add_eq (eq_refl v)).
 Qed.
 
-Lemma bit_blast_exp_ccache_correct_cache_nocet_and :
-  forall e1 : QFBV.exp,
+Lemma bit_blast_exp_ccache_correct_cache_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    QFBV.well_formed_exp (QFBV.Econst b) te ->
+    well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_correct_cache_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
     (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
         bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
-        QFBV.well_formed_exp e1 te -> 
-        CompCache.well_formed c -> correct m c -> correct m' c') ->
+        QFBV.well_formed_exp e1 te -> well_formed c -> 
+        correct m c -> correct m' c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      QFBV.well_formed_exp (QFBV.Eunop op e1) te ->
+      well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_correct_cache_nocet_binop :
+  forall (op : QFBV.ebinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        QFBV.well_formed_exp e1 te -> well_formed c -> 
+        correct m c -> correct m' c') ->
     forall e2 : QFBV.exp,
       (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
           bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
-          QFBV.well_formed_exp e2 te -> 
-          CompCache.well_formed c -> correct m c -> correct m' c') ->
+          QFBV.well_formed_exp e2 te -> well_formed c -> 
+          correct m c -> correct m' c') ->
       forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
-        find_cet (QFBV.Ebinop QFBV.Band e1 e2) c = None ->
-        bit_blast_exp_ccache te m c g (QFBV.Ebinop QFBV.Band e1 e2) =
-        (m', c', g', cs, ls) ->
-        QFBV.well_formed_exp (QFBV.Ebinop QFBV.Band e1 e2) te ->
-        CompCache.well_formed c -> correct m c -> correct m' c'.
+        find_cet (QFBV.Ebinop op e1 e2) c = None ->
+        bit_blast_exp_ccache te m c g (QFBV.Ebinop op e1 e2) = (m', c', g', cs, ls) ->
+        QFBV.well_formed_exp (QFBV.Ebinop op e1 e2) te ->
+        well_formed c -> correct m c -> correct m' c'.
 Proof.
-  move=> e1 IH1 e2 IH2 te m c g m' c' g' cs ls Hfcet Hbb /= 
+  move=> op e1 IH1 e2 IH2 te m c g m' c' g' cs ls Hfcet Hbb /= 
             /andP [/andP [Hwf1 Hwf2] _] Hwfc Hcrmc. 
   move: Hbb. rewrite /= Hfcet.
   case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
@@ -93,7 +141,7 @@ Proof.
   move: (preserve_find_het Hpc1c2 Hfhete1) => {Hfhete1} Hfhete1.
   move: (bit_blast_exp_ccache_in_cet He2) => [cse2c Hfcete2].      
   move: (bit_blast_exp_ccache_in_het He2 Hwfc1) => [cse2h Hfhete2].
-  case Hfhet : (find_het (QFBV.Ebinop QFBV.Band e1 e2) c2) => [[csh lsh] | ].
+  case Hfhet : (find_het (QFBV.Ebinop op e1 e2) c2) => [[csh lsh] | ].
   - case=> <- <- _ _ _.
     apply CompCache.correct_add_cet; try done.
     rewrite /=.
@@ -105,14 +153,100 @@ Proof.
     rewrite /find_het in Hfhete2; rewrite Hfhete2 in Hfe2.
     move: Hence. case: Hfe1 => _ <-; case: Hfe2 => _ <-. 
     done.
-  - case Hr : (bit_blast_and g2 ls1 ls2) => [[gr csr] lsr].
+  - case Hr : (bit_blast_ebinop op g2 ls1 ls2) => [[gr csr] lsr].
     case=> <- <- _ _ _.
     apply CompCache.correct_add_cet_het; (try done);
       rewrite /=;
       [ exists cse1c, ls1, cse2c, ls2 | exists cse1h, ls1, cse2h, ls2 ];
       repeat (split; try done);
-      move=> E s Hcon; exact: (bit_blast_and_correct Hr).
+      move=> E s Hcon; exact: (bit_blast_ebinop_correct Hr).
 Qed.
+
+Lemma bit_blast_exp_ccache_correct_cache_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, l) ->
+        QFBV.well_formed_bexp b te -> well_formed c -> 
+        correct m c -> correct m' c') ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+          QFBV.well_formed_exp e1 te -> well_formed c -> 
+          correct m c -> correct m' c') ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+            QFBV.well_formed_exp e2 te -> well_formed c -> 
+            correct m c -> correct m' c') ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          QFBV.well_formed_exp (QFBV.Eite b e1 e2) te ->
+          well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_cache_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
+    QFBV.well_formed_bexp QFBV.Bfalse te ->
+    well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_cache_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
+    QFBV.well_formed_bexp QFBV.Btrue te ->
+    well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_cache_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        QFBV.well_formed_exp e1 te -> well_formed c -> 
+        correct m c -> correct m' c') ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+          QFBV.well_formed_exp e2 te -> well_formed c -> 
+          correct m c -> correct m' c') ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        QFBV.well_formed_bexp (QFBV.Bbinop op e1 e2) te ->
+        well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_cache_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) ->
+        QFBV.well_formed_bexp e1 te -> well_formed c -> 
+        correct m c -> correct m' c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      QFBV.well_formed_bexp (QFBV.Blneg e1) te ->
+      well_formed c -> correct m c -> correct m' c'.
+Proof.
+Admitted.
 
 Lemma bit_blast_bexp_ccache_correct_cache_nocbt_conj :
   forall b1 : QFBV.bexp,
@@ -176,6 +310,69 @@ Proof.
       move=> E s Hcon; exact: (bit_blast_conj_correct Hr).
 Qed.
 
+Lemma bit_blast_bexp_ccache_correct_cache_nocbt_disj :
+  forall b1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g b1 = (m', c', g', cs, l) ->
+        QFBV.well_formed_bexp b1 te -> 
+        CompCache.well_formed c -> correct m c -> correct m' c') ->
+    forall b2 : QFBV.bexp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+          bit_blast_bexp_ccache te m c g b2 = (m', c', g', cs, l) ->
+          QFBV.well_formed_bexp b2 te -> 
+          CompCache.well_formed c -> 
+          correct m c -> correct m' c') ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bdisj b1 b2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bdisj b1 b2) = (m', c', g', cs, l) ->
+        QFBV.well_formed_bexp (QFBV.Bdisj b1 b2) te ->
+        CompCache.well_formed c -> correct m c -> correct m' c'.
+Proof.
+  move=> e1 IH1 e2 IH2 te m c g m' c' g' cs l Hfcbt Hbb /= 
+            /andP [Hwf1 Hwf2] Hwfc Hcrmc. 
+  move: Hbb. 
+  rewrite bit_blast_bexp_ccache_equation (lock bit_blast_disj) Hfcbt /= -lock.
+  case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwf1 Hwfc Hcrmc) => Hcrm1c1.
+  case He2 : (bit_blast_bexp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] l2].
+  move: (bit_blast_bexp_ccache_well_formed He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwf2 Hwfc1 Hcrm1c1) => Hcrm2c2.
+  rewrite -(@bit_blast_bexp_ccache_find_cbt e1 _ _ _ _ _ _ _ _ _ _ _ He1) 
+    in Hfcbt; last by auto_prove_len_lt.
+  rewrite -(@bit_blast_bexp_ccache_find_cbt e2 _ _ _ _ _ _ _ _ _ _ _ He2)
+    in Hfcbt; last by auto_prove_len_lt.
+  move: (bit_blast_bexp_ccache_in_cbt He1) => [cse1c Hfcbte1].
+  move: (bit_blast_bexp_ccache_in_hbt He1 Hwfc) => [cse1h Hfhbte1].
+  move: (bit_blast_bexp_ccache_preserve_cache He2) => Hpc1c2.
+  move: (preserve_find_cbt Hpc1c2 Hfcbte1) => {Hfcbte1} Hfcbte1.
+  move: (preserve_find_hbt Hpc1c2 Hfhbte1) => {Hfhbte1} Hfhbte1.
+  move: (bit_blast_bexp_ccache_in_cbt He2) => [cse2c Hfcbte2].      
+  move: (bit_blast_bexp_ccache_in_hbt He2 Hwfc1) => [cse2h Hfhbte2].
+  case Hfhbt : (find_hbt (QFBV.Bdisj e1 e2) c2) => [[csh lh] | ].
+  - case=> <- <- _ _ _.
+    apply CompCache.correct_add_cbt; try done.
+    rewrite /=.
+    exists cse1c, l1, cse2c, l2. repeat (split; try done).
+    move: Hcrm2c2 => [[Hhet Hhbt] Hct]. move: (Hhbt _ _ _ Hfhbt).
+    rewrite /=.
+    move=> [cs1' [l1' [cs2' [l2' [Hfe1 [Hfe2 Hence]]]]]].
+    rewrite /find_hbt in Hfhbte1; rewrite Hfhbte1 in Hfe1.
+    rewrite /find_hbt in Hfhbte2; rewrite Hfhbte2 in Hfe2.
+    move: Hence. case: Hfe1 => _ <-; case: Hfe2 => _ <-. 
+    done.
+  - case Hr : (bit_blast_disj g2 l1 l2) => [[gr csr] lr].
+    case=> <- <- _ _ _.
+    apply CompCache.correct_add_cbt_hbt; (try done);
+      rewrite /=;
+      [ exists cse1c, l1, cse2c, l2 | exists cse1h, l1, cse2h, l2 ];
+      repeat (split; try done);
+      move=> E s Hcon; exact: (bit_blast_disj_correct Hr).
+Qed.
+
+
 
 Corollary bit_blast_exp_ccache_correct_cache :
   forall (e : QFBV.exp) te m c g m' c' g' cs ls,
@@ -194,6 +391,8 @@ Corollary bit_blast_exp_ccache_correct_cache :
         CompCache.correct m' c'.
 Proof.
   (* bit_blast_exp_ccache_correct_cache *)
+  set IHe := bit_blast_exp_ccache_correct_cache.
+  set IHb := bit_blast_bexp_ccache_correct_cache.
   move=> e te m c g m' c' g' cs ls.
   case Hfcet: (find_cet e c) => [[cse lse] | ]. 
   - rewrite bit_blast_exp_ccache_equation Hfcet /=.
@@ -202,36 +401,16 @@ Proof.
   - move: e te m c g m' c' g' cs ls Hfcet.
     case.
     + exact: bit_blast_exp_ccache_correct_cache_nocet_var.
-    + admit. (* bit_blast_exp_const  *)
-    + elim. 
-      * admit. (* bit_blast_exp_not *)
-      * admit. (* bit_blast_exp_neg *)
-      * admit. (* bit_blast_exp_extract *)
-      * admit. (* bit_blast_exp_high *)
-      * admit. (* bit_blast_exp_low *)
-      * admit. (* bit_blast_exp_zeroextend *)
-      * admit. (* : bit_blast_exp_signextend; apply bit_blast_exp_correct . *)
-    + elim.
-      * move=> e1 e2; move: e1 (bit_blast_exp_ccache_correct_cache e1)
-                               e2 (bit_blast_exp_ccache_correct_cache e2).
-        exact: bit_blast_exp_ccache_correct_cache_nocet_and.
-      * admit. (* apply : bit_blast_exp_or; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_xor; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_add; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_sub; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_mul; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_mod; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_srem; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_smod; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_shl; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_lshr; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_ashr; apply bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_exp_concat; apply bit_blast_exp_correct . *)
-    + admit. (* move => b e1 e2; *)
-      (* apply bit_blast_exp_ite; *)
-      (* first apply : bit_blast_bexp_correct; *)
-      (* apply : bit_blast_exp_correct . *)
+    + exact: bit_blast_exp_ccache_correct_cache_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_correct_cache_nocet_unop.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_correct_cache_nocet_binop.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_correct_cache_nocet_ite.
   (* bit_blast_bexp_ccache_correct_cache *)
+  set IHe := bit_blast_exp_ccache_correct_cache.
+  set IHb := bit_blast_bexp_ccache_correct_cache.
   move=> e te m c g m' c' g' cs l.
   case Hfcbt: (find_cbt e c) => [[cse le] | ]. 
   - rewrite bit_blast_bexp_ccache_equation Hfcbt /=.
@@ -239,30 +418,17 @@ Proof.
     done.
   - move: e te m c g m' c' g' cs l Hfcbt.
     case.
-    + admit. (* exact : bit_blast_bexp_false . *)
-    + admit. (* exact : bit_blast_bexp_true . *)
-    + elim => e1 e2 .
-      * admit. (* apply : bit_blast_bexp_eq; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_ult; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_ule; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_ugt; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_uge; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_slt; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_sle; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_sgt; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_sge; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_uaddo; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_usubo; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_umulo; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_saddo; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_ssubo; apply : bit_blast_exp_correct . *)
-      * admit. (* apply : bit_blast_bexp_smulo; apply : bit_blast_exp_correct . *)
-    + admit. (* apply : bit_blast_bexp_lneg . *)
-    + move=> b1 b2; move: b1 (bit_blast_bexp_ccache_correct_cache b1)
-                             b2 (bit_blast_bexp_ccache_correct_cache b2).
+    + exact: bit_blast_bexp_ccache_correct_cache_nocbt_false.
+    + exact: bit_blast_bexp_ccache_correct_cache_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_correct_cache_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_correct_cache_nocbt_lneg.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_correct_cache_nocbt_conj.
-    + admit. (* apply : bit_blast_bexp_disj . *)
-Admitted.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
+      exact: bit_blast_bexp_ccache_correct_cache_nocbt_disj.
+Qed.
 
 
 (* == bit_blast_exp_ccache_correct and bit_blast_bexp_ccache_correct *)
@@ -297,6 +463,49 @@ Proof.
       move: (Hcon v) => /= {Hcon}. rewrite /consistent1.
       rewrite (SSAVM.Lemmas.find_add_eq (eq_refl v)). done.
 Qed.
+
+Lemma bit_blast_exp_ccache_correct_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word) (s : SSAStore.t) (E : env),
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    conform_exp (QFBV.Econst b) s te ->
+    consistent m' E s ->
+    QFBV.well_formed_exp (QFBV.Econst b) te ->
+    well_formed c ->
+    interp_cnf E (add_prelude cs) ->
+    interp_cache_ct E c ->
+    correct m c -> enc_bits E ls (QFBV.eval_exp (QFBV.Econst b) s).
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_correct_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (ls : word) (s : SSAStore.t) (E : env),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        conform_exp e1 s te ->
+        consistent m' E s ->
+        QFBV.well_formed_exp e1 te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bits E ls (QFBV.eval_exp e1 s)) ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+           (ls : word) (s : SSAStore.t) (E : env),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      conform_exp (QFBV.Eunop op e1) s te ->
+      consistent m' E s ->
+      QFBV.well_formed_exp (QFBV.Eunop op e1) te ->
+      well_formed c ->
+      interp_cnf E (add_prelude cs) ->
+      interp_cache_ct E c ->
+      correct m c -> enc_bits E ls (QFBV.eval_exp (QFBV.Eunop op e1) s).
+Proof.
+Admitted.
 
 Lemma bit_blast_exp_ccache_correct_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -343,7 +552,10 @@ Proof.
   move: (correct_find_cet Hcrmpcp Hfecp) => {Hcrmpcp} /=.
   move=> [cs1cp [ls1cp [cs2cp [ls2cp [Hfe1cp [Hfe2cp Hence]]]]]].
   move: (Hence E s Hcon) => {Hence} Hence.
-  move: Hcf Hwf Hbb Hcon Hics => /= /andP [Hcf1 Hcf2] /andP [/andP [Hwf1 Hwf2] _].
+  move: Hcf Hwf Hbb Hcon Hics 
+        => /= /andP [Hcf1 Hcf2] /andP [/andP [Hwf1 Hwf2] Hsize].
+  rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
+          -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
   rewrite Hfcet. 
   case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
   case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
@@ -374,9 +586,235 @@ Proof.
                     Hwf1 Hwfc Hics1 HiEc Hcrmc) => Henc1;
          move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hcf2 Hconm2 
                     Hwf2 Hwfc1 Hics2 HiEc1 Hcrm1c1) => Henc2.
+    all: rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
     all: by apply Hence. 
 Qed.
-  
+
+Lemma bit_blast_exp_ccache_correct_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (l : literal) (s : SSAStore.t) (E : env),
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, l) ->
+        conform_bexp b s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp b te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp b s)) ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+              (ls : word) (s : SSAStore.t) (E : env),
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+          conform_exp e1 s te ->
+          consistent m' E s ->
+          QFBV.well_formed_exp e1 te ->
+          well_formed c ->
+          interp_cnf E (add_prelude cs) ->
+          interp_cache_ct E c -> correct m c -> 
+          enc_bits E ls (QFBV.eval_exp e1 s)) ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+                (ls : word) (s : SSAStore.t) (E : env),
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+            conform_exp e2 s te ->
+            consistent m' E s ->
+            QFBV.well_formed_exp e2 te ->
+            well_formed c ->
+            interp_cnf E (add_prelude cs) ->
+            interp_cache_ct E c -> correct m c -> 
+            enc_bits E ls (QFBV.eval_exp e2 s)) ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+               (ls : word) (s : SSAStore.t) (E : env),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          conform_exp (QFBV.Eite b e1 e2) s te ->
+          consistent m' E s ->
+          QFBV.well_formed_exp (QFBV.Eite b e1 e2) te ->
+          well_formed c ->
+          interp_cnf E (add_prelude cs) ->
+          interp_cache_ct E c ->
+          correct m c -> enc_bits E ls (QFBV.eval_exp (QFBV.Eite b e1 e2) s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+         (l : literal) (s : SSAStore.t) (E : env),
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
+    conform_bexp QFBV.Bfalse s te ->
+    consistent m' E s ->
+    QFBV.well_formed_bexp QFBV.Bfalse te ->
+    well_formed c ->
+    interp_cnf E (add_prelude cs) ->
+    interp_cache_ct E c -> correct m c -> 
+    enc_bit E l (QFBV.eval_bexp QFBV.Bfalse s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+         (l : literal) (s : SSAStore.t) (E : env),
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
+    conform_bexp QFBV.Btrue s te ->
+    consistent m' E s ->
+    QFBV.well_formed_bexp QFBV.Btrue te ->
+    well_formed c ->
+    interp_cnf E (add_prelude cs) ->
+    interp_cache_ct E c -> correct m c -> 
+    enc_bit E l (QFBV.eval_bexp QFBV.Btrue s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_binop :  
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (ls : word) (s : SSAStore.t) (E : env),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        conform_exp e1 s te ->
+        consistent m' E s ->
+        QFBV.well_formed_exp e1 te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bits E ls (QFBV.eval_exp e1 s)) ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+              (ls : word) (s : SSAStore.t) (E : env),
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+          conform_exp e2 s te ->
+          consistent m' E s ->
+          QFBV.well_formed_exp e2 te ->
+          well_formed c ->
+          interp_cnf E (add_prelude cs) ->
+          interp_cache_ct E c -> correct m c -> 
+          enc_bits E ls (QFBV.eval_exp e2 s)) ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+             (l : literal) (s : SSAStore.t) (E : env),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        conform_bexp (QFBV.Bbinop op e1 e2) s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp (QFBV.Bbinop op e1 e2) te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c ->
+        correct m c -> enc_bit E l (QFBV.eval_bexp (QFBV.Bbinop op e1 e2) s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (l : literal) (s : SSAStore.t) (E : env),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) ->
+        conform_bexp e1 s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp e1 te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp e1 s)) ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+           (l : literal) (s : SSAStore.t) (E : env),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      conform_bexp (QFBV.Blneg e1) s te ->
+      consistent m' E s ->
+      QFBV.well_formed_bexp (QFBV.Blneg e1) te ->
+      well_formed c ->
+      interp_cnf E (add_prelude cs) ->
+      interp_cache_ct E c ->
+      correct m c -> enc_bit E l (QFBV.eval_bexp (QFBV.Blneg e1) s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_conj :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (l : literal) (s : SSAStore.t) (E : env),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) ->
+        conform_bexp e1 s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp e1 te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp e1 s)) ->
+    forall e2 : QFBV.bexp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+              (l : literal) (s : SSAStore.t) (E : env),
+          bit_blast_bexp_ccache te m c g e2 = (m', c', g', cs, l) ->
+          conform_bexp e2 s te ->
+          consistent m' E s ->
+          QFBV.well_formed_bexp e2 te ->
+          well_formed c ->
+          interp_cnf E (add_prelude cs) ->
+          interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp e2 s)) ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+             (l : literal) (s : SSAStore.t) (E : env),
+        find_cbt (QFBV.Bconj e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bconj e1 e2) = (m', c', g', cs, l) ->
+        conform_bexp (QFBV.Bconj e1 e2) s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp (QFBV.Bconj e1 e2) te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c ->
+        correct m c -> enc_bit E l (QFBV.eval_bexp (QFBV.Bconj e1 e2) s).
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_correct_nocbt_disj :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+            (l : literal) (s : SSAStore.t) (E : env),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) ->
+        conform_bexp e1 s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp e1 te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp e1 s)) ->
+    forall e2 : QFBV.bexp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+              (l : literal) (s : SSAStore.t) (E : env),
+          bit_blast_bexp_ccache te m c g e2 = (m', c', g', cs, l) ->
+          conform_bexp e2 s te ->
+          consistent m' E s ->
+          QFBV.well_formed_bexp e2 te ->
+          well_formed c ->
+          interp_cnf E (add_prelude cs) ->
+          interp_cache_ct E c -> correct m c -> enc_bit E l (QFBV.eval_bexp e2 s)) ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) 
+             (l : literal) (s : SSAStore.t) (E : env),
+        find_cbt (QFBV.Bdisj e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bdisj e1 e2) = (m', c', g', cs, l) ->
+        conform_bexp (QFBV.Bdisj e1 e2) s te ->
+        consistent m' E s ->
+        QFBV.well_formed_bexp (QFBV.Bdisj e1 e2) te ->
+        well_formed c ->
+        interp_cnf E (add_prelude cs) ->
+        interp_cache_ct E c ->
+        correct m c -> enc_bit E l (QFBV.eval_bexp (QFBV.Bdisj e1 e2) s).
+Proof.
+Admitted.
+
 
 Corollary bit_blast_exp_ccache_correct :
   forall (e : QFBV.exp) te m c g m' c' g' cs ls s E,
@@ -399,37 +837,46 @@ Corollary bit_blast_exp_ccache_correct :
         CompCache.correct m c -> enc_bit E l (QFBV.eval_bexp e s).
 Proof.
   (* bit_blast_exp_ccache_correct *)
+  set IHe := bit_blast_exp_ccache_correct.
+  set IHb := bit_blast_bexp_ccache_correct.
   move=> e te m c g m' c' g' cs ls s E.
   case Hfcet: (find_cet e c) => [[cse lse] | ]. 
   - rewrite bit_blast_exp_ccache_equation Hfcet /=.
-    case=> <- _ _ <- <-. move=> _ Hcon _ _ Hics HiEc Hcrmc.
+    case=> <- _ _ <- <-. move=> Hcf Hcon Hwf _ Hics HiEc Hcrmc.
     move: (add_prelude_tt Hics) => {Hics} Htt.
-    exact: (interp_cache_ct_find_cet_some_correct Hcon Htt HiEc Hfcet Hcrmc).
+    exact: (interp_cache_ct_find_cet_some_correct Hcon Htt HiEc Hfcet Hwf Hcf Hcrmc).
   - move: e te m c g m' c' g' cs ls s E Hfcet.
     case.
     + exact: bit_blast_exp_ccache_correct_nocet_var.
-    + admit.
-    + admit.
-    + move=> op e1 e2.
-      move: op e1 (bit_blast_exp_ccache_correct e1) 
-               e2 (bit_blast_exp_ccache_correct e2).
+    + exact: bit_blast_exp_ccache_correct_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_correct_nocet_unop.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: bit_blast_exp_ccache_correct_nocet_binop.
-    + admit.
-Admitted.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_correct_nocet_ite.
+  (* bit_blast_bexp_ccache_correct *)
+  set IHe := bit_blast_exp_ccache_correct.
+  set IHb := bit_blast_bexp_ccache_correct.
+  move=> e te m c g m' c' g' cs l s E.
+  case Hfcbt: (find_cbt e c) => [[cse le] | ]. 
+  - rewrite bit_blast_bexp_ccache_equation Hfcbt /=.
+    case=> <- _ _ <- <-. move=> Hcf Hcon Hwf _ Hics HiEc Hcrmc.
+    move: (add_prelude_tt Hics) => {Hics} Htt.
+    exact: (interp_cache_ct_find_cbt_some_correct Hcon Htt HiEc Hfcbt Hwf Hcf Hcrmc).
+  - move: e te m c g m' c' g' cs l s E Hfcbt.
+    case.
+    + exact: bit_blast_bexp_ccache_correct_nocbt_false.
+    + exact: bit_blast_bexp_ccache_correct_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_correct_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_correct_nocbt_lneg.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
+      exact: bit_blast_bexp_ccache_correct_nocbt_conj.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
+      exact: bit_blast_bexp_ccache_correct_nocbt_disj.
+Qed.
 
 
 

@@ -598,24 +598,26 @@ Proof.
 Qed.
 
 Lemma interp_cache_ct_find_cet_some_correct :
-  forall m E s c e cs ls,
+  forall m E s c e cs ls te,
     consistent m E s -> interp_lit E lit_tt
     -> interp_cache_ct E c -> find_cet e c = Some (cs, ls) 
+    -> QFBV.well_formed_exp e te -> conform_exp e s te
     -> correct m c -> enc_bits E ls (QFBV.eval_exp e s).
 Proof.
-  move=> m E s c e cs ls Hcon Htt HiEc Hfe [Hcrht Hcrct].
-  move: HiEc Hfe Hcrct.
+  move=> m E s c e cs ls te Hcon Htt HiEc Hfe Hwf Hcf [Hcrht Hcrct].
+  move: HiEc Hfe Hwf Hcf Hcrct.
   by apply CompTable.interp_table_find_et_some_correct.
 Qed.
 
 Lemma interp_cache_ct_find_cbt_some_correct :
-  forall m E s c e cs l,
+  forall m E s c e cs l te,
     consistent m E s -> interp_lit E lit_tt
     -> interp_cache_ct E c -> find_cbt e c = Some (cs, l) 
+    -> QFBV.well_formed_bexp e te -> conform_bexp e s te
     -> correct m c -> enc_bit E l (QFBV.eval_bexp e s).
 Proof.
-  move=> m E s c e cs l Hcon Htt HiEc Hfe [Hcrht Hcrct].
-  move: HiEc Hfe Hcrct.
+  move=> m E s c e cs l te Hcon Htt HiEc Hfe Hwf Hcf [Hcrht Hcrct].
+  move: HiEc Hfe Hwf Hcf Hcrct.
   by apply CompTable.interp_table_find_bt_some_correct.
 Qed.
 

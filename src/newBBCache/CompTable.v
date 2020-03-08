@@ -144,6 +144,7 @@ Definition enc_correct_exp e cs ls vm t :=
                     -> enc_bits E ls1 (QFBV.eval_exp e1 s) 
                     -> enc_bits E ls2 (QFBV.eval_exp e2 s) 
                     -> interp_cnf E (add_prelude cs) 
+                    -> size ls1 == size ls2
                     -> enc_bits E ls (QFBV.eval_exp e s))
   | QFBV.Eite c e1 e2 => 
     exists csc lc cs1 ls1 cs2 ls2,
@@ -154,6 +155,7 @@ Definition enc_correct_exp e cs ls vm t :=
                     -> enc_bits E ls1 (QFBV.eval_exp e1 s) 
                     -> enc_bits E ls2 (QFBV.eval_exp e2 s) 
                     -> interp_cnf E (add_prelude cs) 
+                    -> size ls1 == size ls2
                     -> enc_bits E ls (QFBV.eval_exp e s))
   end.
 
@@ -171,6 +173,7 @@ Definition enc_correct_bexp e cs l vm t :=
                     -> enc_bits E ls1 (QFBV.eval_exp e1 s) 
                     -> enc_bits E ls2 (QFBV.eval_exp e2 s) 
                     -> interp_cnf E (add_prelude cs) 
+                    -> size ls1 == size ls2
                     -> enc_bit E l (QFBV.eval_bexp e s))
   | QFBV.Blneg e1 => 
     exists cs1 l1,
@@ -425,73 +428,95 @@ Proof.
 Qed.
 
 Lemma interp_table_find_et_some_correct :
-  forall m E s t e cs ls,
+  forall m E s t e cs ls te,
     consistent m E s -> interp_lit E lit_tt
     -> interp_table E t -> find_et e t = Some (cs, ls) 
+    -> QFBV.well_formed_exp e te -> conform_exp e s te
     -> correct m t -> enc_bits E ls (QFBV.eval_exp e s)
   with
     interp_table_find_bt_some_correct :
-      forall m E s t e cs l,
+      forall m E s t e cs l te,
         consistent m E s -> interp_lit E lit_tt
         -> interp_table E t -> find_bt e t = Some (cs, l) 
+        -> QFBV.well_formed_bexp e te -> conform_bexp e s te
         -> correct m t -> enc_bit E l (QFBV.eval_bexp e s).
 Proof.
   (* interp_table_find_et_some_correct *)
   move=> m E s t.
   elim => [v | bs | op e1 IH1 | op e1 IH1 e2 IH2 | b e1 IH1 e2 IH2];
-  move=> cs ls Hcon Htt HiEt Hfe Hcrmt;
+  move=> cs ls te Hcon Htt HiEt Hfe Hwf Hcf Hcrmt;
   move: (interp_table_find_et HiEt Hfe) => Hics;
   move: (add_prelude_to Htt Hics) => {Hics} Hics.
   - move: (correct_find_et Hcrmt Hfe) => /= Hence.
     by apply Hence.
   - move: (correct_find_et Hcrmt Hfe) => /= Hence.
     by apply (Hence E s).
-  - move: (correct_find_et Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= Hwf1 Hcf1.
+    move: (correct_find_et Hcrmt Hfe) => /= 
       [cs1 [ls1 [Hfe1 Hence]]].
-    move: (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) => Henc1.
+    move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) => Henc1.
     by apply Hence.
-  - move: (correct_find_et Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= /andP [/andP [Hwf1 Hwf2] Hsize] /andP [Hcf1 Hcf2].
+    rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
+            -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+    move: (correct_find_et Hcrmt Hfe) => /= 
       [cs1 [ls1 [cs2 [ls2 [Hfe1 [Hfe2 Hence]]]]]].
-    move: (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) 
-            (IH2 _ _ Hcon Htt HiEt Hfe2 Hcrmt) => Henc1 Henc2.
+    move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) 
+            (IH2 _ _ _ Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt) => Henc1 Henc2.
+    rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
     by apply Hence.
-  - move: (correct_find_et Hcrmt Hfe) => /= 
+  - move: Hwf => /= /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hsize].
+    move: Hcf => /= /andP [/andP [Hcfb Hcf1] Hcf2].
+    rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
+            -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+    move: (correct_find_et Hcrmt Hfe) => /= 
       [csb [lb [cs1 [ls1 [cs2 [ls2 [Hfb [Hfe1 [Hfe2 Hence]]]]]]]]].
-    move: (interp_table_find_bt_some_correct _ _ _ _ _ _ _ Hcon Htt HiEt Hfb Hcrmt) 
-            (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) 
-            (IH2 _ _ Hcon Htt HiEt Hfe2 Hcrmt) => Hencb Henc1 Henc2.
+    move: (interp_table_find_bt_some_correct _ _ _ _ _ _ _ _ 
+                                             Hcon Htt HiEt Hfb Hwfb Hcfb Hcrmt) 
+            (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) 
+            (IH2 _ _ _ Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt) => Hencb Henc1 Henc2.
+    rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
     by apply Hence.
   (* interp_table_find_bt_some_correct *)
   move=> m E s t.
   elim => [ | | op e1 e2 | e1 IH1 | e1 IH1 e2 IH2 | e1 IH1 e2 IH2];
-  move=> cs l Hcon Htt HiEt Hfe Hcrmt;
+  move=> cs l te Hcon Htt HiEt Hfe Hwf Hcf Hcrmt;
   move: (interp_table_find_bt HiEt Hfe) => Hics;
   move: (add_prelude_to Htt Hics) => {Hics} Hics.
   - move: (correct_find_bt Hcrmt Hfe) => /= Hence.
     by apply (Hence E s).
   - move: (correct_find_bt Hcrmt Hfe) => /= Hence.
     by apply (Hence E s).
-  - move: (correct_find_bt Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= /andP [/andP [Hwf1 Hwf2] Hsize] /andP [Hcf1 Hcf2].
+    rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
+            -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+    move: (correct_find_bt Hcrmt Hfe) => /= 
       [cs1 [ls1 [cs2 [ls2 [Hfe1 [Hfe2 Hence]]]]]].
-    move: (interp_table_find_et_some_correct _ _ _ _ _ _ _ Hcon Htt HiEt Hfe1 Hcrmt)
-          (interp_table_find_et_some_correct _ _ _ _ _ _ _ Hcon Htt HiEt Hfe2 Hcrmt)
+    move: (interp_table_find_et_some_correct _ _ _ _ _ _ _ _ 
+                                             Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt)
+          (interp_table_find_et_some_correct _ _ _ _ _ _ _ _ 
+                                             Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt)
            => Henc1 Henc2.
+    rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
     by apply Hence.
-  - move: (correct_find_bt Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= Hwf1 Hcf1.
+    move: (correct_find_bt Hcrmt Hfe) => /= 
       [cs1 [l1 [Hfe1 Hence]]].
-    move: (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) => Henc1.
+    move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) => Henc1.
     by apply Hence.
-  - move: (correct_find_bt Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= /andP [Hwf1 Hwf2] /andP [Hcf1 Hcf2].
+    move: (correct_find_bt Hcrmt Hfe) => /= 
       [cs1 [l1 [cs2 [l2 [Hfe1 [Hfe2 Hence]]]]]].
-    move: (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) 
-            (IH2 _ _ Hcon Htt HiEt Hfe2 Hcrmt) => Henc1 Henc2.
+    move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) 
+            (IH2 _ _ _ Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt) => Henc1 Henc2.
     by apply Hence.
-  - move: (correct_find_bt Hcrmt Hfe) => /= 
+  - move: Hwf Hcf => /= /andP [Hwf1 Hwf2] /andP [Hcf1 Hcf2].
+    move: (correct_find_bt Hcrmt Hfe) => /= 
       [cs1 [l1 [cs2 [l2 [Hfe1 [Hfe2 Hence]]]]]].
-    move: (IH1 _ _ Hcon Htt HiEt Hfe1 Hcrmt) 
-            (IH2 _ _ Hcon Htt HiEt Hfe2 Hcrmt) => Henc1 Henc2.
+    move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) 
+            (IH2 _ _ _ Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt) => Henc1 Henc2.
     by apply Hence.
-Qed.
+Qed. 
 
 
 (* ==== newer_than_table ==== *)
