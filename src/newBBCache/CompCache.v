@@ -26,6 +26,22 @@ Definition find_hbt e c := CompTable.find_bt e (ht c).
 Definition find_cet e c := CompTable.find_et e (ct c). 
 Definition find_cbt e c := CompTable.find_bt e (ct c). 
 
+Lemma find_het_equation : 
+  forall e c, find_het e c = CompTable.find_et e (ht c).
+Proof. done. Qed.
+
+Lemma find_hbt_equation : 
+  forall e c, find_hbt e c = CompTable.find_bt e (ht c).
+Proof. done. Qed.
+
+Lemma find_cet_equation : 
+  forall e c, find_cet e c = CompTable.find_et e (ct c).
+Proof. done. Qed.
+
+Lemma find_cbt_equation : 
+  forall e c, find_cbt e c = CompTable.find_bt e (ct c).
+Proof. done. Qed.
+
 
 (* ==== modification ==== *)
 
