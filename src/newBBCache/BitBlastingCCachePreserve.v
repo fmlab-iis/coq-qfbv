@@ -30,6 +30,30 @@ Proof.
     (exact: vm_preserve_refl || exact: vm_preserve_add_diag).
 Qed.
 
+Lemma bit_blast_exp_ccache_preserve_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    vm_preserve m m'.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_preserve_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) -> 
+        vm_preserve m m') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      vm_preserve m m'.
+Proof.
+Admitted.
+
 Lemma bit_blast_exp_ccache_preserve_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
     (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -57,6 +81,81 @@ Proof.
     last case Hop : (bit_blast_ebinop op g2 ls1 ls2) => [[gop csop] lsop];
     by case=> <- _ _ _ _.
 Qed.
+
+Lemma bit_blast_exp_ccache_preserve_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, l) -> 
+        vm_preserve m m') ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+          vm_preserve m m') ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) -> 
+            vm_preserve m m') ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          vm_preserve m m'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
+    vm_preserve m m'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
+    vm_preserve m m'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) -> 
+        vm_preserve m m') ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) -> 
+          vm_preserve m m') ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        vm_preserve m m'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) -> 
+        vm_preserve m m') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      vm_preserve m m'.
+Proof.
+Admitted.
 
 Lemma bit_blast_bexp_ccache_preserve_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -133,11 +232,13 @@ Proof.
   - move: e te m c g m' c' g' cs ls Hfcet.
     case.
     + exact: bit_blast_exp_ccache_preserve_nocet_var.
-    + admit.
-    + admit.
+    + exact: bit_blast_exp_ccache_preserve_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_preserve_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: bit_blast_exp_ccache_preserve_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_preserve_nocet_ite.
   (* bexp *)
   set IHe := bit_blast_exp_ccache_preserve.
   set IHb := bit_blast_bexp_ccache_preserve.
@@ -147,16 +248,17 @@ Proof.
     case=> <- _ _ _ _. done. 
   - move: e te m c g m' c' g' cs l Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: bit_blast_bexp_ccache_preserve_nocbt_false.
+    + exact: bit_blast_bexp_ccache_preserve_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_preserve_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_preserve_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_preserve_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_preserve_nocbt_disj.
-Admitted.
-
+Qed.
 
 
 (* = mk_env_exp_ccache_preserve and mk_env_bexp_ccache_preserve = *)
@@ -196,6 +298,31 @@ Proof.
     (exact: env_preserve_refl || exact: (mk_env_var_preserve Hv)).
 Qed.
 
+Lemma mk_env_exp_ccache_preserve_nocet_const :
+  forall (b : bits) (m : vm) (c : compcache) (s : SSAStore.t) 
+         (E : env) (g : generator) (m' : vm) (c' : compcache) 
+         (E' : env) (g' : generator) (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    mk_env_exp_ccache m c s E g (QFBV.Econst b) = (m', c', E', g', cs, ls) ->
+    env_preserve E E' g.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_preserve_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) -> env_preserve E E' g) ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      mk_env_exp_ccache m c s E g (QFBV.Eunop op e1) = (m', c', E', g', cs, ls) ->
+      env_preserve E E' g.
+Proof.
+Admitted.
+
 Lemma mk_env_exp_ccache_preserve_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
     (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
@@ -234,6 +361,92 @@ Proof.
     move: (env_preserve_le HpE2Eopg2 Hgg2) => {HpE2Eopg2} HpE2Eopg.
     exact: (env_preserve_trans HpEE2g HpE2Eopg).
 Qed.
+
+Lemma mk_env_exp_ccache_preserve_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g b = (m', c', E', g', cs, l) -> 
+        env_preserve E E' g) ->
+    forall e1 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) -> 
+          env_preserve E E' g) ->
+      forall e2 : QFBV.exp,
+        (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+                (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+                (g' : generator) (cs : cnf) (ls : word),
+            mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) -> 
+            env_preserve E E' g) ->
+        forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+               (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+               (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          mk_env_exp_ccache m c s E g (QFBV.Eite b e1 e2) = (m', c', E', g', cs, ls) ->
+          env_preserve E E' g.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_preserve_nocbt_false :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Bfalse = (m', c', E', g', cs, l) ->
+    env_preserve E E' g.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_preserve_nocbt_true :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Btrue = (m', c', E', g', cs, l) ->
+    env_preserve E E' g.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_preserve_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) -> 
+        env_preserve E E' g) ->
+    forall e2 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+          env_preserve E E' g) ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        mk_env_bexp_ccache m c s E g (QFBV.Bbinop op e1 e2) = (m', c', E', g', cs, l) ->
+        env_preserve E E' g.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_preserve_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g e1 = (m', c', E', g', cs, l) -> 
+        env_preserve E E' g) ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      mk_env_bexp_ccache m c s E g (QFBV.Blneg e1) = (m', c', E', g', cs, l) ->
+      env_preserve E E' g.
+Proof.
+Admitted.
 
 Lemma mk_env_bexp_ccache_preserve_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -336,11 +549,13 @@ Proof.
   - move: e m c s E g m' c' E' g' cs ls Hfcet.
     case.
     + exact: mk_env_exp_ccache_preserve_nocet_var.
-    + admit.
-    + admit.
+    + exact: mk_env_exp_ccache_preserve_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: mk_env_exp_ccache_preserve_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: mk_env_exp_ccache_preserve_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_exp_ccache_preserve_nocet_ite.
   (* bexp *)
   set IHe := mk_env_exp_ccache_preserve.
   set IHb := mk_env_bexp_ccache_preserve.
@@ -350,15 +565,17 @@ Proof.
     case=> _ _ <- _ _ _. exact: env_preserve_refl.
   - move: e m c s E g m' c' E' g' cs l Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: mk_env_bexp_ccache_preserve_nocbt_false.
+    + exact: mk_env_bexp_ccache_preserve_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_bexp_ccache_preserve_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: mk_env_bexp_ccache_preserve_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: mk_env_bexp_ccache_preserve_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: mk_env_bexp_ccache_preserve_nocbt_disj.
-Admitted.
+Qed.
 
 
 (* = bit_blast_exp_ccache_preserve_cache and bit_blast_bexp_ccache_preserve_cache = *)
@@ -379,6 +596,29 @@ Proof.
       case=> _ <- _ _ _; apply preserve_add_cet;
       by (apply preserve_add_het || rewrite find_cet_add_het). 
 Qed.
+
+Lemma bit_blast_exp_ccache_preserve_cache_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    preserve c c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_preserve_cache_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, lrs) -> preserve c c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      preserve c c'.
+Proof.
+Admitted.
 
 Lemma bit_blast_exp_ccache_preserve_cache_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -412,6 +652,79 @@ Proof.
     done.
 Qed.
 
+Lemma bit_blast_exp_ccache_preserve_cache_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : literal),
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, lrs) -> preserve c c') ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : word),
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, lrs) -> 
+          preserve c c') ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : word),
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, lrs) -> 
+            preserve c c') ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          preserve c c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_cache_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) -> 
+    preserve c c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_cache_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) -> 
+    preserve c c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_cache_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, lrs) -> preserve c c') ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : word),
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, lrs) -> 
+          preserve c c') ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        preserve c c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_preserve_cache_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (lrs : literal),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, lrs) -> 
+        preserve c c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      preserve c c'.
+Proof.
+Admitted.
+                                                                                 
 Lemma bit_blast_bexp_ccache_preserve_cache_nocbt_conj :
   forall e1 : QFBV.bexp,
     (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -498,11 +811,13 @@ Proof.
   - move: e te m c g m' c' g' cs ls Hfcet.
     case.
     + exact: bit_blast_exp_ccache_preserve_cache_nocet_var.
-    + admit.
-    + admit.
+    + exact: bit_blast_exp_ccache_preserve_cache_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_preserve_cache_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: bit_blast_exp_ccache_preserve_cache_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_preserve_cache_nocet_ite.
   (* bexp *)
   set IHe := bit_blast_exp_ccache_preserve_cache.
   set IHb := bit_blast_bexp_ccache_preserve_cache.
@@ -512,12 +827,14 @@ Proof.
     case=> _ <- _ _ _. done. 
   - move: e te m c g m' c' g' cs l Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: bit_blast_bexp_ccache_preserve_cache_nocbt_false.
+    + exact: bit_blast_bexp_ccache_preserve_cache_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_preserve_cache_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_preserve_cache_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_preserve_cache_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_preserve_cache_nocbt_disj.
-Admitted.
+Qed.

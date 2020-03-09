@@ -55,6 +55,32 @@ Proof.
         apply : (Hadm u Hmem) .
 Qed.
 
+Lemma bit_blast_exp_ccache_adhere_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word),
+    adhere m te ->
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    adhere m' te.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_adhere_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        adhere m te ->
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) -> adhere m' te) ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+      adhere m te ->
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      adhere m' te.
+Proof.
+Admitted.
+
 Lemma bit_blast_exp_ccache_adhere_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
     (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -82,6 +108,85 @@ Proof.
     last case Hop : (bit_blast_ebinop op g2 ls1 ls2) => [[gop csop] lsop];
     case=> <- _ _ _ _; done.
 Qed.
+
+Lemma bit_blast_exp_ccache_adhere_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        adhere m te ->
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, l) -> adhere m' te) ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          adhere m te ->
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) -> adhere m' te) ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+            adhere m te ->
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) -> 
+            adhere m' te) ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          adhere m te ->
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          adhere m' te.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_adhere_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    adhere m te ->
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) -> adhere m' te.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_adhere_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    adhere m te ->
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) -> adhere m' te.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_adhere_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        adhere m te ->
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) -> adhere m' te) ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          adhere m te ->
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) -> adhere m' te) ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        adhere m te ->
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        adhere m' te.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_adhere_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        adhere m te ->
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) -> adhere m' te) ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+      adhere m te ->
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      adhere m' te.
+Proof.
+Admitted.
 
 Lemma bit_blast_bexp_ccache_adhere_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -160,11 +265,13 @@ Proof.
   - move: e te m c g m' c' g' cs ls Hadm Hfcet.
     case.
     + exact: bit_blast_exp_ccache_adhere_nocet_var.
-    + admit.
-    + admit.
+    + exact: bit_blast_exp_ccache_adhere_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_adhere_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: bit_blast_exp_ccache_adhere_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_adhere_nocet_ite.
   (* bexp *)
   set IHe := bit_blast_exp_ccache_adhere.
   set IHb := bit_blast_bexp_ccache_adhere.
@@ -174,13 +281,15 @@ Proof.
     case=> <- _ _ _ _. done. 
   - move: e te m c g m' c' g' cs l Hadm Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: bit_blast_bexp_ccache_adhere_nocbt_false.
+    + exact: bit_blast_bexp_ccache_adhere_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_adhere_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_adhere_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_adhere_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_adhere_nocbt_disj.
-Admitted.
+Qed.
 

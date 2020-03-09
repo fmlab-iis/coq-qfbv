@@ -271,15 +271,65 @@ Proof.
         last case Hv : (bit_blast_var te g v) => [[gv csv] lsv];
         case=> _ <- _ _ <-; [ exists cse | exists [::] | exists csv]; 
         exact: find_cet_add_cet_eq.
-    + admit.
-    + admit.
+    + move=> bs Hfcet. rewrite /= Hfcet.
+      case Hfhet : (find_het (QFBV.Econst bs) c) => [[cse lse] | ];
+        case=> _ <- _ _ <-; [ exists cse | exists [::]]; exact: find_cet_add_cet_eq.
+    + move=> op e1 Hfcet. rewrite /= Hfcet.
+      case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+      case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[csop lsop] | ];
+        last case Hop : (bit_blast_eunop op g1 ls1) => [[gop csop] lsop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cet_add_cet_eq.
     + move=> op e1 e2 Hfcet. rewrite /= Hfcet.
       case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
       case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
       case Hfhet : (find_het (QFBV.Ebinop op e1 e2) c2) => [[csop lsop] | ];
         last case Hop : (bit_blast_ebinop op g2 ls1 ls2) => [[gop csop] lsop];
         case=> _ <- _ _ <-; exists csop; exact: find_cet_add_cet_eq.
-Admitted.
+    + move=> b e1 e2 Hfcet. rewrite /= Hfcet.
+      case Hb : (bit_blast_bexp_ccache te m c g b) => [[[[mb cb] gb] csb] lb].
+      case He1 : (bit_blast_exp_ccache te mb cb gb e1) => [[[[m1 c1] g1] cs1] ls1].
+      case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
+      case Hfhet : (find_het (QFBV.Eite b e1 e2) c2) => [[csop lsop] | ];
+        last case Hop : (bit_blast_ite g2 lb ls1 ls2) => [[gop csop] lsop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cet_add_cet_eq.
+  (* bexp *)
+  move=> e te m c g m' c' g' cs l.
+  case Hfcbt: (find_cbt e c) => [[cse le] | ]. 
+  - rewrite bit_blast_bexp_ccache_equation Hfcbt /=.
+    case=> _ <- _ _ <-. exists cse; done. 
+  - move: Hfcbt. case: e.
+    + move=> Hfcbt. rewrite /= Hfcbt.
+      case Hfhbt : (find_hbt (QFBV.Bfalse) c) => [[cse le] | ];
+        case=> _ <- _ _ <-; [ exists cse | exists [::]]; exact: find_cbt_add_cbt_eq.
+    + move=> Hfcbt. rewrite /= Hfcbt.
+      case Hfhbt : (find_hbt (QFBV.Btrue) c) => [[cse le] | ];
+        case=> _ <- _ _ <-; [ exists cse | exists [::]]; exact: find_cbt_add_cbt_eq.
+    + move=> op e1 e2 Hfcbt. rewrite /= Hfcbt.
+      case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+      case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
+      case Hfhet : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_bbinop op g2 ls1 ls2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cbt_add_cbt_eq.
+    + move=> e1 Hfcbt. rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case Hfhbt : (find_hbt (QFBV.Blneg e1) c1) => [[csop lop] | ];
+        last case Hop : (bit_blast_lneg g1 l1) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cbt_add_cbt_eq.
+    + move=> e1 e2 Hfcbt. 
+      rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case He2 : (bit_blast_bexp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] l2].
+      case Hfhbt : (find_hbt (QFBV.Bconj e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_conj g2 l1 l2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cbt_add_cbt_eq.
+    + move=> e1 e2 Hfcbt. 
+      rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case He2 : (bit_blast_bexp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] l2].
+      case Hfhbt : (find_hbt (QFBV.Bdisj e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_disj g2 l1 l2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; exact: find_cbt_add_cbt_eq.
+Qed.
 
 
 (* = bit_blast_exp_ccache_in_het and bit_blast_bexp_ccache_in_hbt = *)
@@ -308,8 +358,16 @@ Proof.
         last case Hv : (bit_blast_var te g v) => [[gv csv] lsv];
         case=> _ <- _ _ <-; [ exists cse | exists [::] | exists csv]; 
         rewrite find_het_add_cet; try rewrite find_het_add_het_eq; done.
-    + admit.
-    + admit.
+    + move=> bs Hfcet. rewrite /= Hfcet.
+      case Hfhet : (find_het (QFBV.Econst bs) c) => [[csop lsop] | ];
+        case=> _ <- _ _ <-; [ exists csop | exists [::]]; 
+        rewrite find_het_add_cet; try rewrite find_het_add_het_eq; done.
+    + move=> op e1 Hfcet. rewrite /= Hfcet.
+      case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+      case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[csop lsop] | ];
+        last case Hop : (bit_blast_eunop op g1 ls1) => [[gop csop] lsop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_het_add_cet; try rewrite find_het_add_het_eq; done.
     + move=> op e1 e2 Hfcet. rewrite /= Hfcet.
       case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
       case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
@@ -317,4 +375,56 @@ Proof.
         last case Hop : (bit_blast_ebinop op g2 ls1 ls2) => [[gop csop] lsop];
         case=> _ <- _ _ <-; exists csop; 
         rewrite find_het_add_cet; try rewrite find_het_add_het_eq; done.
-Admitted.
+    + move=> b e1 e2 Hfcet. rewrite /= Hfcet.
+      case Hb : (bit_blast_bexp_ccache te m c g b) => [[[[mb cb] gb] csb] lb].
+      case He1 : (bit_blast_exp_ccache te mb cb gb e1) => [[[[m1 c1] g1] cs1] ls1].
+      case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
+      case Hfhet : (find_het (QFBV.Eite b e1 e2) c2) => [[csop lsop] | ];
+        last case Hop : (bit_blast_ite g2 lb ls1 ls2) => [[gop csop] lsop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_het_add_cet; try rewrite find_het_add_het_eq; done.
+  (* bexp *)
+  move=> e te m c g m' c' g' cs l Hbb Hwfc. move: Hbb.
+  case Hfcbt: (find_cbt e c) => [[cse le] | ]. 
+  - rewrite bit_blast_bexp_ccache_equation Hfcbt /=.
+    case=> _ <- _ _ <-. exists cse; exact: (well_formed_find_cbt Hwfc Hfcbt). 
+  - move: Hfcbt. case: e.
+    + move=> Hfcbt. rewrite /= Hfcbt.
+      case Hfhbt : (find_hbt (QFBV.Bfalse) c) => [[csop lop] | ];
+        case=> _ <- _ _ <-; [ exists csop | exists [::]]; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+    + move=> Hfcbt. rewrite /= Hfcbt.
+      case Hfhbt : (find_hbt (QFBV.Btrue) c) => [[csop lop] | ];
+        case=> _ <- _ _ <-; [ exists csop | exists [::]]; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+    + move=> op e1 e2 Hfcbt. rewrite /= Hfcbt.
+      case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+      case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].  
+      case Hfhbt : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_bbinop op g2 ls1 ls2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+    + move=> e1 Hfcbt. 
+      rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case Hfhbt : (find_hbt (QFBV.Blneg e1) c1) => [[csop lop] | ];
+        last case Hop : (bit_blast_lneg g1 l1) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+    + move=> e1 e2 Hfcbt. 
+      rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case He2 : (bit_blast_bexp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] l2].
+      case Hfhbt : (find_hbt (QFBV.Bconj e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_conj g2 l1 l2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+    + move=> e1 e2 Hfcbt. 
+      rewrite /bit_blast_bexp_ccache -/bit_blast_bexp_ccache Hfcbt.
+      case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+      case He2 : (bit_blast_bexp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] l2].
+      case Hfhbt : (find_hbt (QFBV.Bdisj e1 e2) c2) => [[csop lop] | ];
+        last case Hop : (bit_blast_disj g2 l1 l2) => [[gop csop] lop];
+        case=> _ <- _ _ <-; exists csop; 
+        rewrite find_hbt_add_cbt; try rewrite find_hbt_add_hbt_eq; done.
+Qed.

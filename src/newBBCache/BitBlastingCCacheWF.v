@@ -29,6 +29,30 @@ Proof.
     case=> _ <- _ _ _ Hwfc; 
     (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
 Qed.
+
+Lemma bit_blast_exp_ccache_well_formed_nocet_const :
+  forall (b : bits) (te : SSATE.env) (m : vm) (c : compcache) 
+         (g : generator) (m' : vm) (c' : compcache) (g' : generator) 
+         (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_exp_ccache_well_formed_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        well_formed c -> well_formed c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
+      well_formed c -> well_formed c'.
+Proof.
+Admitted.
   
 Lemma bit_blast_exp_ccache_well_formed_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -58,6 +82,81 @@ Proof.
     case=> _ <- _ _ _; 
     (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
 Qed.
+
+Lemma bit_blast_exp_ccache_well_formed_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g b = (m', c', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall e1 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+          well_formed c -> well_formed c') ->
+      forall e2 : QFBV.exp,
+        (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+                (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+            bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+            well_formed c -> well_formed c') ->
+        forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+               (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
+          well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_well_formed_nocbt_false :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_well_formed_nocbt_true :
+  forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+         (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_well_formed_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+        bit_blast_exp_ccache te m c g e1 = (m', c', g', cs, ls) ->
+        well_formed c -> well_formed c') ->
+    forall e2 : QFBV.exp,
+      (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+              (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (ls : word),
+          bit_blast_exp_ccache te m c g e2 = (m', c', g', cs, ls) ->
+          well_formed c -> well_formed c') ->
+      forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+             (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
+        well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma bit_blast_bexp_ccache_well_formed_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+            (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+        bit_blast_bexp_ccache te m c g e1 = (m', c', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
+           (m' : vm) (c' : compcache) (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
+      well_formed c -> well_formed c'.
+Proof.
+Admitted.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -137,11 +236,13 @@ Proof.
   - move: e te m c g m' c' g' cs ls Hfcet.
     case.
     + exact: bit_blast_exp_ccache_well_formed_nocet_var.
-    + admit.
-    + admit.
+    + exact: bit_blast_exp_ccache_well_formed_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: bit_blast_exp_ccache_well_formed_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: bit_blast_exp_ccache_well_formed_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_exp_ccache_well_formed_nocet_ite.
   (* bexp *)
   set IHe := bit_blast_exp_ccache_well_formed.
   set IHb := bit_blast_bexp_ccache_well_formed.
@@ -151,18 +252,208 @@ Proof.
     case=> _ <- _ _ _. done. 
   - move: e te m c g m' c' g' cs l Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: bit_blast_bexp_ccache_well_formed_nocbt_false.
+    + exact: bit_blast_bexp_ccache_well_formed_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: bit_blast_bexp_ccache_well_formed_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: bit_blast_bexp_ccache_well_formed_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_well_formed_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: bit_blast_bexp_ccache_well_formed_nocbt_disj.
-Admitted.
+Qed.
 
 
 (* = mk_env_exp_ccache_well_formed and mk_env_bexp_ccache_well_formed = *)
+
+Lemma mk_env_exp_ccache_well_formed_nocet_var :
+  forall (t : SSAVarOrder.t) (m : vm) (c : compcache) (s : SSAStore.t) 
+         (E : env) (g : generator) (m' : vm) (c' : compcache) 
+         (E' : env) (g' : generator) (cs : cnf) (ls : word),
+    find_cet (QFBV.Evar t) c = None ->
+    mk_env_exp_ccache m c s E g (QFBV.Evar t) = (m', c', E', g', cs, ls) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_well_formed_nocet_const :
+  forall (b : bits) (m : vm) (c : compcache) (s : SSAStore.t) 
+         (E : env) (g : generator) (m' : vm) (c' : compcache) 
+         (E' : env) (g' : generator) (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    mk_env_exp_ccache m c s E g (QFBV.Econst b) = (m', c', E', g', cs, ls) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_well_formed_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+        well_formed c -> well_formed c') ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      mk_env_exp_ccache m c s E g (QFBV.Eunop op e1) = (m', c', E', g', cs, ls) ->
+      well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_well_formed_nocet_binop :
+  forall (op : QFBV.ebinop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+        well_formed c -> well_formed c') ->
+    forall e2 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+          well_formed c -> well_formed c') ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (ls : word),
+        find_cet (QFBV.Ebinop op e1 e2) c = None ->
+        mk_env_exp_ccache m c s E g (QFBV.Ebinop op e1 e2) = (m', c', E', g', cs, ls) ->
+        well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_well_formed_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g b = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall e1 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+          well_formed c -> well_formed c') ->
+      forall e2 : QFBV.exp,
+        (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+                (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+                (g' : generator) (cs : cnf) (ls : word),
+            mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+            well_formed c -> well_formed c') ->
+        forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+               (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+               (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          mk_env_exp_ccache m c s E g (QFBV.Eite b e1 e2) = (m', c', E', g', cs, ls) ->
+          well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_false :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Bfalse = (m', c', E', g', cs, l) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_true :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Btrue = (m', c', E', g', cs, l) ->
+    well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+        well_formed c -> well_formed c') ->
+    forall e2 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+          well_formed c -> well_formed c') ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        mk_env_bexp_ccache m c s E g (QFBV.Bbinop op e1 e2) = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g e1 = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      mk_env_bexp_ccache m c s E g (QFBV.Blneg e1) = (m', c', E', g', cs, l) ->
+      well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_conj :
+  forall e1 : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g e1 = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall e2 : QFBV.bexp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (l : literal),
+          mk_env_bexp_ccache m c s E g e2 = (m', c', E', g', cs, l) ->
+          well_formed c -> well_formed c') ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bconj e1 e2) c = None ->
+        mk_env_bexp_ccache m c s E g (QFBV.Bconj e1 e2) = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c'.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_well_formed_nocbt_disj :
+  forall e1 : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g e1 = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c') ->
+    forall e2 : QFBV.bexp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (l : literal),
+          mk_env_bexp_ccache m c s E g e2 = (m', c', E', g', cs, l) ->
+          well_formed c -> well_formed c') ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bdisj e1 e2) c = None ->
+        mk_env_bexp_ccache m c s E g (QFBV.Bdisj e1 e2) = (m', c', E', g', cs, l) ->
+        well_formed c -> well_formed c'.
+Proof.
+Admitted.
 
 Corollary mk_env_exp_ccache_well_formed :
   forall (e : QFBV.exp) m c s E g m' c' E' g' cs ls,
@@ -174,6 +465,43 @@ Corollary mk_env_exp_ccache_well_formed :
         mk_env_bexp_ccache m c s E g e = (m', c', E', g', cs, l) ->
         CompCache.well_formed c -> CompCache.well_formed c'.
 Proof.
-Admitted.
+  (* exp *)
+  set IHe := mk_env_exp_ccache_well_formed.
+  set IHb := mk_env_bexp_ccache_well_formed.
+  move=> e m c s E g m' c' E' g' cs ls.
+  case Hfcet: (find_cet e c) => [[cse lse] | ]. 
+  - rewrite mk_env_exp_ccache_equation Hfcet /=.
+    case=> _ <- _ _ _ _. done. 
+  - move: e m c s E g m' c' E' g' cs ls Hfcet.
+    case.
+    + exact: mk_env_exp_ccache_well_formed_nocet_var.
+    + exact: mk_env_exp_ccache_well_formed_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: mk_env_exp_ccache_well_formed_nocet_unop.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_exp_ccache_well_formed_nocet_binop.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_exp_ccache_well_formed_nocet_ite.
+  (* bexp *)
+  set IHe := mk_env_exp_ccache_well_formed.
+  set IHb := mk_env_bexp_ccache_well_formed.
+  move=> e m c s E g m' c' E' g' cs l.
+  case Hfcbt: (find_cbt e c) => [[cse le] | ]. 
+  - rewrite mk_env_bexp_ccache_equation Hfcbt /=.
+    case=> _ <- _ _ _ _. done. 
+  - move: e m c s E g m' c' E' g' cs l Hfcbt.
+    case.
+    + exact: mk_env_bexp_ccache_well_formed_nocbt_false.
+    + exact: mk_env_bexp_ccache_well_formed_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_bexp_ccache_well_formed_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: mk_env_bexp_ccache_well_formed_nocbt_lneg.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
+      exact: mk_env_bexp_ccache_well_formed_nocbt_conj.
+    + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
+      exact: mk_env_bexp_ccache_well_formed_nocbt_disj.
+Qed.
+
 
 

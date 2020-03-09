@@ -39,6 +39,32 @@ Proof.
         exact: (env_preserve_enc_bits (mk_env_var_preserve Hv) Hnew Henc).
 Qed.
 
+Lemma mk_env_exp_ccache_consistent_nocet_const :
+  forall (b : bits) (m : vm) (c : compcache) (s : SSAStore.t) 
+         (E : env) (g : generator) (m' : vm) (c' : compcache) 
+         (E' : env) (g' : generator) (cs : cnf) (ls : word),
+    find_cet (QFBV.Econst b) c = None ->
+    mk_env_exp_ccache m c s E g (QFBV.Econst b) = (m', c', E', g', cs, ls) ->
+    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
+Lemma mk_env_exp_ccache_consistent_nocet_unop :
+  forall (op : QFBV.eunop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+        newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (ls : word),
+      find_cet (QFBV.Eunop op e1) c = None ->
+      mk_env_exp_ccache m c s E g (QFBV.Eunop op e1) = (m', c', E', g', cs, ls) ->
+      newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
 Lemma mk_env_exp_ccache_consistent_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
     (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
@@ -70,25 +96,95 @@ Proof.
   - case=> <- _ <- _ _ _. done.
   - case Hop : (mk_env_ebinop op E2 g2 ls1 ls2) => [[[Eop gop] csop] lsop].
     case=> <- _ <- _ _ _. 
-    have HpE2Eopg2 : env_preserve E2 Eop g2.
-    { 
-      move: Hop; case op; 
-        [ exact: mk_env_and_preserve |
-          exact: mk_env_or_preserve |
-          exact: mk_env_xor_preserve |
-          exact: mk_env_add_preserve |
-          exact: mk_env_sub_preserve |
-          exact: mk_env_mul_preserve |
-          admit (* TODO: mod *) |
-          admit (* TODO: srem *) |
-          admit (* TODO: smod *) |
-          exact: mk_env_shl_preserve |
-          exact: mk_env_lshr_preserve |
-          exact: mk_env_ashr_preserve |
-          exact: mk_env_concat_preserve ].
-    }
+    move: (mk_env_ebinop_preserve Hop) => HpE2Eopg2.
     move: (mk_env_exp_ccache_newer_vm He2 Hg1m1) => Hg2m2.
     exact: (env_preserve_consistent Hg2m2 HpE2Eopg2 Hcm2E2).
+Qed.
+
+Lemma mk_env_exp_ccache_consistent_nocet_ite :
+  forall b : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g b = (m', c', E', g', cs, l) ->
+        newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall e1 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+      forall e2 : QFBV.exp,
+        (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+                (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+                (g' : generator) (cs : cnf) (ls : word),
+            mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+            newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+        forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+               (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+               (g' : generator) (cs : cnf) (ls : word),
+          find_cet (QFBV.Eite b e1 e2) c = None ->
+          mk_env_exp_ccache m c s E g (QFBV.Eite b e1 e2) = (m', c', E', g', cs, ls) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_consistent_nocbt_false :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Bfalse c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Bfalse = (m', c', E', g', cs, l) ->
+    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_consistent_nocbt_true :
+  forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+         (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+         (g' : generator) (cs : cnf) (l : literal),
+    find_cbt QFBV.Btrue c = None ->
+    mk_env_bexp_ccache m c s E g QFBV.Btrue = (m', c', E', g', cs, l) ->
+    newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_consistent_nocbt_binop :
+  forall (op : QFBV.bbinop) (e1 : QFBV.exp),
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (ls : word),
+        mk_env_exp_ccache m c s E g e1 = (m', c', E', g', cs, ls) ->
+        newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall e2 : QFBV.exp,
+      (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+              (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+              (g' : generator) (cs : cnf) (ls : word),
+          mk_env_exp_ccache m c s E g e2 = (m', c', E', g', cs, ls) ->
+          newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+      forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+             (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+             (g' : generator) (cs : cnf) (l : literal),
+        find_cbt (QFBV.Bbinop op e1 e2) c = None ->
+        mk_env_bexp_ccache m c s E g (QFBV.Bbinop op e1 e2) = (m', c', E', g', cs, l) ->
+        newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
+Admitted.
+
+Lemma mk_env_bexp_ccache_consistent_nocbt_lneg :
+  forall e1 : QFBV.bexp,
+    (forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+            (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+            (g' : generator) (cs : cnf) (l : literal),
+        mk_env_bexp_ccache m c s E g e1 = (m', c', E', g', cs, l) ->
+        newer_than_vm g m -> consistent m E s -> consistent m' E' s) ->
+    forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
+           (g : generator) (m' : vm) (c' : compcache) (E' : env) 
+           (g' : generator) (cs : cnf) (l : literal),
+      find_cbt (QFBV.Blneg e1) c = None ->
+      mk_env_bexp_ccache m c s E g (QFBV.Blneg e1) = (m', c', E', g', cs, l) ->
+      newer_than_vm g m -> consistent m E s -> consistent m' E' s.
+Proof.
 Admitted.
 
 Lemma mk_env_bexp_ccache_consistent_nocbt_conj :
@@ -188,11 +284,13 @@ Proof.
   - move: e m c s E g m' c' E' g' cs ls Hfcet.
     case.
     + exact: mk_env_exp_ccache_consistent_nocet_var.
-    + admit.
-    + admit.
+    + exact: mk_env_exp_ccache_consistent_nocet_const.
+    + move=> op e1; move: op e1 (IHe e1).
+      exact: mk_env_exp_ccache_consistent_nocet_unop.
     + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
       exact: mk_env_exp_ccache_consistent_nocet_binop.
-    + admit.
+    + move=> b e1 e2; move: b (IHb b) e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_exp_ccache_consistent_nocet_ite.
   (* bexp *)
   set IHe := mk_env_exp_ccache_consistent.
   set IHb := mk_env_bexp_ccache_consistent.
@@ -202,12 +300,14 @@ Proof.
     case=> <- _ <- _ _ _. done.
   - move: e m c s E g m' c' E' g' cs l Hfcbt.
     case.
-    + admit.
-    + admit.
-    + admit.
-    + admit.
+    + exact: mk_env_bexp_ccache_consistent_nocbt_false.
+    + exact: mk_env_bexp_ccache_consistent_nocbt_true.
+    + move=> op e1 e2; move: op e1 (IHe e1) e2 (IHe e2).
+      exact: mk_env_bexp_ccache_consistent_nocbt_binop.
+    + move=> e1; move: e1 (IHb e1).
+      exact: mk_env_bexp_ccache_consistent_nocbt_lneg.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: mk_env_bexp_ccache_consistent_nocbt_conj.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: mk_env_bexp_ccache_consistent_nocbt_disj.
-Admitted.
+Qed.
