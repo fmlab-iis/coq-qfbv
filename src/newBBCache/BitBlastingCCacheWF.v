@@ -38,7 +38,12 @@ Lemma bit_blast_exp_ccache_well_formed_nocet_const :
     bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> bs te m c g m' c' g' cs ls Hfcet Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcet.
+  case Hfhet : (find_het (QFBV.Econst bs) c) => [[csop lsop] | ];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma bit_blast_exp_ccache_well_formed_nocet_unop :
   forall (op : QFBV.eunop) (e1 : QFBV.exp),
@@ -52,7 +57,15 @@ Lemma bit_blast_exp_ccache_well_formed_nocet_unop :
       bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
       well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> op e1 IH1 te m c g m' c' g' cs ls Hfcet Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcet.
+  case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[csop lsop] | ];
+    last case Hop : (bit_blast_eunop op g1 ls1) => [[gop csop] lsop];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
   
 Lemma bit_blast_exp_ccache_well_formed_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -105,7 +118,19 @@ Lemma bit_blast_exp_ccache_well_formed_nocet_ite :
           bit_blast_exp_ccache te m c g (QFBV.Eite b e1 e2) = (m', c', g', cs, ls) ->
           well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> b IHb e1 IH1 e2 IH2 te m c g m' c' g' cs ls Hfcet Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcet.
+  case Hb : (bit_blast_bexp_ccache te m c g b) => [[[[mb cb] gb] csb] lb].
+  case He1 : (bit_blast_exp_ccache te mb cb gb e1) => [[[[m1 c1] g1] cs1] ls1].
+  case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
+  move: (IHb _ _ _ _ _ _ _ _ _ Hb Hwfc) => Hwfcb.
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfcb) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhet : (find_het (QFBV.Eite b e1 e2) c2) => [[csop lsop] | ];
+    last case Hop : (bit_blast_ite g2 lb ls1 ls2) => [[gop csop] lsop];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_false :
   forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -114,7 +139,12 @@ Lemma bit_blast_bexp_ccache_well_formed_nocbt_false :
     bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> te m c g m' c' g' cs l Hfcbt Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcbt.
+  case Hfhbt : (find_hbt (QFBV.Bfalse) c) => [[csop lop] | ];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_true :
   forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -123,7 +153,12 @@ Lemma bit_blast_bexp_ccache_well_formed_nocbt_true :
     bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> te m c g m' c' g' cs l Hfcbt Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcbt.
+  case Hfhbt : (find_hbt (QFBV.Btrue) c) => [[csop lop] | ];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_binop :
   forall (op : QFBV.bbinop) (e1 : QFBV.exp),
@@ -142,7 +177,17 @@ Lemma bit_blast_bexp_ccache_well_formed_nocbt_binop :
         bit_blast_bexp_ccache te m c g (QFBV.Bbinop op e1 e2) = (m', c', g', cs, l) ->
         well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> op e1 IH1 e2 IH2 te m c g m' c' g' cs l Hfcbt Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcbt.
+  case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+  case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhbt : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[csop lop] | ];
+    last case Hop : (bit_blast_bbinop op g2 ls1 ls2) => [[gop csop] lop];
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_lneg :
   forall e1 : QFBV.bexp,
@@ -156,7 +201,15 @@ Lemma bit_blast_bexp_ccache_well_formed_nocbt_lneg :
       bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
       well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> e1 IH1 te m c g m' c' g' cs l Hfcbt Hbb Hwfc.
+  move: Hbb. rewrite /= Hfcbt.
+  case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  case Hfhbt : (find_hbt (QFBV.Blneg e1) c1) => [[csop lop] | ];
+    (* last case Hop : (bit_blast_lneg g1 l1) => [[gop csop] lop]; *)
+    case=> _ <- _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_well_formed_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -182,7 +235,7 @@ Proof.
   move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
   move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
   case Hfhbt : (find_hbt (QFBV.Bconj e1 e2) c2) => [[csop lop] | ];
-    last case Hop : (bit_blast_conj g2 l1 l2) => [[gop csop] lop];
+    (* last case Hop : (bit_blast_conj g2 l1 l2) => [[gop csop] lop]; *)
     case=> _ <- _ _ _; 
     (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
 Qed.
@@ -211,7 +264,7 @@ Proof.
   move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
   move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
   case Hfhbt : (find_hbt (QFBV.Bdisj e1 e2) c2) => [[csop lop] | ];
-    last case Hop : (bit_blast_disj g2 l1 l2) => [[gop csop] lop];
+    (* last case Hop : (bit_blast_disj g2 l1 l2) => [[gop csop] lop]; *)
     case=> _ <- _ _ _; 
     (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
 Qed.
@@ -275,7 +328,13 @@ Lemma mk_env_exp_ccache_well_formed_nocet_var :
     mk_env_exp_ccache m c s E g (QFBV.Evar t) = (m', c', E', g', cs, ls) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> v m c s E g m' c' E' g' cs ls Hfcet. rewrite /= Hfcet.
+  case Hfhet : (find_het (QFBV.Evar v) c) => [[cse lse] | ];
+    last case Hfv : (SSAVM.find v m);
+    last case Hv : (mk_env_var E g (SSAStore.acc v s) v) => [[[Ev gv] csv] lsv];
+    case=> _ <- _ _ _ _ Hwfc; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma mk_env_exp_ccache_well_formed_nocet_const :
   forall (b : bits) (m : vm) (c : compcache) (s : SSAStore.t) 
@@ -285,7 +344,12 @@ Lemma mk_env_exp_ccache_well_formed_nocet_const :
     mk_env_exp_ccache m c s E g (QFBV.Econst b) = (m', c', E', g', cs, ls) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> bs m c s E g m' c' E' g' cs ls Hfcet Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcet.
+  case Hfhet : (find_het (QFBV.Econst bs) c) => [[csop lsop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma mk_env_exp_ccache_well_formed_nocet_unop :
   forall (op : QFBV.eunop) (e1 : QFBV.exp),
@@ -301,7 +365,15 @@ Lemma mk_env_exp_ccache_well_formed_nocet_unop :
       mk_env_exp_ccache m c s E g (QFBV.Eunop op e1) = (m', c', E', g', cs, ls) ->
       well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> op e1 IH1 m c s E g m' c' E' g' cs ls Hfcet Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcet.
+  case He1 : (mk_env_exp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[csop lsop] | ];
+    last case Hop : (mk_env_eunop op E1 g1 ls1) => [[[Eop gop] csop] lsop];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma mk_env_exp_ccache_well_formed_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -323,7 +395,17 @@ Lemma mk_env_exp_ccache_well_formed_nocet_binop :
         mk_env_exp_ccache m c s E g (QFBV.Ebinop op e1 e2) = (m', c', E', g', cs, ls) ->
         well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> op e1 IH1 e2 IH2 m c s E g m' c' E' g' cs ls Hfcet Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcet.
+  case He1 : (mk_env_exp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
+  case He2 : (mk_env_exp_ccache m1 c1 s E1 g1 e2) => [[[[[m2 c2] E2] g2] cs2] ls2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhet : (find_het (QFBV.Ebinop op e1 e2) c2) => [[csop lsop] | ];
+    last case Hop : (mk_env_ebinop op E2 g2 ls1 ls2) => [[[Eop gop] csop] lsop];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma mk_env_exp_ccache_well_formed_nocet_ite :
   forall b : QFBV.bexp,
@@ -351,7 +433,19 @@ Lemma mk_env_exp_ccache_well_formed_nocet_ite :
           mk_env_exp_ccache m c s E g (QFBV.Eite b e1 e2) = (m', c', E', g', cs, ls) ->
           well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> b IHb e1 IH1 e2 IH2 m c s E g m' c' E' g' cs ls Hfcet Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcet.
+  case Hb : (mk_env_bexp_ccache m c s E g b) => [[[[[mb cb] Eb] gb] csb] lb].
+  case He1 : (mk_env_exp_ccache mb cb s Eb gb e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
+  case He2 : (mk_env_exp_ccache m1 c1 s E1 g1 e2) => [[[[[m2 c2] E2] g2] cs2] ls2].
+  move: (IHb _ _ _ _ _ _ _ _ _ _ _ Hb Hwfc) => Hwfcb.
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfcb) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhet : (find_het (QFBV.Eite b e1 e2) c2) => [[csop lsop] | ];
+    last case Hop : (mk_env_ite E2 g2 lb ls1 ls2) => [[[Eop gop] csop] lsop];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cet_het || apply well_formed_add_cet); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_false :
   forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
@@ -361,7 +455,12 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_false :
     mk_env_bexp_ccache m c s E g QFBV.Bfalse = (m', c', E', g', cs, l) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case Hfhbt : (find_hbt (QFBV.Bfalse) c) => [[csop lop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_true :
   forall (m : vm) (c : compcache) (s : SSAStore.t) (E : env) 
@@ -371,7 +470,12 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_true :
     mk_env_bexp_ccache m c s E g QFBV.Btrue = (m', c', E', g', cs, l) ->
     well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case Hfhbt : (find_hbt (QFBV.Btrue) c) => [[csop lop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_binop :
   forall (op : QFBV.bbinop) (e1 : QFBV.exp),
@@ -393,7 +497,17 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_binop :
         mk_env_bexp_ccache m c s E g (QFBV.Bbinop op e1 e2) = (m', c', E', g', cs, l) ->
         well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> op e1 IH1 e2 IH2 m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case He1 : (mk_env_exp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
+  case He2 : (mk_env_exp_ccache m1 c1 s E1 g1 e2) => [[[[[m2 c2] E2] g2] cs2] ls2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhbt : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[csop lop] | ];
+    last case Hop : (mk_env_bbinop op E2 g2 ls1 ls2) => [[[Eop gop] csop] lop];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_lneg :
   forall e1 : QFBV.bexp,
@@ -409,7 +523,14 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_lneg :
       mk_env_bexp_ccache m c s E g (QFBV.Blneg e1) = (m', c', E', g', cs, l) ->
       well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> e1 IH1 m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case He1 : (mk_env_bexp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] l1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  case Hfhbt : (find_hbt (QFBV.Blneg e1) c1) => [[csop lop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_conj :
   forall e1 : QFBV.bexp,
@@ -431,7 +552,16 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_conj :
         mk_env_bexp_ccache m c s E g (QFBV.Bconj e1 e2) = (m', c', E', g', cs, l) ->
         well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> e1 IH1 e2 IH2 m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case He1 : (mk_env_bexp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] l1].
+  case He2 : (mk_env_bexp_ccache m1 c1 s E1 g1 e2) => [[[[[m2 c2] E2] g2] cs2] l2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhbt : (find_hbt (QFBV.Bconj e1 e2) c2) => [[csop lop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Lemma mk_env_bexp_ccache_well_formed_nocbt_disj :
   forall e1 : QFBV.bexp,
@@ -453,7 +583,16 @@ Lemma mk_env_bexp_ccache_well_formed_nocbt_disj :
         mk_env_bexp_ccache m c s E g (QFBV.Bdisj e1 e2) = (m', c', E', g', cs, l) ->
         well_formed c -> well_formed c'.
 Proof.
-Admitted.
+  move=> e1 IH1 e2 IH2 m c s E g m' c' E' g' cs l Hfcbt Hmk Hwfc.
+  move: Hmk. rewrite /= Hfcbt.
+  case He1 : (mk_env_bexp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] l1].
+  case He2 : (mk_env_bexp_ccache m1 c1 s E1 g1 e2) => [[[[[m2 c2] E2] g2] cs2] l2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ _ _ He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hwfc1) => Hwfc2.
+  case Hfhbt : (find_hbt (QFBV.Bdisj e1 e2) c2) => [[csop lop] | ];
+    case=> _ <- _ _ _ _; 
+    (apply well_formed_add_cbt_hbt || apply well_formed_add_cbt); done.
+Qed.
 
 Corollary mk_env_exp_ccache_well_formed :
   forall (e : QFBV.exp) m c s E g m' c' E' g' cs ls,
@@ -502,6 +641,3 @@ Proof.
     + move=> e1 e2; move: e1 (IHb e1) e2 (IHb e2).
       exact: mk_env_bexp_ccache_well_formed_nocbt_disj.
 Qed.
-
-
-

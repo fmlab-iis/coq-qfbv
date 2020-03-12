@@ -93,4 +93,4 @@ src/newBBCache/BitBlastingCCacheDefGen.v
 src/newBBCache/BitBlastingCCacheCompleteGen.v
 src/newBBCache/BitBlastingCCacheSoundGen.v
 src/newBBCache/BitBlastingCacheDef.v
-src/newBBCache/Cache.v
+src/newBBCache/BitBlastingCache.v

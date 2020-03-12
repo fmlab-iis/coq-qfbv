@@ -16,6 +16,73 @@ Import Prenex Implicits.
 
 (* = mk_env_exp_ccache_interp_cache and mk_env_bexp_ccache_interp_cache = *)
 
+Lemma mk_env_eunop_sat :
+  forall op E g ls E' g' cs lrs,
+    mk_env_eunop op E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt -> newer_than_lits g ls -> interp_cnf E' cs.
+Proof.
+  move=> op E g ls E' g' cs lrs Hmk Hgtt Hgls; move: Hmk.
+  case op=> [ | | i j | n | n | n | n ]; rewrite /mk_env_eunop => Hmk;
+    [ apply (mk_env_not_sat Hmk) |
+      apply (mk_env_neg_sat Hmk) |
+      apply (mk_env_extract_sat Hmk) |
+      apply (mk_env_high_sat Hmk) |
+      apply (mk_env_low_sat Hmk) |
+      apply (mk_env_zeroextend_sat Hmk) |
+      apply (mk_env_signextend_sat Hmk) ];
+    done.
+Qed.
+
+Lemma mk_env_ebinop_sat :
+  forall op E g ls1 ls2 E' g' cs ls,
+    mk_env_ebinop op E g ls1 ls2 = (E', g', cs, ls) ->
+    newer_than_lit g lit_tt -> newer_than_lits g ls1 -> newer_than_lits g ls2 -> 
+    interp_cnf E' cs.
+Proof.
+  move=> op E g ls1 ls2 E' g' cs ls Hmk Hgtt Hgls1 Hgls2; move: Hmk.
+  case op; rewrite /mk_env_ebinop => Hmk;
+    [ apply (mk_env_and_sat Hmk) |
+      apply (mk_env_or_sat Hmk) |
+      apply (mk_env_xor_sat Hmk) |
+      apply (mk_env_add_sat Hmk) |
+      apply (mk_env_sub_sat Hmk) |
+      apply (mk_env_mul_sat Hmk) |
+      admit (* TODO: mod *) |
+      admit (* TODO: srem *) |
+      admit (* TODO: smod *) |
+      apply (mk_env_shl_sat Hmk) |
+      apply (mk_env_lshr_sat Hmk) |
+      apply (mk_env_ashr_sat Hmk) |
+      apply (mk_env_concat_sat Hmk) ];
+    done.
+Admitted.
+
+Lemma mk_env_bbinop_sat :
+  forall op E g ls1 ls2 E' g' cs l,
+    mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) ->
+    newer_than_lit g lit_tt -> newer_than_lits g ls1 -> newer_than_lits g ls2 -> 
+    interp_cnf E' cs.
+Proof.
+  move=> op E g ls1 ls2 E' g' cs l Hmk Hgtt Hgls1 Hgls2; move: Hmk.
+  case op; rewrite /mk_env_bbinop => Hmk;
+    [ apply (mk_env_eq_sat Hmk) |
+      apply (mk_env_ult_sat Hmk) |
+      apply (mk_env_ule_sat Hmk) |
+      apply (mk_env_ugt_sat Hmk) |
+      apply (mk_env_uge_sat Hmk) |
+      apply (mk_env_slt_sat Hmk) |
+      apply (mk_env_sle_sat Hmk) |
+      apply (mk_env_sgt_sat Hmk) |
+      apply (mk_env_sge_sat Hmk) |
+      apply (mk_env_uaddo_sat Hmk) |
+      apply (mk_env_usubo_sat Hmk) |
+      apply (mk_env_umulo_sat Hmk) |
+      apply (mk_env_saddo_sat Hmk) |
+      apply (mk_env_ssubo_sat Hmk) |
+      apply (mk_env_smulo_sat Hmk) ];
+    done.
+Qed.
+
 Lemma mk_env_exp_ccache_interp_cache_nocet_var :
   forall (t : SSAVarOrder.t) (m : vm) (c : compcache) (s : SSAStore.t) 
          (E : env) (g : generator) (m' : vm) (c' : compcache) 
@@ -104,33 +171,12 @@ Proof.
   - case Hop : (mk_env_eunop op E1 g1 ls1) => [[[Eop gop] csop] lsop].
     case=> _ <- <- _ <- _. 
     move: (mk_env_exp_ccache_newer_gen He1) => Hgg1.
-    have HpE1Eopg1 : env_preserve E1 Eop g1.
-    { 
-      move: Hop. 
-      case op=> [ | | i j | n | n | n | n ]; rewrite /mk_env_eunop => Hop;
-        [ apply (mk_env_not_preserve Hop) |
-          apply (mk_env_neg_preserve Hop) |
-          apply (mk_env_extract_preserve Hop) |
-          apply (mk_env_high_preserve Hop) |
-          apply (mk_env_low_preserve Hop) |
-          apply (mk_env_zeroextend_preserve Hop) |
-          apply (mk_env_signextend_preserve Hop) ];
-        done.
-    }      
+    have HpE1Eopg1 : env_preserve E1 Eop g1 by apply (mk_env_eunop_preserve Hop).
     have HiEopcsop : interp_cnf Eop csop.
     { 
       move: (mk_env_exp_ccache_newer_res He1 Hgm Hgtt Hwfc Hgc) => Hg1ls1.
       move: (newer_than_lit_le_newer Hgtt Hgg1) => Hg1tt.
-      move: Hop.
-      case op=> [ | | i j | n | n | n | n ]; rewrite /mk_env_eunop => Hop;
-        [ apply (mk_env_not_sat Hop) |
-          apply (mk_env_neg_sat Hop) |
-          apply (mk_env_extract_sat Hop) |
-          apply (mk_env_high_sat Hop) |
-          apply (mk_env_low_sat Hop) |
-          apply (mk_env_zeroextend_sat Hop) |
-          apply (mk_env_signextend_sat Hop) ];
-        done.
+      by apply (mk_env_eunop_sat Hop).
     }
     split.
     + rewrite !interp_cnf_catrev.
@@ -200,45 +246,14 @@ Proof.
   - case Hop : (mk_env_ebinop op E2 g2 ls1 ls2) => [[[Eop gop] csop] lsop].
     case=> _ <- <- _ <- _. 
     move: (mk_env_exp_ccache_newer_gen He2) => Hg1g2.
-    have HpE2Eopg2 : env_preserve E2 Eop g2.
-    { 
-      move: Hop. case op; rewrite /mk_env_ebinop => Hop;
-        [ apply (mk_env_and_preserve Hop) |
-          apply (mk_env_or_preserve Hop) |
-          apply (mk_env_xor_preserve Hop) |
-          apply (mk_env_add_preserve Hop) |
-          apply (mk_env_sub_preserve Hop) |
-          apply (mk_env_mul_preserve Hop) |
-          admit (* TODO: mod *) |
-          admit (* TODO: srem *) |
-          admit (* TODO: smod *) |
-          apply (mk_env_shl_preserve Hop) |
-          apply (mk_env_lshr_preserve Hop) |
-          apply (mk_env_ashr_preserve Hop) |
-          apply (mk_env_concat_preserve Hop) ];
-        done.
-    }      
+    have HpE2Eopg2 : env_preserve E2 Eop g2 by apply (mk_env_ebinop_preserve Hop).
     have HiEopcsop : interp_cnf Eop csop.
     { 
       move: (mk_env_exp_ccache_newer_res He1 Hgm Hgtt Hwfc Hgc) => Hg1ls1.
       move: (newer_than_lits_le_newer Hg1ls1 Hg1g2) => Hg2ls1.
       move: (mk_env_exp_ccache_newer_res He2 Hg1m1 Hg1tt Hwfc1 Hg1c1) => Hg2ls2.
       move: (newer_than_lit_le_newer Hg1tt Hg1g2) => Hg2tt.
-      move: Hop. case op; rewrite /mk_env_ebinop => Hop;
-        [ apply (mk_env_and_sat Hop) |
-          apply (mk_env_or_sat Hop) |
-          apply (mk_env_xor_sat Hop) |
-          apply (mk_env_add_sat Hop) |
-          apply (mk_env_sub_sat Hop) |
-          apply (mk_env_mul_sat Hop) |
-          admit (* TODO: mod *) |
-          admit (* TODO: srem *) |
-          admit (* TODO: smod *) |
-          apply (mk_env_shl_sat Hop) |
-          apply (mk_env_lshr_sat Hop) |
-          apply (mk_env_ashr_sat Hop) |
-          apply (mk_env_concat_sat Hop) ];
-        done.
+      by apply (mk_env_ebinop_sat Hop).
     }
     split.
     + rewrite !interp_cnf_catrev.
@@ -252,7 +267,7 @@ Proof.
     + apply interp_cache_add_cet, interp_cache_add_het; try done.
       move: (mk_env_exp_ccache_newer_cache He2 Hg1m1 Hg1tt Hwfc1 Hg1c1) => Hg2c2.
       by rewrite (env_preserve_interp_cache HpE2Eopg2 Hg2c2).     
-Admitted.
+Qed.
 
 Lemma mk_env_exp_ccache_interp_cache_nocet_ite :
   forall b : QFBV.bexp,
@@ -464,49 +479,14 @@ Proof.
   - case Hop : (mk_env_bbinop op E2 g2 ls1 ls2) => [[[Eop gop] csop] lop].
     case=> _ <- <- _ <- _. 
     move: (mk_env_exp_ccache_newer_gen He2) => Hg1g2.
-    have HpE2Eopg2 : env_preserve E2 Eop g2.
-    { 
-      move: Hop. case op; rewrite /mk_env_bbinop => Hop;
-        [ apply (mk_env_eq_preserve Hop) |
-          apply (mk_env_ult_preserve Hop) |
-          apply (mk_env_ule_preserve Hop) |
-          apply (mk_env_ugt_preserve Hop) |
-          apply (mk_env_uge_preserve Hop) |
-          apply (mk_env_slt_preserve Hop) |
-          apply (mk_env_sle_preserve Hop) |
-          apply (mk_env_sgt_preserve Hop) |
-          apply (mk_env_sge_preserve Hop) |
-          apply (mk_env_uaddo_preserve Hop) |
-          apply (mk_env_usubo_preserve Hop) |
-          apply (mk_env_umulo_preserve Hop) |
-          apply (mk_env_saddo_preserve Hop) |
-          apply (mk_env_ssubo_preserve Hop) |
-          apply (mk_env_smulo_preserve Hop) ];
-        done.
-    }      
+    have HpE2Eopg2 : env_preserve E2 Eop g2 by apply (mk_env_bbinop_preserve Hop).
     have HiEopcsop : interp_cnf Eop csop.
     { 
       move: (mk_env_exp_ccache_newer_res He1 Hgm Hgtt Hwfc Hgc) => Hg1ls1.
       move: (newer_than_lits_le_newer Hg1ls1 Hg1g2) => Hg2ls1.
       move: (mk_env_exp_ccache_newer_res He2 Hg1m1 Hg1tt Hwfc1 Hg1c1) => Hg2ls2.
       move: (newer_than_lit_le_newer Hg1tt Hg1g2) => Hg2tt.
-      move: Hop. case op; rewrite /mk_env_bbinop => Hop;
-        [ apply (mk_env_eq_sat Hop) |
-          apply (mk_env_ult_sat Hop) |
-          apply (mk_env_ule_sat Hop) |
-          apply (mk_env_ugt_sat Hop) |
-          apply (mk_env_uge_sat Hop) |
-          apply (mk_env_slt_sat Hop) |
-          apply (mk_env_sle_sat Hop) |
-          apply (mk_env_sgt_sat Hop) |
-          apply (mk_env_sge_sat Hop) |
-          apply (mk_env_uaddo_sat Hop) |
-          apply (mk_env_usubo_sat Hop) |
-          apply (mk_env_umulo_sat Hop) |
-          apply (mk_env_saddo_sat Hop) |
-          apply (mk_env_ssubo_sat Hop) |
-          apply (mk_env_smulo_sat Hop) ];
-        done.
+      by apply (mk_env_bbinop_sat Hop).
     }
     split.
     + rewrite !interp_cnf_catrev.

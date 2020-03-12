@@ -25,8 +25,13 @@ Lemma mk_state_conform_bexps :
     AdhereConform.adhere m' te ->
     AdhereConform.conform_bexps es (mk_state E m') te .
 Proof .
-Admitted.
-
+  elim.
+  - move=> te E m' /=. done.
+  - move=> e es IHes te E m' /= /andP [Hbde Hbdes] Had.
+    move: (IHes te E m' Hbdes Had) => Hcfes.
+    move: (mk_state_conform_bexp E Hbde Had) => Hcfe.
+    by rewrite Hcfe Hcfes. 
+Qed.
 
 Theorem bit_blast_ccache_complete_general :
   forall (e : QFBV.bexp) (es: seq QFBV.bexp) te m c g cs lr,

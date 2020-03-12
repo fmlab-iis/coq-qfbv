@@ -47,7 +47,12 @@ Lemma bit_blast_exp_ccache_bound_cache_nocet_const :
     bit_blast_exp_ccache te m c g (QFBV.Econst b) = (m', c', g', cs, ls) ->
     well_formed c -> bound c m -> bound_exp (QFBV.Econst b) m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> bs te m c g m' c' g' cs ls Hfcet Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcet. 
+  case Hfhet : (find_het (QFBV.Econst bs) c) => [[csop lsop] | ];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cet; try apply bound_add_het; done.
+Qed.
 
 Lemma bit_blast_exp_ccache_bound_cache_nocet_unop :
   forall (op : QFBV.eunop) (e1 : QFBV.exp),
@@ -61,7 +66,15 @@ Lemma bit_blast_exp_ccache_bound_cache_nocet_unop :
       bit_blast_exp_ccache te m c g (QFBV.Eunop op e1) = (m', c', g', cs, ls) ->
       well_formed c -> bound c m -> bound_exp (QFBV.Eunop op e1) m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> op e1 IH1 te m c g m' c' g' cs ls Hfcet Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcet. 
+  case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc Hbcm) => [Hbe1m1 Hbc1m1].
+  case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[csop lsop] | ];
+    last case Hop : (bit_blast_eunop op g1 ls1) => [[gop csop] lsop];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cet; try apply bound_add_het; done.
+Qed.
 
 Lemma bit_blast_exp_ccache_bound_cache_nocet_binop :
   forall (op : QFBV.ebinop) (e1 : QFBV.exp),
@@ -120,7 +133,28 @@ Lemma bit_blast_exp_ccache_bound_cache_nocet_ite :
           well_formed c -> bound c m -> 
           bound_exp (QFBV.Eite b e1 e2) m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> b IHb e1 IH1 e2 IH2 te m c g m' c' g' cs ls Hfcet Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcet. 
+  case Hb : (bit_blast_bexp_ccache te m c g b) => [[[[mb cb] gb] csb] lb].
+  case He1 : (bit_blast_exp_ccache te mb cb gb e1) => [[[[m1 c1] g1] cs1] ls1].
+  case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
+  move: (IHb _ _ _ _ _ _ _ _ _ Hb Hwfc Hbcm) => [Hbbmb Hbcbmb].
+  move: (bit_blast_exp_ccache_preserve He1) => Hpmbm1.
+  move: (vm_preserve_bound_bexp Hbbmb Hpmbm1) => {Hbbmb} Hbbm1.
+  move: (bit_blast_exp_ccache_preserve He2) => Hpm1m2.
+  move: (vm_preserve_bound_bexp Hbbm1 Hpm1m2) => {Hbbm1} Hbbm2.
+  move: (bit_blast_bexp_ccache_well_formed Hb Hwfc) => Hwfcb.
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfcb Hbcbmb) => [Hbe1m1 Hbc1m1].
+  move: (vm_preserve_bound_exp Hbe1m1 Hpm1m2) => {Hbe1m1} Hbe1m2.
+  move: (bit_blast_exp_ccache_well_formed He1 Hwfcb) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1 Hbc1m1) => [Hbe2m2 Hbc2m2].
+  have Hbem2 : bound_bexp b m2 && bound_exp e1 m2 && bound_exp e2 m2 
+    by rewrite Hbbm2 Hbe1m2 Hbe2m2.
+  case Hfhet : (find_het (QFBV.Eite b e1 e2) c2) => [[csop lsop] | ];
+    last case Hop : (bit_blast_ite g2 lb ls1 ls2) => [[gop csop] lsop];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cet; try apply bound_add_het; done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_bound_cache_nocbt_false :
   forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -129,7 +163,12 @@ Lemma bit_blast_bexp_ccache_bound_cache_nocbt_false :
     bit_blast_bexp_ccache te m c g QFBV.Bfalse = (m', c', g', cs, l) ->
     well_formed c -> bound c m -> bound_bexp QFBV.Bfalse m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> te m c g m' c' g' cs l Hfcbt Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcbt. 
+  case Hfhbt : (find_hbt (QFBV.Bfalse) c) => [[csop lop] | ];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cbt; try apply bound_add_hbt; done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_bound_cache_nocbt_true :
   forall (te : SSATE.env) (m : vm) (c : compcache) (g : generator) 
@@ -138,7 +177,12 @@ Lemma bit_blast_bexp_ccache_bound_cache_nocbt_true :
     bit_blast_bexp_ccache te m c g QFBV.Btrue = (m', c', g', cs, l) ->
     well_formed c -> bound c m -> bound_bexp QFBV.Btrue m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> te m c g m' c' g' cs l Hfcbt Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcbt. 
+  case Hfhbt : (find_hbt (QFBV.Btrue) c) => [[csop lop] | ];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cbt; try apply bound_add_hbt; done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_bound_cache_nocbt_binop :
   forall (op : QFBV.bbinop) (e1 : QFBV.exp),
@@ -158,7 +202,21 @@ Lemma bit_blast_bexp_ccache_bound_cache_nocbt_binop :
         well_formed c -> bound c m -> 
         bound_bexp (QFBV.Bbinop op e1 e2) m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> op e1 IH1 e2 IH2 te m c g m' c' g' cs l Hfcbt Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcbt. 
+  case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
+  case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc Hbcm) => [Hbe1m1 Hbc1m1].
+  move: (bit_blast_exp_ccache_preserve He2) => Hpm1m2.
+  move: (vm_preserve_bound_exp Hbe1m1 Hpm1m2) => {Hbe1m1} Hbe1m2.
+  move: (bit_blast_exp_ccache_well_formed He1 Hwfc) => Hwfc1.
+  move: (IH2 _ _ _ _ _ _ _ _ _ He2 Hwfc1 Hbc1m1) => [Hbe2m2 Hbc2m2].
+  have Hbem2 : bound_exp e1 m2 && bound_exp e2 m2 by rewrite Hbe1m2 Hbe2m2.
+  case Hfhbt : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[csop lop] | ];
+    last case Hop : (bit_blast_bbinop op g2 ls1 ls2) => [[gop csop] lop];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cbt; try apply bound_add_hbt; done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_bound_cache_nocbt_lneg :
   forall e1 : QFBV.bexp,
@@ -172,7 +230,14 @@ Lemma bit_blast_bexp_ccache_bound_cache_nocbt_lneg :
       bit_blast_bexp_ccache te m c g (QFBV.Blneg e1) = (m', c', g', cs, l) ->
       well_formed c -> bound c m -> bound_bexp (QFBV.Blneg e1) m' /\ bound c' m'.
 Proof.
-Admitted.
+  move=> e1 IH1 te m c g m' c' g' cs l Hfcbt Hbb Hwfc Hbcm. 
+  move: Hbb. rewrite /= Hfcbt. 
+  case He1 : (bit_blast_bexp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] l1].
+  move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwfc Hbcm) => [Hbe1m1 Hbc1m1].
+  case Hfhbt : (find_hbt (QFBV.Blneg e1) c1) => [[csop lop] | ];
+    case=> <- <- _ _ _; split; try done;
+    rewrite -bound_add_cbt; try apply bound_add_hbt; done.
+Qed.
 
 Lemma bit_blast_bexp_ccache_bound_cache_nocbt_conj :
   forall e1 : QFBV.bexp,
