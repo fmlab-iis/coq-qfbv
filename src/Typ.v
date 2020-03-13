@@ -1,6 +1,6 @@
 
 From Coq Require Import Arith RelationClasses OrderedType.
-From mathcomp Require Import ssreflect ssrbool ssrnat eqtype.
+From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 
 Set Implicit Arguments.
@@ -202,6 +202,17 @@ Section Typ.
     | Tuint w => ucastB bs (sizeof_typ tty)
     | Tsint w => scastB bs (sizeof_typ tty)
     end.
+
+  Lemma size_unsigned_typ ty : sizeof_typ (unsigned_typ ty) = sizeof_typ ty.
+  Proof. case ty; done. Qed.
+
+  Lemma size_double_typ ty : sizeof_typ (double_typ ty) = 2 * (sizeof_typ ty).
+  Proof. by case: ty. Qed.
+
+  Lemma size_tcast bs s t : size (tcast bs s t) = sizeof_typ t.
+  Proof.
+    by rewrite /tcast; case s => _; [rewrite size_ucastB // | rewrite size_scastB //].
+  Qed.
 
 End Typ.
 
