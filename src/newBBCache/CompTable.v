@@ -655,21 +655,8 @@ Proof.
     exact: (vm_preserve_bound_bexp Hbdm Hpre).
 Qed.
 
-(* Lemma bound_add_find_none : *)
-(*   forall t vm v ls, *)
-(*     bound t vm -> SSAVM.find v vm = None -> bound t (SSAVM.add v ls vm). *)
-(* Proof. *)
-(*   move=> t vm v ls [Hbe Hbb] Hfind.  *)
-(*   move: (vm_preserve_add_diag ls Hfind) => Hpre. *)
-(*   split.  *)
-(*   - move=> e0 cs0 ls0 Hfet. move: (Hbe _ _ _ Hfet) => Hbvm. *)
-(*     exact: (vm_preserve_bound_exp Hbvm Hpre). *)
-(*   - move=> e0 cs0 l0 Hfbt. move: (Hbb _ _ _ Hfbt) => Hbvm. *)
-(*     exact: (vm_preserve_bound_bexp Hbvm Hpre). *)
-(* Qed. *)
 
-
-(* ==== CompTable preserve ==== *)
+(* ==== preserve ==== *)
 
 Definition preserve (t t' : comptable) : Prop :=
   (forall e cs ls, find_et e t = Some (cs, ls) -> find_et e t' = Some (cs, ls))

@@ -3,21 +3,24 @@ From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport.
-From newBBCache Require Import SimpTable SimpCache BitBlastingCCacheDef 
-     BitBlastingCacheDef BitBlastingCCacheComplete CompTable CompCache
-     BitBlastingInit BitBlastingCCacheCompleteGen BitBlastingCCacheSound
-     BitBlastingCCacheSoundGen BitBlastingCCacheDefGen.
+From newBBCache Require Import Cache BitBlastingInit BitBlastingCCacheDef 
+     BitBlastingCCache BitBlastingCCacheDefGeneral BitBlastingCCacheGeneral
+     BitBlastingCacheDef .
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
 
+(* ==== basic case ==== *)
+(* = bit-blasting only one bexp = *)
+
 Theorem bit_blast_cache_sound :
   forall (e : QFBV.bexp) te m c g cs lr,
     bit_blast_bexp_cache te init_vm init_cache init_gen e = (m, c, g, cs, lr) ->
     QFBV.well_formed_bexp e te ->
-    ~ (sat (add_prelude ([::neg_lit lr]::cs))) ->
+    ~ (sat (add_prelude ([::neg_lit lr]::cs))) 
+    ->
     (forall s, AdhereConform.conform_bexp e s te ->
                QFBV.eval_bexp e s) .
 Proof.
@@ -43,21 +46,23 @@ Proof.
   exact: (bit_blast_ccache_complete Hccache).
 Qed.
 
+
 (* ==== general case ==== *)
+(* = bit-blasting multiple bexps = *)
 
 Fixpoint bit_blast_bexps_cache te (es : seq QFBV.bexp) :=
   match es with 
   | [::] => (init_vm, init_cache, init_gen, add_prelude [::], lit_tt)
   | e :: es' => 
     let '(m, c, g, cs, lr) := bit_blast_bexps_cache te es' in
-    bit_blast_bexp_cache te m (SimpCache.reset_ct c) g e
+    bit_blast_bexp_cache te m (Cache.reset_ct c) g e
   end.
 
 Lemma bit_blast_bexps_cache_is_bit_blast_bexps_ccache :
   forall es te m c g cs l,
     bit_blast_bexps_cache te es = (m, c, g, cs, l)
     -> exists cc, bit_blast_bexps_ccache te es = (m, cc, g, cs, l) 
-                  /\ compatible c cc.
+                  /\ Cache.compatible c cc.
 Proof.
   elim.
   - move=> te m c g cs l /=. case=> <- <- <- <- <-. exists init_ccache; done.
@@ -65,7 +70,7 @@ Proof.
     case Hbbtl : (bit_blast_bexps_cache te tl) => [[[[m c] g] cs] l].
     move=> Hbbe.
     move: (IHtl _ _ _ _ _ _ Hbbtl) => [cc [-> Hcomptl]].
-    move: (compatible_reset_ct Hcomptl) => {Hcomptl} Hcomptl.
+    move: (Cache.compatible_reset_ct Hcomptl) => {Hcomptl} Hcomptl.
     exact: (bit_blast_bexp_cache_is_bit_blast_bexp_ccache Hcomptl Hbbe).
 Qed.
 
@@ -74,7 +79,8 @@ Theorem bit_blast_cache_sound_general :
   forall (e : QFBV.bexp) (es : seq QFBV.bexp) te m c g cs lr,
     bit_blast_bexps_cache te (e::es) = (m, c, g, cs, lr) ->
     well_formed_bexps (e::es) te ->
-    ~ (sat (add_prelude ([::neg_lit lr]::cs))) ->
+    ~ (sat (add_prelude ([::neg_lit lr]::cs))) 
+    ->
     (forall s, AdhereConform.conform_bexps (e::es) s te ->
                QFBV.eval_bexp e s) .
 Proof.

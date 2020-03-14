@@ -3,7 +3,6 @@ From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport.
-(* From BBCache Require Import Cache BitBlastingCacheDef. *)
 From newBBCache Require Import CompCache BitBlastingCCacheDef BitBlastingCCacheWF.
 
 Set Implicit Arguments.
@@ -1290,8 +1289,6 @@ Proof.
     + by rewrite -newer_than_cache_add_cbt.
   - case Hop : (mk_env_lneg E1 g1 l1) => [[[Eop gop] csop] lop].
     case=> _ <- _ <- <- <-.
-    (* move: (mk_env_bexp_ccache_newer_gen He1) => Hgg1. *)
-    (* move: (newer_than_lit_le_newer Hgtt Hgg1) => {Hgtt} Hg1tt. *)
     move: (mk_env_lneg_newer_res Hop) => Hgoplop.
     move: (mk_env_lneg_newer_cnf Hop Hg1l1) => Hgopcsop.
     move: (mk_env_lneg_newer_gen Hop) => Hg1gop.
@@ -1356,7 +1353,6 @@ Proof.
     + by rewrite -newer_than_cache_add_cbt.
   - case Hop : (mk_env_conj E2 g2 l1 l2) => [[[Eop gop] csop] lop].
     case=> _ <- _ <- <- <-.
-    (* move: (newer_than_lit_le_newer Hg1tt Hg1g2) => {Hg1tt} Hg2tt. *)
     move: (newer_than_lit_le_newer Hg1l1 Hg1g2) => {Hg1l1} Hg2l1.
     move: (mk_env_conj_newer_res Hop) => Hgoplop.
     move: (mk_env_conj_newer_cnf Hop Hg2l1 Hg2l2) => Hgopcsop.
@@ -1423,7 +1419,6 @@ Proof.
     + by rewrite -newer_than_cache_add_cbt.
   - case Hop : (mk_env_disj E2 g2 l1 l2) => [[[Eop gop] csop] lop].
     case=> _ <- _ <- <- <-.
-    (* move: (newer_than_lit_le_newer Hg1tt Hg1g2) => {Hg1tt} Hg2tt. *)
     move: (newer_than_lit_le_newer Hg1l1 Hg1g2) => {Hg1l1} Hg2l1.
     move: (mk_env_disj_newer_res Hop) => Hgoplop.
     move: (mk_env_disj_newer_cnf Hop Hg2l1 Hg2l2) => Hgopcsop.

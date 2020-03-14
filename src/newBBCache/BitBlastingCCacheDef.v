@@ -10,6 +10,8 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 
+(* ==== bit-blasting with complete cache information ==== *)
+
 Definition bit_blast_eunop (op : QFBV.eunop) :=
   match op with
   | QFBV.Unot => bit_blast_not
@@ -57,13 +59,6 @@ Definition bit_blast_bbinop (op : QFBV.bbinop) :=
   | QFBV.Bsmulo => bit_blast_smulo 
   end .
 
-
-
-(* ==== bit-blasting with complete cache information ==== *)
-
-(* this method updates historical tables and current tables at the same time when 
-traversing the expression *)
-
 Fixpoint bit_blast_exp_ccache te m cc g e :
   vm * compcache * generator * cnf * word :=
   (* = bit_blast_exp_nocet = *)
@@ -90,17 +85,7 @@ Fixpoint bit_blast_exp_ccache te m cc g e :
         match find_het e cc1 with
         | Some (csop, lsop) => (m1, cc1, g1, catrev cs1 csop, lsop, csop)
         | None =>
-          let '(gop, csop, lsop) := bit_blast_eunop op g1 ls1
-              (* match op with *)
-              (*                       | QFBV.Unot => bit_blast_not g1 ls1 *)
-              (*                       | QFBV.Uneg => bit_blast_neg g1 ls1 *)
-              (*                       | QFBV.Uextr i j => bit_blast_extract g1 i j ls1 *)
-              (*                       | QFBV.Uhigh n => bit_blast_high g1 n ls1  *)
-              (*                       | QFBV.Ulow n => bit_blast_low g1 n ls1 *)
-              (*                       | QFBV.Uzext n => bit_blast_zeroextend n g1 ls1 *)
-              (*                       | QFBV.Usext n => bit_blast_signextend n g1 ls1 *)
-              (*                       end  *)
-          in
+          let '(gop, csop, lsop) := bit_blast_eunop op g1 ls1 in
           (m1, add_het e csop lsop cc1, gop, catrev cs1 csop, lsop, csop)
         end
       | QFBV.Ebinop op e1 e2 =>
@@ -109,23 +94,7 @@ Fixpoint bit_blast_exp_ccache te m cc g e :
         match find_het e cc2 with
         | Some (csop, lsop) => (m2, cc2, g2, catrev cs1 (catrev cs2 csop), lsop, csop)
         | None => 
-          let '(gop, csop, lsop) := bit_blast_ebinop op g2 ls1 ls2
-(* match op with *)
-(*                                     | QFBV.Band => bit_blast_and g2 ls1 ls2 *)
-(*                                     | QFBV.Bor => bit_blast_or g2 ls1 ls2 *)
-(*                                     | QFBV.Bxor => bit_blast_xor g2 ls1 ls2 *)
-(*                                     | QFBV.Badd => bit_blast_add g2 ls1 ls2 *)
-(*                                     | QFBV.Bsub => bit_blast_sub g2 ls1 ls2 *)
-(*                                     | QFBV.Bmul => bit_blast_mul g2 ls1 ls2 *)
-(*                                     | QFBV.Bmod => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bsrem => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bsmod => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bshl => bit_blast_shl g2 ls1 ls2 *)
-(*                                     | QFBV.Blshr => bit_blast_lshr g2 ls1 ls2 *)
-(*                                     | QFBV.Bashr => bit_blast_ashr g2 ls1 ls2 *)
-(*                                     | QFBV.Bconcat => bit_blast_concat g2 ls1 ls2 *)
-(*                                     end *)
-          in
+          let '(gop, csop, lsop) := bit_blast_ebinop op g2 ls1 ls2 in
           (m2, add_het e csop lsop cc2, gop, catrev cs1 (catrev cs2 csop), lsop, csop)
         end
       | QFBV.Eite c e1 e2 => 
@@ -170,26 +139,7 @@ bit_blast_bexp_ccache te m cc g e : vm * compcache * generator * cnf * literal :
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => 
-          let '(gop, csop, lop) := bit_blast_bbinop op g2 ls1 ls2
-
-(* match op with *)
-(*                                    | QFBV.Beq => bit_blast_eq g2 ls1 ls2 *)
-(*                                    | QFBV.Bult => bit_blast_ult g2 ls1 ls2 *)
-(*                                    | QFBV.Bule => bit_blast_ule g2 ls1 ls2 *)
-(*                                    | QFBV.Bugt => bit_blast_ugt g2 ls1 ls2 *)
-(*                                    | QFBV.Buge => bit_blast_uge g2 ls1 ls2 *)
-(*                                    | QFBV.Bslt => bit_blast_slt g2 ls1 ls2 *)
-(*                                    | QFBV.Bsle => bit_blast_sle g2 ls1 ls2 *)
-(*                                    | QFBV.Bsgt => bit_blast_sgt g2 ls1 ls2 *)
-(*                                    | QFBV.Bsge => bit_blast_sge g2 ls1 ls2 *)
-(*                                    | QFBV.Buaddo => bit_blast_uaddo g2 ls1 ls2 *)
-(*                                    | QFBV.Busubo => bit_blast_usubo g2 ls1 ls2 *)
-(*                                    | QFBV.Bumulo => bit_blast_umulo g2 ls1 ls2 *)
-(*                                    | QFBV.Bsaddo => bit_blast_saddo g2 ls1 ls2 *)
-(*                                    | QFBV.Bssubo => bit_blast_ssubo g2 ls1 ls2 *)
-(*                                    | QFBV.Bsmulo => bit_blast_smulo g2 ls1 ls2 *)
-(*                                    end *)
-          in
+          let '(gop, csop, lop) := bit_blast_bbinop op g2 ls1 ls2 in
           (m2, add_hbt e csop lop cc2, gop, catrev cs1 (catrev cs2 csop), lop, csop)
         end
       | QFBV.Blneg e1 => 
@@ -254,17 +204,7 @@ Lemma bit_blast_exp_ccache_equation :
         match find_het e cc1 with
         | Some (csop, lsop) => (m1, cc1, g1, catrev cs1 csop, lsop, csop)
         | None =>
-          let '(gop, csop, lsop) := bit_blast_eunop op g1 ls1
-(* match op with *)
-(*                                     | QFBV.Unot => bit_blast_not g1 ls1 *)
-(*                                     | QFBV.Uneg => bit_blast_neg g1 ls1 *)
-(*                                     | QFBV.Uextr i j => bit_blast_extract g1 i j ls1 *)
-(*                                     | QFBV.Uhigh n => bit_blast_high g1 n ls1  *)
-(*                                     | QFBV.Ulow n => bit_blast_low g1 n ls1 *)
-(*                                     | QFBV.Uzext n => bit_blast_zeroextend n g1 ls1 *)
-(*                                     | QFBV.Usext n => bit_blast_signextend n g1 ls1 *)
-(*                                     end  *)
-          in
+          let '(gop, csop, lsop) := bit_blast_eunop op g1 ls1 in
           (m1, add_het e csop lsop cc1, gop, catrev cs1 csop, lsop, csop)
         end
       | QFBV.Ebinop op e1 e2 =>
@@ -273,23 +213,7 @@ Lemma bit_blast_exp_ccache_equation :
         match find_het e cc2 with
         | Some (csop, lsop) => (m2, cc2, g2, catrev cs1 (catrev cs2 csop), lsop, csop)
         | None => 
-          let '(gop, csop, lsop) := bit_blast_ebinop op g2 ls1 ls2
-(* match op with *)
-(*                                     | QFBV.Band => bit_blast_and g2 ls1 ls2 *)
-(*                                     | QFBV.Bor => bit_blast_or g2 ls1 ls2 *)
-(*                                     | QFBV.Bxor => bit_blast_xor g2 ls1 ls2 *)
-(*                                     | QFBV.Badd => bit_blast_add g2 ls1 ls2 *)
-(*                                     | QFBV.Bsub => bit_blast_sub g2 ls1 ls2 *)
-(*                                     | QFBV.Bmul => bit_blast_mul g2 ls1 ls2 *)
-(*                                     | QFBV.Bmod => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bsrem => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bsmod => (g2, [::], ls1) (* TODO *) *)
-(*                                     | QFBV.Bshl => bit_blast_shl g2 ls1 ls2 *)
-(*                                     | QFBV.Blshr => bit_blast_lshr g2 ls1 ls2 *)
-(*                                     | QFBV.Bashr => bit_blast_ashr g2 ls1 ls2 *)
-(*                                     | QFBV.Bconcat => bit_blast_concat g2 ls1 ls2 *)
-(*                                     end *)
-          in
+          let '(gop, csop, lsop) := bit_blast_ebinop op g2 ls1 ls2 in
           (m2, add_het e csop lsop cc2, gop, catrev cs1 (catrev cs2 csop), lsop, csop)
         end
       | QFBV.Eite c e1 e2 => 
@@ -337,26 +261,7 @@ Lemma bit_blast_bexp_ccache_equation :
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => 
-          let '(gop, csop, lop) := bit_blast_bbinop op g2 ls1 ls2
-
-(* match op with *)
-(*                                    | QFBV.Beq => bit_blast_eq g2 ls1 ls2 *)
-(*                                    | QFBV.Bult => bit_blast_ult g2 ls1 ls2 *)
-(*                                    | QFBV.Bule => bit_blast_ule g2 ls1 ls2 *)
-(*                                    | QFBV.Bugt => bit_blast_ugt g2 ls1 ls2 *)
-(*                                    | QFBV.Buge => bit_blast_uge g2 ls1 ls2 *)
-(*                                    | QFBV.Bslt => bit_blast_slt g2 ls1 ls2 *)
-(*                                    | QFBV.Bsle => bit_blast_sle g2 ls1 ls2 *)
-(*                                    | QFBV.Bsgt => bit_blast_sgt g2 ls1 ls2 *)
-(*                                    | QFBV.Bsge => bit_blast_sge g2 ls1 ls2 *)
-(*                                    | QFBV.Buaddo => bit_blast_uaddo g2 ls1 ls2 *)
-(*                                    | QFBV.Busubo => bit_blast_usubo g2 ls1 ls2 *)
-(*                                    | QFBV.Bumulo => bit_blast_umulo g2 ls1 ls2 *)
-(*                                    | QFBV.Bsaddo => bit_blast_saddo g2 ls1 ls2 *)
-(*                                    | QFBV.Bssubo => bit_blast_ssubo g2 ls1 ls2 *)
-(*                                    | QFBV.Bsmulo => bit_blast_smulo g2 ls1 ls2 *)
-(*                                    end *)
-          in
+          let '(gop, csop, lop) := bit_blast_bbinop op g2 ls1 ls2 in
           (m2, add_hbt e csop lop cc2, gop, catrev cs1 (catrev cs2 csop), lop, csop)
         end
       | QFBV.Blneg e1 => 
@@ -397,7 +302,6 @@ Proof. move=> te m cc g e. elim e; done. Qed.
 
 
 (* === mk_env_exp_ccache and mk_env_bexp_ccache === *)
-
 
 Definition mk_env_eunop (op : QFBV.eunop) :=
   match op with
@@ -564,6 +468,7 @@ mk_env_bexp_ccache m cc s E g e : vm * compcache * env * generator * cnf * liter
   | None => let '(m', cc', E', g', cs, lr, csop) := mk_env_bexp_nocbt m cc s E g e in
             (m', CompCache.add_cbt e csop lr cc', E', g', cs, lr)
   end.
+
 
 Lemma mk_env_exp_ccache_equation :
   forall m cc s E g e,  mk_env_exp_ccache m cc s E g e =

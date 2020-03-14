@@ -814,14 +814,6 @@ Proof.
   move=> m m' c. exact: CompTable.vm_preserve_bound.
 Qed.
 
-(* Lemma bound_add_find_none : *)
-(*   forall c vm v ls, *)
-(*     bound c vm -> SSAVM.find v vm = None -> bound c (SSAVM.add v ls vm). *)
-(* Proof. *)
-(*   move=> c vm v ls. rewrite /bound /bound_ht /=. *)
-(*   by apply: CompTable.bound_add_find_none. *)
-(* Qed. *)
-
 
 (* ==== preserve ==== *)
 

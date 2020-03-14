@@ -1,17 +1,19 @@
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
 From ssrlib Require Import FMaps Var. 
-From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
+From BitBlasting Require Import QFBV CNF State BBCommon.
 From newBBCache Require Import CompTable.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+
 Definition expm := ExpMap.t word.
 Definition bexpm := BexpMap.t literal.
 
-(* ==== A table storing literal(s), no CNFs ==== *)
+
+(* ==== A table storing only literal(s), no CNFs ==== *)
 
 Record simptable :=
   { et : expm;

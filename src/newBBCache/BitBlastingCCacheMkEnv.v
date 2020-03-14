@@ -4,14 +4,81 @@ From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
      AdhereConform.
-(* From BBCache Require Import Cache BitBlastingCacheDef. *)
 From newBBCache Require Import CompCache BitBlastingCCacheDef.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+
 (* = mk_env_exp_ccache_is_bit_blast_exp_ccache and mk_env_bexp_ccache_is_bit_blast_bexp_ccache = *)
+
+Lemma mk_env_eunop_is_bit_blast_eunop :
+  forall op E g ls E' g' cs lrs,
+    mk_env_eunop op E g ls = (E', g', cs, lrs) -> 
+    bit_blast_eunop op g ls = (g', cs, lrs).
+Proof.
+  move=> op E g ls E' g' cs lrs.
+  case op => [ | | i j | n | n | n | n ]; 
+    rewrite /mk_env_eunop /bit_blast_eunop => Hmk;
+    [ rewrite (mk_env_not_is_bit_blast_not Hmk) |
+      rewrite (mk_env_neg_is_bit_blast_neg Hmk) |
+      rewrite (mk_env_extract_is_bit_blast_extract Hmk) |
+      rewrite (mk_env_high_is_bit_blast_high Hmk) |
+      rewrite (mk_env_low_is_bit_blast_low Hmk) |
+      rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmk) |
+      rewrite (mk_env_signextend_is_bit_blast_signextend Hmk) ];
+    done.
+Qed.
+
+Lemma mk_env_ebinop_is_bit_blast_ebinop :
+  forall op E g ls1 ls2 E' g' cs ls,
+    mk_env_ebinop op E g ls1 ls2 = (E', g', cs, ls) -> 
+    bit_blast_ebinop op g ls1 ls2 = (g', cs, ls).
+Proof.
+  move=> op E g ls1 ls2 E' g' cs ls.
+  case op; rewrite /mk_env_ebinop /bit_blast_ebinop => Hmk;
+    [ rewrite (mk_env_and_is_bit_blast_and Hmk) |
+      rewrite (mk_env_or_is_bit_blast_or Hmk) |
+      rewrite (mk_env_xor_is_bit_blast_xor Hmk) |
+      rewrite (mk_env_add_is_bit_blast_add Hmk) |
+      rewrite (mk_env_sub_is_bit_blast_sub Hmk) |
+      rewrite (mk_env_mul_is_bit_blast_mul Hmk) |
+      admit (* TODO: mod *) |
+      admit (* TODO: srem *) |
+      admit (* TODO: smod *) |
+      rewrite (mk_env_shl_is_bit_blast_shl Hmk) |
+      rewrite (mk_env_lshr_is_bit_blast_lshr Hmk) |
+      rewrite (mk_env_ashr_is_bit_blast_ashr Hmk) |
+      rewrite (mk_env_concat_is_bit_blast_concat Hmk) ];
+    done.
+Admitted.
+
+Lemma mk_env_bbinop_is_bit_blast_bbinop :
+  forall op E g ls1 ls2 E' g' cs l,
+    mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) -> 
+    bit_blast_bbinop op g ls1 ls2 = (g', cs, l).
+Proof.
+  move=> op E g ls1 ls2 E' g' cs l.
+  case op; rewrite /mk_env_bbinop /bit_blast_bbinop => Hmk;
+    [ rewrite (mk_env_eq_is_bit_blast_eq Hmk) |
+      rewrite (mk_env_ult_is_bit_blast_ult Hmk) |
+      rewrite (mk_env_ule_is_bit_blast_ule Hmk) |
+      rewrite (mk_env_ugt_is_bit_blast_ugt Hmk) |
+      rewrite (mk_env_uge_is_bit_blast_uge Hmk) |
+      rewrite (mk_env_slt_is_bit_blast_slt Hmk) |
+      rewrite (mk_env_sle_is_bit_blast_sle Hmk) |
+      rewrite (mk_env_sgt_is_bit_blast_sgt Hmk) |
+      rewrite (mk_env_sge_is_bit_blast_sge Hmk) |
+      rewrite (mk_env_uaddo_is_bit_blast_uaddo Hmk) |
+      rewrite (mk_env_usubo_is_bit_blast_usubo Hmk) |
+      rewrite (mk_env_umulo_is_bit_blast_umulo Hmk) |
+      rewrite (mk_env_saddo_is_bit_blast_saddo Hmk) |
+      rewrite (mk_env_ssubo_is_bit_blast_ssubo Hmk) |
+      rewrite (mk_env_smulo_is_bit_blast_smulo Hmk) ];
+    done.
+Qed.
+  
 
 Lemma mk_env_exp_ccache_is_bit_blast_exp_ccache_nocet_var :
   forall (t : SSAVarOrder.t) (te : SSATE.env) (m : vm) (c : compcache)
@@ -76,17 +143,8 @@ Proof.
   case Hfhet : (find_het (QFBV.Eunop op e1) c1) => [[cse lse] | ].
   - by case=> <- <- _ <- <- <-.
   - case=> <- <- _ <- <- <-.
-    move: Hmkop. 
-    case op => [ | | i j | n | n | n | n ]; 
-      rewrite /mk_env_eunop /bit_blast_eunop => Hmkop;
-      [ rewrite (mk_env_not_is_bit_blast_not Hmkop) |
-        rewrite (mk_env_neg_is_bit_blast_neg Hmkop) |
-        rewrite (mk_env_extract_is_bit_blast_extract Hmkop) |
-        rewrite (mk_env_high_is_bit_blast_high Hmkop) |
-        rewrite (mk_env_low_is_bit_blast_low Hmkop) |
-        rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkop) |
-        rewrite (mk_env_signextend_is_bit_blast_signextend Hmkop) ];
-      done.
+    rewrite (mk_env_eunop_is_bit_blast_eunop Hmkop).
+    done.
 Qed.
 
 Lemma mk_env_exp_ccache_is_bit_blast_exp_ccache_nocet_binop :
@@ -127,22 +185,9 @@ Proof.
   case Hfhet : (find_het (QFBV.Ebinop op e1 e2) c2) => [[cse lse] | ].
   - by case=> <- <- _ <- <- <-.
   - case=> <- <- _ <- <- <-.
-    move: Hmkop. case op; rewrite /mk_env_ebinop /bit_blast_ebinop => Hmkop;
-      [ rewrite (mk_env_and_is_bit_blast_and Hmkop) |
-        rewrite (mk_env_or_is_bit_blast_or Hmkop) |
-        rewrite (mk_env_xor_is_bit_blast_xor Hmkop) |
-        rewrite (mk_env_add_is_bit_blast_add Hmkop) |
-        rewrite (mk_env_sub_is_bit_blast_sub Hmkop) |
-        rewrite (mk_env_mul_is_bit_blast_mul Hmkop) |
-        admit (* TODO: mod *) |
-        admit (* TODO: srem *) |
-        admit (* TODO: smod *) |
-        rewrite (mk_env_shl_is_bit_blast_shl Hmkop) |
-        rewrite (mk_env_lshr_is_bit_blast_lshr Hmkop) |
-        rewrite (mk_env_ashr_is_bit_blast_ashr Hmkop) |
-        rewrite (mk_env_concat_is_bit_blast_concat Hmkop) ];
-      done.
-Admitted.
+    rewrite (mk_env_ebinop_is_bit_blast_ebinop Hmkop).
+    done.
+Qed.
 
 Lemma mk_env_exp_ccache_is_bit_blast_exp_ccache_nocet_ite :
   forall b : QFBV.bexp,
@@ -265,23 +310,8 @@ Proof.
   case Hfhbt : (find_hbt (QFBV.Bbinop op e1 e2) c2) => [[cse le] | ].
   - by case=> <- <- _ <- <- <-.
   - case=> <- <- _ <- <- <-.
-    move: Hmkop. case op; rewrite /mk_env_bbinop /bit_blast_bbinop => Hmkop;
-      [ rewrite (mk_env_eq_is_bit_blast_eq Hmkop) |
-        rewrite (mk_env_ult_is_bit_blast_ult Hmkop) |
-        rewrite (mk_env_ule_is_bit_blast_ule Hmkop) |
-        rewrite (mk_env_ugt_is_bit_blast_ugt Hmkop) |
-        rewrite (mk_env_uge_is_bit_blast_uge Hmkop) |
-        rewrite (mk_env_slt_is_bit_blast_slt Hmkop) |
-        rewrite (mk_env_sle_is_bit_blast_sle Hmkop) |
-        rewrite (mk_env_sgt_is_bit_blast_sgt Hmkop) |
-        rewrite (mk_env_sge_is_bit_blast_sge Hmkop) |
-        rewrite (mk_env_uaddo_is_bit_blast_uaddo Hmkop) |
-        rewrite (mk_env_usubo_is_bit_blast_usubo Hmkop) |
-        rewrite (mk_env_umulo_is_bit_blast_umulo Hmkop) |
-        rewrite (mk_env_saddo_is_bit_blast_saddo Hmkop) |
-        rewrite (mk_env_ssubo_is_bit_blast_ssubo Hmkop) |
-        rewrite (mk_env_smulo_is_bit_blast_smulo Hmkop) ];
-      done.
+    rewrite (mk_env_bbinop_is_bit_blast_bbinop Hmkop).
+    done.
 Qed.
 
 Lemma mk_env_bexp_ccache_is_bit_blast_bexp_ccache_nocbt_lneg :  

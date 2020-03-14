@@ -2,15 +2,13 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
-     AdhereConform.
-(* From BBCache Require Import Cache BitBlastingCacheDef BitBlastingCacheWF  *)
-(*      BitBlastingCachePreserve BitBlastingCacheMkEnv. *)
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport AdhereConform.
 From newBBCache Require Import CompCache BitBlastingCCacheDef.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+
 
 Ltac auto_prove_neq_by_len :=
   match goal with
@@ -255,6 +253,7 @@ Proof.
         (try rewrite find_cet_add_hbt); done.
 Qed.
 
+
 (* = bit_blast_exp_ccache_find_cbt and bit_blast_bexp_ccache_find_cbt = *)
 
 Lemma bit_blast_exp_ccache_find_cbt :
@@ -382,6 +381,7 @@ Proof.
         case=> _ <- _ _ _; rewrite find_cbt_add_cbt_neq; 
         (try auto_prove_neq_by_len); (try rewrite find_cbt_add_hbt); done.
 Qed.
+
 
 (* = bit_blast_exp_ccache_in_cet and bit_blast_bexp_ccache_in_cbt = *)
 

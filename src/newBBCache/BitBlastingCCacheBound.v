@@ -2,17 +2,16 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
-     AdhereConform.
-(* From BBCache Require Import Cache BitBlastingCacheDef BitBlastingCachePreserve *)
-(*      BitBlastingCacheWF. *)
-From newBBCache Require Import CompCache BitBlastingCCacheDef 
-     BitBlastingCCachePreserve BitBlastingCCacheWF.
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport AdhereConform.
+From newBBCache Require Import CompCache BitBlastingCCacheDef BitBlastingCCacheWF
+     BitBlastingCCachePreserve .
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+
+(* = bit_blast_exp_ccache_bound_cache and bit_blast_bexp_ccache_bound_cache = *)
 
 Lemma bit_blast_exp_ccache_bound_cache_nocet_var :
   forall (t : SSAVarOrder.t) (te : SSATE.env) (m : vm) (c : compcache)
@@ -360,6 +359,8 @@ Proof.
       exact: bit_blast_bexp_ccache_bound_cache_nocbt_disj.
 Qed.
 
+
+(* = bit_blast_exp_ccache_bound and bit_blast_bexp_ccache_bound = *)
 
 Corollary bit_blast_exp_ccache_bound :
   forall e te m c g m' c' g' cs ls,

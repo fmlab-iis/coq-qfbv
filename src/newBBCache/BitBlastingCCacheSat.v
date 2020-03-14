@@ -3,11 +3,8 @@ From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport.
-(* From BBCache Require Import Cache BitBlastingCacheDef BitBlastingCacheWF  *)
-(*      BitBlastingCacheNewer BitBlastingCachePreserve. *)
-From newBBCache Require Import CompCache BitBlastingCCacheDef 
-     BitBlastingCCacheWF BitBlastingCCacheNewer BitBlastingCCachePreserve.
-
+From newBBCache Require Import CompCache BitBlastingCCacheDef BitBlastingCCacheWF 
+     BitBlastingCCacheNewer BitBlastingCCachePreserve.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

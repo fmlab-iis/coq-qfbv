@@ -2,14 +2,13 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
-     AdhereConform.
-(* From BBCache Require Import Cache BitBlastingCacheDef. *)
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport AdhereConform.
 From newBBCache Require Import CompCache BitBlastingCCacheDef.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
+
 
 (* = bit_blast_exp_ccache_adhere and bit_blast_bexp_ccache_adhere = *)
 
