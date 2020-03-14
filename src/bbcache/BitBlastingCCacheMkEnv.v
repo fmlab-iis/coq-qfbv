@@ -4,7 +4,7 @@ From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport 
      AdhereConform.
-From newBBCache Require Import CompCache BitBlastingCCacheDef.
+From BBCache Require Import CompCache BitBlastingCCacheDef.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -3,7 +3,7 @@ From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport.
-From newBBCache Require Import Cache BitBlastingInit BitBlastingCCacheDef 
+From BBCache Require Import Cache BitBlastingInit BitBlastingCCacheDef 
      BitBlastingCCache BitBlastingCCacheDefGeneral BitBlastingCCacheGeneral
      BitBlastingCacheDef .
 

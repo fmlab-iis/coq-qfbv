@@ -2,7 +2,7 @@ From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
 From ssrlib Require Import FMaps Var. 
 From BitBlasting Require Import QFBV CNF State BBCommon.
-From newBBCache Require Import CompTable.
+From BBCache Require Import CompTable.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
