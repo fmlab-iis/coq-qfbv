@@ -78,7 +78,7 @@ Qed.
 Theorem bit_blast_cache_sound_general :
   forall (e : QFBV.bexp) (es : seq QFBV.bexp) te m c g cs lr,
     bit_blast_bexps_cache te (e::es) = (m, c, g, cs, lr) ->
-    well_formed_bexps (e::es) te ->
+    QFBV.well_formed_bexps (e::es) te ->
     ~ (sat (add_prelude ([::neg_lit lr]::cs))) 
     ->
     (forall s, AdhereConform.conform_bexps (e::es) s te ->
@@ -94,7 +94,7 @@ Qed.
 Theorem bit_blast_cache_complete_general :
   forall (e : QFBV.bexp) (es: seq QFBV.bexp) te m c g cs lr,
     bit_blast_bexps_cache te (e::es) = (m, c, g, cs, lr) ->
-    well_formed_bexps (e::es) te ->
+    QFBV.well_formed_bexps (e::es) te ->
     (forall s, AdhereConform.conform_bexps (e::es) s te ->
                QFBV.eval_bexp e s)
     ->

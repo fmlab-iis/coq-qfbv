@@ -21,7 +21,7 @@ Lemma mk_env_consistent :
   forall es s te m c g cs l,
     bit_blast_bexps_ccache te es = (m, c, g, cs, l) ->
     AdhereConform.conform_bexps es s te ->
-    well_formed_bexps es te ->
+    QFBV.well_formed_bexps es te ->
     consistent m (mk_env s es) s.
 Proof.
   move=> es s te m c g cs l Hbb Hcf Hwf.
@@ -44,7 +44,7 @@ Lemma mk_env_sat :
   forall es s te m c g cs l,
     bit_blast_bexps_ccache te es = (m, c, g, cs, l) ->
     AdhereConform.conform_bexps es s te ->
-    well_formed_bexps es te ->
+    QFBV.well_formed_bexps es te ->
     interp_cnf (mk_env s es) cs.
 Proof.
   move=> es s te m c g cs l Hbb Hcf Hwf.
@@ -79,7 +79,7 @@ Qed.
 Theorem bit_blast_ccache_sound_general :
   forall (e : QFBV.bexp) (es : seq QFBV.bexp) te m c g cs lr,
     bit_blast_bexps_ccache te (e::es) = (m, c, g, cs, lr) ->
-    well_formed_bexps (e::es) te ->
+    QFBV.well_formed_bexps (e::es) te ->
     ~ (sat (add_prelude ([::neg_lit lr]::cs))) 
     ->
     (forall s, AdhereConform.conform_bexps (e::es) s te ->
@@ -110,7 +110,7 @@ Qed.
 Theorem bit_blast_ccache_complete_general :
   forall (e : QFBV.bexp) (es: seq QFBV.bexp) te m c g cs lr,
     bit_blast_bexps_ccache te (e::es) = (m, c, g, cs, lr) ->
-    well_formed_bexps (e::es) te ->
+    QFBV.well_formed_bexps (e::es) te ->
     (forall s, AdhereConform.conform_bexps (e::es) s te ->
                QFBV.eval_bexp e s)
     ->

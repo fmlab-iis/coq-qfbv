@@ -189,7 +189,8 @@ Section Bound .
     - done .
     - elim => /= e0 IH0 e1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
       rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
-    - move => c e0 IH0 e1 IH1 m te E s /andP [/andP [Hbndc Hbnd0] Hbnd1] Had Hcon.
+    - move => c e0 IH0 e1 IH1 m te E s 
+                /andP [/andP [Hbndc Hbnd0] Hbnd1] Had Hcon.
       rewrite (consistent_conform_bexp c _ _ _ _ Hbndc Had Hcon)
               (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
     (* consistent_conform_bexp *)
@@ -204,7 +205,23 @@ Section Bound .
       rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
     - move => b0 IH0 b1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
       rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
-Qed .
+  Qed .
 
+  Fixpoint bound_bexps (bs : seq QFBV.bexp) vm : bool :=
+    match bs with
+    | [::] => true
+    | b :: bs' => bound_bexp b vm && bound_bexps bs' vm
+    end.
+
+  Lemma vm_preserve_bound_bexps :
+    forall es m m', vm_preserve m m' -> bound_bexps es m -> bound_bexps es m'.
+  Proof.
+    elim.
+    - move=> m m' Hpre. done.
+    - move=> e es IHes m m' Hpre /= /andP [Hbdem Hbdesm].
+      move: (vm_preserve_bound_bexp Hbdem Hpre) => Hbdem'.
+      move: (IHes _ _ Hpre Hbdesm) => Hbdesm'.
+        by rewrite Hbdem' Hbdesm'.
+  Qed.
   
 End Bound .

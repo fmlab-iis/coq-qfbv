@@ -32,36 +32,11 @@ Fixpoint mk_env_bexps_ccache (s : SSAStore.t) (es : seq QFBV.bexp) :=
     mk_env_bexp_ccache m (reset_ct c) s E g e
   end.
 
-
-Fixpoint well_formed_bexps (bs : seq QFBV.bexp) te : bool :=
-  match bs with
-  | [::] => true
-  | b :: bs' => QFBV.well_formed_bexp b te && well_formed_bexps bs' te
-  end.
-
-Fixpoint bound_bexps (bs : seq QFBV.bexp) vm : bool :=
-  match bs with
-  | [::] => true
-  | b :: bs' => bound_bexp b vm && bound_bexps bs' vm
-  end.
-
-Lemma vm_preserve_bound_bexps :
-  forall es m m', vm_preserve m m' -> bound_bexps es m -> bound_bexps es m'.
-Proof.
-  elim.
-  - move=> m m' Hpre. done.
-  - move=> e es IHes m m' Hpre /= /andP [Hbdem Hbdesm].
-    move: (vm_preserve_bound_bexp Hbdem Hpre) => Hbdem'.
-    move: (IHes _ _ Hpre Hbdesm) => Hbdesm'.
-    by rewrite Hbdem' Hbdesm'.
-Qed.
-
-
 Lemma mk_env_bexps_ccache_is_bit_blast_bexps_ccache :
   forall es s te m c E g cs l,
     mk_env_bexps_ccache s es = (m, c, E, g, cs, l) ->
     AdhereConform.conform_bexps es s te ->
-    well_formed_bexps es te ->
+    QFBV.well_formed_bexps es te ->
     bit_blast_bexps_ccache te es = (m, c, g, cs, l).
 Proof.
   elim.
@@ -128,7 +103,7 @@ Qed.
 Lemma bit_blast_bexps_ccache_correct_cache :
   forall es te m c g cs l,
     bit_blast_bexps_ccache te es = (m, c, g, cs, l) ->
-    well_formed_bexps es te ->
+    QFBV.well_formed_bexps es te ->
     CompCache.correct m c.
 Proof.
   elim.
