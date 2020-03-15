@@ -2,6 +2,7 @@
 -Q lib/coq-ssrlib/src ssrlib
 -Q lib/coq-nbits/src nbits
 -Q src BitBlasting
+-Q src/bbcache BBCache
 src/Typ.v
 src/TypEnv.v
 src/State.v
@@ -57,3 +58,24 @@ src/BitBlastingCorrect.v
 src/BitBlastingSat.v
 src/BitBlastingMkEnv.v
 src/BitBlasting.v
+src/bbcache/CompTable.v
+src/bbcache/CompCache.v
+src/bbcache/SimpTable.v
+src/bbcache/Cache.v
+src/bbcache/BitBlastingInit.v
+src/bbcache/BitBlastingCCacheDef.v
+src/bbcache/BitBlastingCCacheMkEnv.v
+src/bbcache/BitBlastingCCacheWF.v
+src/bbcache/BitBlastingCCacheNewer.v
+src/bbcache/BitBlastingCCacheFind.v
+src/bbcache/BitBlastingCCachePreserve.v
+src/bbcache/BitBlastingCCacheConsistent.v
+src/bbcache/BitBlastingCCacheAdhere.v
+src/bbcache/BitBlastingCCacheBound.v
+src/bbcache/BitBlastingCCacheSat.v
+src/bbcache/BitBlastingCCacheCorrect.v
+src/bbcache/BitBlastingCCache.v
+src/bbcache/BitBlastingCCacheDefGeneral.v
+src/bbcache/BitBlastingCCacheGeneral.v
+src/bbcache/BitBlastingCacheDef.v
+src/bbcache/BitBlastingCache.v
