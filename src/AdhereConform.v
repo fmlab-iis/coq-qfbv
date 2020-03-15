@@ -3,7 +3,7 @@ From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics.
-From BitBlasting Require Import Typ TypEnv State QFBV BBCommon.
+From BitBlasting Require Import Typ TypEnv State QFBV CNF BBCommon.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -98,6 +98,13 @@ Section Conform .
       * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) Max.max_idempotent // .
   Qed .
 
+
+  Fixpoint conform_bexps (bs : seq QFBV.bexp) s te : bool :=
+    match bs with
+    | [::] => true
+    | b :: bs' => conform_bexp b s te && conform_bexps bs' s te
+    end.
+
 End Conform .
 
 Section Adhere .
@@ -162,5 +169,59 @@ Section Bound .
     - move => b0 IH0 b1 IH1 vm vm' /andP [Hb0 Hb1] Hpsrv .
       rewrite (IH0 _ _ Hb0 Hpsrv) (IH1 _ _ Hb1 Hpsrv) // .
   Qed .
+
+  Lemma consistent_conform_exp :
+    forall e m te E s, bound_exp e m -> adhere m te ->
+                       consistent m E s -> conform_exp e s te
+  with
+  consistent_conform_bexp :
+    forall e m te E s, bound_bexp e m -> adhere m te ->
+                       consistent m E s -> conform_bexp e s te.
+  Proof .
+    (* consistent_conform_exp *)
+    elim; rewrite /= .
+    - move => v m te E s Hmem Had Hcon.
+      elim : (Had _ Hmem) => ls [Hfind Hsize] .
+      rewrite (eqP Hsize). 
+      move: (Hcon v). rewrite /consistent1 Hfind => Henc. 
+      apply /eqP. exact: (enc_bits_size Henc).
+    - done .
+    - done .
+    - elim => /= e0 IH0 e1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - move => c e0 IH0 e1 IH1 m te E s 
+                /andP [/andP [Hbndc Hbnd0] Hbnd1] Had Hcon.
+      rewrite (consistent_conform_bexp c _ _ _ _ Hbndc Had Hcon)
+              (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    (* consistent_conform_bexp *)
+    elim; rewrite /= .
+    - done .
+    - done .
+    - elim => e0 e1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (consistent_conform_exp e0 _ _ _ _ Hbnd0 Had Hcon)
+              (consistent_conform_exp e1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - done . 
+    - move => b0 IH0 b1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+    - move => b0 IH0 b1 IH1 m te E s /andP [Hbnd0 Hbnd1] Had Hcon;
+      rewrite (IH0 _ _ _ _ Hbnd0 Had Hcon) (IH1 _ _ _ _ Hbnd1 Had Hcon) // .
+  Qed .
+
+  Fixpoint bound_bexps (bs : seq QFBV.bexp) vm : bool :=
+    match bs with
+    | [::] => true
+    | b :: bs' => bound_bexp b vm && bound_bexps bs' vm
+    end.
+
+  Lemma vm_preserve_bound_bexps :
+    forall es m m', vm_preserve m m' -> bound_bexps es m -> bound_bexps es m'.
+  Proof.
+    elim.
+    - move=> m m' Hpre. done.
+    - move=> e es IHes m m' Hpre /= /andP [Hbdem Hbdesm].
+      move: (vm_preserve_bound_bexp Hbdem Hpre) => Hbdem'.
+      move: (IHes _ _ Hpre Hbdesm) => Hbdesm'.
+        by rewrite Hbdem' Hbdesm'.
+  Qed.
   
 End Bound .

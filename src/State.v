@@ -75,9 +75,23 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
   Parameter conform : t -> TE.env -> Prop.
   Parameter conform_mem :
     forall v s te, conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
+  Parameter conform_Upd :
+    forall x ty v s1 s2 te,
+      sizeof_typ ty = size v -> Upd x v s1 s2 -> conform s1 te ->
+      conform s2 (TE.add x ty te).
+  Parameter conform_Upd2 :
+    forall te s1 s2 ty1 ty2 x1 x2 v1 v2,
+      x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
+      Upd2 x2 v2 x1 v1 s1 s2 -> conform s1 te ->
+      conform s2 (TE.add x1 ty1 (TE.add x2 ty2 te)).
   Parameter conform_upd :
     forall x ty v s te,
       sizeof_typ ty = size v -> conform s te -> conform (upd x v s) (TE.add x ty te).
+  Parameter conform_upd2 :
+    forall te s ty1 ty2 x1 x2 v1 v2,
+      x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
+      conform s te ->
+      conform (upd2 x2 v2 x1 v1 s) (TE.add x1 ty1 (TE.add x2 ty2 te)).
 
 End BitsStore.
 
@@ -98,15 +112,50 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
     conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
   Proof. move=> H1 H2; exact: (H1 _ H2). Qed.
 
+  Lemma conform_Upd x ty v s1 s2 te :
+    sizeof_typ ty = size v -> Upd x v s1 s2 -> conform s1 te ->
+    conform s2 (TE.add x ty te).
+  Proof.
+    move=> Hs Hupd Hcon y. case Hyx: (y == x).
+    - by rewrite (TE.vsize_add_eq Hyx) (acc_Upd_eq Hyx Hupd).
+    - move/negP: Hyx => Hyx. rewrite (Lemmas.mem_add_neq Hyx) => Hmem.
+      move/negP: Hyx => Hyx. rewrite (acc_Upd_neq Hyx Hupd) (TE.vsize_add_neq Hyx).
+      exact: (Hcon _ Hmem).
+  Qed.
+
+  Lemma conform_Upd2 te s1 s2 ty1 ty2 x1 x2 v1 v2 :
+    x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
+    Upd2 x2 v2 x1 v1 s1 s2 -> conform s1 te ->
+    conform s2 (TE.add x1 ty1 (TE.add x2 ty2 te)).
+  Proof.
+    move => Hneq Hty1 Hty2 HUpd2 Hcon y Hmem .
+    case Heq1 : (y == x1); case Heq2 : (y == x2) .
+    - rewrite -(eqP Heq1) -(eqP Heq2) in Hneq . move : Hneq => /eqP // .
+    - rewrite (acc_Upd2_eq2 Heq1 HUpd2) (TE.vsize_add_eq Heq1) // .
+    - move/idP/negP: Heq1 => Hneq1.
+      rewrite (acc_Upd2_eq1 Heq2 Hneq1 HUpd2)
+              (TE.vsize_add_neq Hneq1) (TE.vsize_add_eq Heq2) // .
+    - move/idP/negP: Heq1 => Hneq1.
+      move/idP/negP: Heq2 => Hneq2.
+      rewrite (acc_Upd2_neq Hneq2 Hneq1 HUpd2)
+              (TE.vsize_add_neq Hneq1) (TE.vsize_add_neq Hneq2) Hcon // .
+      move/negP: Hneq1 => Hneq1. move/negP: Hneq2 => Hneq2.
+      rewrite (Lemmas.mem_add_neq Hneq1) (Lemmas.mem_add_neq Hneq2) in Hmem.
+      assumption.
+  Qed.
+
   Lemma conform_upd x ty v s te :
     sizeof_typ ty = size v ->
     conform s te -> conform (upd x v s) (TE.add x ty te).
+  Proof. move=> Hs Hcon. exact: (conform_Upd Hs (Upd_upd x v s) Hcon). Qed.
+
+  Lemma conform_upd2 te s ty1 ty2 x1 x2 v1 v2 :
+    x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
+    conform s te ->
+    conform (upd2 x2 v2 x1 v1 s) (TE.add x1 ty1 (TE.add x2 ty2 te)).
   Proof.
-    move=> Hs Hcon y. case Hyx: (y == x).
-    - by rewrite (TE.vsize_add_eq Hyx) (acc_upd_eq Hyx).
-    - move/negP: Hyx => Hyx. rewrite (Lemmas.mem_add_neq Hyx) => Hmem.
-      move/negP: Hyx => Hyx. rewrite (acc_upd_neq Hyx) (TE.vsize_add_neq Hyx).
-      exact: (Hcon _ Hmem).
+    move=> Hne Hs1 Hs2 Hcon.
+    exact: (conform_Upd2 Hne Hs1 Hs2 (Upd2_upd2 x2 v2 x1 v1 s) Hcon).
   Qed.
 
 End MakeBitsStore.

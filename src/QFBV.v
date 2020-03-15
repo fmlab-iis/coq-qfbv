@@ -1418,6 +1418,12 @@ Module MakeQFBV
       | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
       end.
 
+    Fixpoint well_formed_bexps (bs : seq bexp) (te : TE.env) : bool :=
+      match bs with
+      | [::] => true
+      | b :: bs' => well_formed_bexp b te && well_formed_bexps bs' te
+      end.
+
     Lemma eval_exp_size e te s :
       well_formed_exp e te -> S.conform s te -> size (eval_exp e s) = exp_size e te.
     Proof.
