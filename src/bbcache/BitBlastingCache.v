@@ -105,3 +105,7 @@ Proof.
         => [cc [Hccache _]].
   exact: (bit_blast_ccache_complete_general Hccache).
 Qed.
+
+Definition bexp_to_cnf_cache te m c g e :=
+  let '(m', c', g', cs, lr) := bit_blast_bexp_cache te m c g e in
+  (m', c', g', add_prelude ([::neg_lit lr]::cs)).

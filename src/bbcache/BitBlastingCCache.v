@@ -219,3 +219,7 @@ Proof.
   rewrite /enc_bit => /eqP H. rewrite -H in He.
   rewrite He in Hlr. exact: not_false_is_true.
 Qed.
+
+Definition bexp_to_cnf_ccache te m c g e :=
+  let '(m', c', g', cs, lr) := bit_blast_bexp_ccache te m c g e in
+  (m', c', g', add_prelude ([::neg_lit lr]::cs)).
