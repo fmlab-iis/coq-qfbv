@@ -46,11 +46,18 @@ Fixpoint mk_env_ult_rev'_zip E (g : generator) lsp : env * generator * cnf * lit
   end.
 
 
+(* Definition bit_blast_ult g ls1 ls2: generator * cnf * literal := *)
+(*   bit_blast_ult_rev'_zip g (extzip_ff (rev ls1) (rev ls2)). *)
+
 Definition bit_blast_ult g ls1 ls2: generator * cnf * literal :=
-  bit_blast_ult_rev'_zip g (extzip_ff (rev ls1) (rev ls2)).
+  bit_blast_ult_rev'_zip g (rev (extzip_ff ls1 ls2)).
+
+(* Definition mk_env_ult E g ls1 ls2: env * generator * cnf * literal := *)
+(*   mk_env_ult_rev'_zip E g (extzip_ff (rev ls1) (rev ls2)). *)
 
 Definition mk_env_ult E g ls1 ls2: env * generator * cnf * literal :=
-  mk_env_ult_rev'_zip E g (extzip_ff (rev ls1) (rev ls2)).
+  mk_env_ult_rev'_zip E g (rev (extzip_ff ls1 ls2)).
+
 
 Lemma bit_blast_ult_rev'_zip_correct E g bsp lsp g' cs lr:
   bit_blast_ult_rev'_zip g lsp = (g', cs, lr) ->
@@ -93,13 +100,12 @@ Proof.
   rewrite /bit_blast_ult.
   move=> H Henc1 Henc2 Hcnf.
   move: (add_prelude_enc_bit_tt Hcnf) => Henctt.
-  apply enc_bits_rev in Henc1.
-  apply enc_bits_rev in Henc2.
   move: (enc_bits_unzip1_extzip Henctt Henc1 Henc2) => Hzip1.
   move: (enc_bits_unzip2_extzip Henctt Henc1 Henc2) => Hzip2.
+  apply enc_bits_rev in Hzip1. rewrite -!unzip1_rev in Hzip1.
+  apply enc_bits_rev in Hzip2. rewrite -!unzip2_rev in Hzip2.
   exact: (bit_blast_ult_rev'_zip_correct H).
 Qed.
-
 
 Lemma mk_env_ult_rev'_zip_is_bit_blast_ult_rev'_zip E g lsp E' g' cs lr:
     mk_env_ult_rev'_zip E g lsp = (E', g', cs, lr) ->
@@ -109,8 +115,7 @@ Proof.
   rewrite /mk_env_ult_rev'_zip -/mk_env_ult_rev'_zip.
   elim: lsp E g E' g' cs lr => [| [ls1_hd ls2_hd] lsp_tl IH] E g E' g' cs lr //=.
   - rewrite /=; intros; dcase_hyps; subst; reflexivity.
-  -
-    dcase (mk_env_ult_rev'_zip E g lsp_tl) => [[[[Eult_tl gult_tl] csult_tl] lrult_tl] H].
+  - dcase (mk_env_ult_rev'_zip E g lsp_tl) => [[[[Eult_tl gult_tl] csult_tl] lrult_tl] H].
     rewrite (IH _ _ _ _ _ _ H).
     by case=> _ <- <- <-.
 Qed.
@@ -245,9 +250,8 @@ Proof.
   move=> Hzip.
   move: (mk_env_ult_rev'_zip_newer_cnf Hzip) => Hncnf_zip.
   move=> Hgtt Hgls1 Hgls2.
-  move: (newer_than_lits_rev Hgls1) => Hgls1rev.
-  move: (newer_than_lits_rev Hgls2) => Hgls2rev.
-  by apply Hncnf_zip; t_auto_newer.
+  apply Hncnf_zip; [ done | rewrite unzip1_rev | rewrite unzip2_rev]; 
+    by apply newer_than_lits_rev; t_auto_newer.
 Qed.
 
 Lemma mk_env_ult_preserve E g ls1 ls2 E' g' cs lr:
@@ -267,7 +271,6 @@ Proof.
   move=> Hzip.
   move: (mk_env_ult_rev'_zip_sat Hzip) => Hncnf_zip.
   move=> Hgtt Hgls1 Hgls2.
-  move: (newer_than_lits_rev Hgls1) => Hgls1rev.
-  move: (newer_than_lits_rev Hgls2) => Hgls2rev.
-  by apply Hncnf_zip; t_auto_newer.
+  apply Hncnf_zip; [ done | rewrite unzip1_rev | rewrite unzip2_rev]; 
+    by apply newer_than_lits_rev; t_auto_newer.
 Qed.
