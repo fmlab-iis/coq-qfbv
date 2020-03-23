@@ -779,7 +779,6 @@ Proof.
   have Hszcp : size (copy (size (rev ls1)) lit_ff) = size ls2 by rewrite size_nseq size_rev.
   move : (bit_blast_udiv_rec_size_ss Hbbudivr Hszcp Hszcp).
   have Hszaux :size (copy (size lqs_udivr) (neg_lit lrs_eq)) = size lqs_udivr by rewrite size_nseq.
-  SearchAbout bit_blast_ite. 
   move : (bit_blast_ite_size_ss Hbbite (size_rev lrs_udir)) => Hszite.
   move : (bit_blast_and_size_ss Hbband Hszaux) => Hszn. by rewrite -Hszn size_nseq Hszite size_rev.
 Qed.
