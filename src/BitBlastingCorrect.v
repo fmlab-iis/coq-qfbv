@@ -1371,7 +1371,10 @@ Proof.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hblast1) Hcon2) => Hcon1.
   move: (IH1 _ _ _ _ _ _ _ _ _ Hblast1 Hcf1 Hcon2 Hcs1 Hwf1) => Henc1.
   move: (IH2 _ _ _ _ _ _ _ _ _ Hblast2 Hcf2 Hcon Hcs2 Hwf2) => Henc2.
-  apply : (bit_blast_usubo_correct Hblastusubo Henc1 Henc2 Hcsult) .
+  apply : (bit_blast_usubo_correct Hblastusubo _ Henc1 Henc2 Hcsult) .
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2)
+          (AdhereConform.eval_conform_exp_size Hwf1 Hcf1) (AdhereConform.eval_conform_exp_size Hwf2 Hcf2)
+          (eqP Hsize) // .
 Qed.
 
 Lemma bit_blast_bexp_umulo :

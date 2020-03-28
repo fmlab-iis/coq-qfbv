@@ -76,7 +76,7 @@ Proof.
       apply (bit_blast_sgt_correct Hbb) |
       apply (bit_blast_sge_correct Hbb) |
       apply (bit_blast_uaddo_correct Hbb); move/eqP: Hsize |
-      apply (bit_blast_usubo_correct Hbb) |
+      apply (bit_blast_usubo_correct Hbb); move/eqP: Hsize |
       apply (bit_blast_umulo_correct Hbb); move/eqP: Hsize |
       apply (bit_blast_saddo_correct Hbb); move/eqP: Hsize |
       apply (bit_blast_ssubo_correct Hbb); move/eqP: Hsize |
