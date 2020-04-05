@@ -8,9 +8,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-From Coq Require List.
-About div.divn.
-
 (* Lemmas *)
 
 (* Lemma dropmsb_zeros : forall n, dropmsb (zeros n) = zeros n.-1. *)
