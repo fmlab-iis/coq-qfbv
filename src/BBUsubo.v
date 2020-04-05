@@ -16,6 +16,7 @@ Definition bit_blast_usubo g ls1 ls2 : generator * cnf * literal :=
 Definition mk_env_usubo E g ls1 ls2 : env * generator * cnf * literal :=
   mk_env_ult E g ls1 ls2.
 
+(*
 Lemma ltB_borrow_subB bs1 bs2:
     ltB bs1 bs2 <->
     borrow_subB bs1 bs2.
@@ -50,9 +51,11 @@ Proof.
   - apply ltB_borrow_subB in Hlt. by rewrite Hlt in Hcarry.
   - apply ltB_borrow_subB in Hcarry. by rewrite Hcarry in Hlt.
 Qed.
+*)
 
 Lemma bit_blast_usubo_correct g bs1 bs2 E ls1 ls2 g' cs lr :
     bit_blast_usubo g ls1 ls2 = (g', cs, lr) ->
+    size ls1 == size ls2 ->
     enc_bits E ls1 bs1 ->
     enc_bits E ls2 bs2 ->
     interp_cnf E (add_prelude cs) ->
@@ -60,9 +63,10 @@ Lemma bit_blast_usubo_correct g bs1 bs2 E ls1 ls2 g' cs lr :
 Proof.
   rewrite /bit_blast_usubo.
   case Hblast: (bit_blast_ult g ls1 ls2) => [[og ocs] olrs].
-  case=> _ <- Hlr => Henc1 Henc2 Hcs.
+  case=> _ <- Hlr => /eqP Hsize Henc1 Henc2 Hcs.
   rewrite -Hlr.
-  rewrite -(ltB_borrow_subB_rewrite bs1 bs2).
+  rewrite (enc_bits_size Henc1) (enc_bits_size Henc2) in Hsize.
+  rewrite -(ltB_equiv_borrow_subB Hsize).
   exact: (bit_blast_ult_correct Hblast Henc1 Henc2 Hcs).
 Qed.
 
