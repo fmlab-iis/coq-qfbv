@@ -230,7 +230,9 @@ Proof.
     rewrite /sdivB /absB -Hmsb1t -Hmsb2t/=. 
     move : (bit_blast_neg_correct Hbbneg Henc1 Hcsneg) => Hencneg.
     move : (bit_blast_neg_correct Hbbneg1 Henc2 Hcsneg1) => Hencneg1.
-    move : (bit_blast_udiv_correct Hbbudiv Hencneg Hencneg1 Hcsu) => [Hencuq Hencur].
+    generalize Hsz12.
+    rewrite (bit_blast_neg_size_ss Hbbneg1) (bit_blast_neg_size_ss Hbbneg). move => Hszn.
+    move : (bit_blast_udiv_correct Hbbudiv Hszn Hencneg Hencneg1 Hcsu) => [Hencuq Hencur].
     move : (bit_blast_neg_correct Hbbneg3 Hencur Hcsneg3).
     rewrite udivB_negB_negB. move => Hencneg3.
     rewrite udivB_negB_negB in Hencuq. by rewrite Hencuq Hencneg3.
@@ -249,7 +251,9 @@ Proof.
     symmetry in Hmsb2f. rewrite->Bool.negb_true_iff in Hmsb2f.
     rewrite/sdivB /absB -Hmsb1t Hmsb2f/=.
     move : (bit_blast_neg_correct Hbbneg Henc1 Hcsneg) => Hencneg.
-    move : (bit_blast_udiv_correct Hbbudiv Hencneg Henc2 Hcsu) => [Hencuq Hencur].
+    generalize Hsz12.
+    rewrite (bit_blast_neg_size_ss Hbbneg). move => Hszn.
+    move : (bit_blast_udiv_correct Hbbudiv Hszn Hencneg Henc2 Hcsu) => [Hencuq Hencur].
     move : (bit_blast_neg_correct Hbbneg2 Hencuq Hcsneg2) => Hencneg2.
     move : (bit_blast_neg_correct Hbbneg3 Hencur Hcsneg3) => Hencneg3.
     by rewrite Hencneg2 Hencneg3.
@@ -287,7 +291,8 @@ Proof.
     move => Hszxor1.
     have Hszadd1 : size lrs_xor1 = size ((splitmsl ls2).2 :: copy (size (splitmsl ls2).1) lit_ff) by rewrite (lock splitmsl)/= size_nseq -lock size_splitmsl -addn1 (subnK Hsz2) -Hszxor1. 
     move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henccp1 Haddr Hcsadd1 Hszadd1) => Hencadd1.
-    move : (bit_blast_udiv_correct Hbbudiv1 Hencnegbs1 Hencadd1 Hcsu1) => [Hencq Hencr].
+    move :(bit_blast_xor_size_max Hbbxor1). rewrite size_nseq maxnn (bit_blast_add_size_ss Hbbadd1 Hszadd1) -Hsz12 (bit_blast_neg_size_ss Hbbneg). move => Hszadd1neg. symmetry in Hszadd1neg.
+    move : (bit_blast_udiv_correct Hbbudiv1 Hszadd1neg Hencnegbs1 Hencadd1 Hcsu1) => [Hencq Hencr].
     have Hszeq : size [:: (splitmsl ls1).2]= size [:: (splitmsl ls2).2] by done.
     have Henceq1 : enc_bits E [:: (splitmsl ls1).2] [:: (splitmsb bs1).2] by rewrite enc_bits_cons enc_bits_nil -/(msb bs1) -Hmsb1t (eqP Hls1mb1) (add_prelude_enc_bit_tt Hcsu1). 
     have Henceq2 : enc_bits E [:: (splitmsl ls2).2] [:: (splitmsb bs2).2] by rewrite enc_bits_cons enc_bits_nil Hencmsl2.
@@ -334,8 +339,8 @@ Proof.
     case Hmsb2 : (msb bs2).
     + rewrite -/(msb bs2) Hmsb2 -/(msb bs1) -Hmsb1t size_splitmsb -/(zeros (size bs2 -1)) !eq_refl. 
       have -> : (bs2 ^# copy (size bs2) true)%bits = invB bs2 by rewrite xorBC xorB_copy_case.
-      rewrite His1 {1 2}(invB_size_ss bs2) addB1 -/(negB bs2).
-      have Hszurem: (size ((udivB (-# bs1) (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
+      rewrite His1 {1 2}(invB_size_ss bs2) addB1 -/(negB bs2). 
+      have Hszurem: (size ((udivB (-# bs1) (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB size_negB.
       have Hszudiv: (size ((udivB (bs1) (bs2)).1)%bits) = size bs1 by rewrite size_udivB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case size_splitmsb -/(zeros (size bs1 -1)) .
       rewrite Hszb12 His1 -Hszb12 -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)).2)%bits) addB1 -/(negB ((udivB (-# bs1) (-# bs2)).2)%bits) -/(negB ((udivB (-# bs1) (-# bs2)).1)%bits) udivB_negB_negB/=.
@@ -346,10 +351,10 @@ Proof.
       rewrite zeros_cons -addn1 -Hszlb2 (subnK Hsz2) Hszlb2.
       have -> : (bs2 ^# copy (size bs2) false)%bits = bs2 by rewrite xorBC xorB_copy_case.
       rewrite addB0 unzip1_zip; last by rewrite size_zeros.
-      have Hszurem: (size ((udivB (-# bs1) (bs2)).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
-      have Hszudiv: (size ((udivB (-# bs1) (bs2)).1)%bits) = size bs1 by rewrite size_udivB -size_neg_same.
+      have Hszurem: (size ((udivB (-# bs1) (bs2)).2)%bits) = size bs1 by rewrite size_uremB size_negB.
+      have Hszudiv: (size ((udivB (-# bs1) (bs2)).1)%bits) = size bs1 by rewrite size_udivB size_negB.
       rewrite Hszb12 His1 -Hszb12 -{1}Hszurem -{2}Hszudiv; repeat (rewrite xorBC xorB_copy_case).
-      by rewrite -{1}Hszurem (size_inv_same ((udivB (-# bs1)%bits bs2).2)%bits)  -{1}Hszudiv (size_inv_same ((udivB (-# bs1)%bits bs2).1)%bits) (addB1 (~~#(udivB (-# bs1) bs2).2)%bits) (addB1 (~~#(udivB (-# bs1) bs2).1)%bits) -/(negB ((udivB (-# bs1) bs2).2)%bits) -/(negB ((udivB (-# bs1) bs2).1)%bits).
+      by rewrite -{1}Hszurem -(size_invB ((udivB (-# bs1)%bits bs2).2)%bits)  -{1}Hszudiv -(size_invB ((udivB (-# bs1)%bits bs2).1)%bits) (addB1 (~~#(udivB (-# bs1) bs2).2)%bits) (addB1 (~~#(udivB (-# bs1) bs2).1)%bits) -/(negB ((udivB (-# bs1) bs2).2)%bits) -/(negB ((udivB (-# bs1) bs2).1)%bits).
   - rewrite /=.
     dcase (bit_blast_neg g ls2) => [[[g_asb2] cs_abs2] lrs_abs2] Hbbabs2.
     dcase (bit_blast_udiv g_asb2 ls1 lrs_abs2)=> [[[[g_udiv] cs_udiv] lqs_udiv] lrs_udiv] Hbbudiv.
@@ -357,7 +362,8 @@ Proof.
     case => _ <- <- <-. move => Hsz12 Hsz2 Henc1 Henc2.
     rewrite !add_prelude_catrev. move/andP => [Hcsu Hcsneg1]. move/andP : Hcsu => [Hcsabs2 Hcsu].
     move : (bit_blast_neg_correct Hbbabs2 Henc2 Hcsabs2) => Hencabs2.
-    move : (bit_blast_udiv_correct Hbbudiv Henc1 Hencabs2 Hcsu)=> [Hencq Hencr].
+    generalize Hsz12. rewrite (bit_blast_neg_size_ss Hbbabs2). move => Hszabs2.
+    move : (bit_blast_udiv_correct Hbbudiv Hszabs2 Henc1 Hencabs2 Hcsu)=> [Hencq Hencr].
     move : (bit_blast_neg_correct Hbbneg1 Hencq Hcsneg1) => Hencneg1.
     move : (add_prelude_tt Hcsu) => Htt. 
     move : (add_prelude_ff Hcsu) => Hff. 
@@ -378,7 +384,7 @@ Proof.
     move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsu). rewrite Hencmsb1. move => Hmsb1f. symmetry in Hmsb1f. rewrite<- Bool.negb_false_iff in Hmsb1f. rewrite Bool.negb_involutive in Hmsb1f. 
     move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsu). rewrite Hencmsb2. move => Hmsb2f. symmetry in Hmsb2f. rewrite<- Bool.negb_false_iff in Hmsb2f. rewrite Bool.negb_involutive in Hmsb2f. 
     rewrite /sdivB /absB Hmsb2f Hmsb1f/=.
-    exact : (bit_blast_udiv_correct Hbbudiv Henc1 Henc2 Hcsu).
+    exact : (bit_blast_udiv_correct Hbbudiv Hsz12 Henc1 Henc2 Hcsu).
   - rewrite (lock splitmsl) (lock bit_blast_eq) (lock bit_blast_lneg)/= -!lock. 
     dcase (bit_blast_xor g ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[g_xor1] cs_xor1] lrs_xor1] Hbbxor1.
     dcase (bit_blast_add g_xor1 lrs_xor1 ((splitmsl ls2).2 :: copy (size (splitmsl ls2).1) lit_ff)) => [[[g_add1] cs_add1] lrs_add1] Hbbadd1.
@@ -414,7 +420,8 @@ Proof.
     move => Hszxor1.
     have Hszadd1 : size lrs_xor1 = size ((splitmsl ls2).2 :: copy (size (splitmsl ls2).1) lit_ff) by rewrite (lock splitmsl)/= size_nseq -lock size_splitmsl -addn1 (subnK Hsz2) -Hszxor1. 
     move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henccp1 Haddr Hcsadd1 Hszadd1) => Hencadd1.
-    move : (bit_blast_udiv_correct Hbbudiv Henc1 Hencadd1 Hcsu1) => [Hencq Hencr].
+    move : (bit_blast_add_size_ss Hbbadd1 Hszadd1). rewrite Hszxor1 -Hsz12. move => Hsz1add1.
+    move : (bit_blast_udiv_correct Hbbudiv Hsz1add1 Henc1 Hencadd1 Hcsu1) => [Hencq Hencr].
     generalize Hencmsl2. rewrite -enc_bits_seq1. move => Henceq2.
     generalize Hencmsl1. rewrite -enc_bits_seq1. move => Henceq1.
     have Hszeq : size [:: (splitmsl ls1).2]= size [:: (splitmsl ls2).2] by done.
@@ -498,7 +505,9 @@ Proof.
     have Haddr : ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits = ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits by done.
     move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszadd) => Hencaddr.
     move : (bit_blast_neg_correct Hbbneg1 Henc2 Hcsneg1) => Hencnegr1.
-    move : (bit_blast_udiv_correct Hbbudiv Hencaddr Hencnegr1 Hcsu1) => [Hencq Hencr].
+    move : (bit_blast_add_size_ss Hbbadd Hszadd). rewrite Hszadd Hszzext Hsz12 (bit_blast_neg_size_ss Hbbneg1).
+    move => Hszneg1add. symmetry in Hszneg1add.
+    move : (bit_blast_udiv_correct Hbbudiv Hszneg1add Hencaddr Hencnegr1 Hcsu1) => [Hencq Hencr].
     generalize Hencmsl2. rewrite -enc_bits_seq1. move => Hencseq2.
     have Hszeq : size [:: (splitmsl ls1).2]= size [:: (splitmsl ls2).2] by done.
     move : (bit_blast_eq_correct Hbbeq Hszeq Hencseq1 Hencseq2 Hcseq) => Henceq.
@@ -532,10 +541,10 @@ Proof.
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2t size_splitmsl size_splitmsb/=.
       have -> : (bs1 ^# copy (size bs1) true)%bits = invB bs1 by rewrite xorBC xorB_copy_case.
       rewrite His1' Hszlb1 {1 4}(invB_size_ss bs1) addB1 -/(negB bs1) {2}Hszb12 His1.
-      have Hszurem: (size ((udivB (-# bs1)%bits (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
-      have Hszudiv: (size ((udivB (-# bs1)%bits (-# bs2)).1)%bits) = size bs1 by rewrite size_udivB -size_neg_same. 
+      have Hszurem: (size ((udivB (-# bs1)%bits (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB size_negB.
+      have Hszudiv: (size ((udivB (-# bs1)%bits (-# bs2)).1)%bits) = size bs1 by rewrite size_udivB size_negB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case -{1}Hszb12 -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)).2))%bits addB1 -/(negB ((udivB (-# bs1) (-# bs2)).2)%bits).
-      by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case zeros_cons -addn1 -{1}Hszlb1 (subnK Hsz1) Hszlb1 addB0 unzip1_zip; last by rewrite size_udivB size_zeros -size_neg_same.
+      by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case zeros_cons -addn1 -{1}Hszlb1 (subnK Hsz1) Hszlb1 addB0 unzip1_zip; last by rewrite size_udivB size_zeros size_negB.
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2t size_splitmsl size_splitmsb/=.
       have ->: [:: false] = zeros 1 by done. 
       rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB size_xorB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) minnn.
@@ -579,7 +588,8 @@ Proof.
     have Hszadd : size lrs_xor = size lrs_zext by rewrite (bit_blast_xor_size_max Hbbxor) size_nseq maxnn Hszzext.
     have Haddr : ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits = ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits by done.
     move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszadd) => Hencaddr.
-    move : (bit_blast_udiv_correct Hbbudiv Hencaddr Henc2 Hcsu1) => [Hencq Hencr].
+    move : (bit_blast_add_size_max Hbbadd). rewrite Hszadd maxnn Hszzext Hsz12. move => Hszls2add. symmetry in Hszls2add.
+    move : (bit_blast_udiv_correct Hbbudiv Hszls2add Hencaddr Henc2 Hcsu1) => [Hencq Hencr].
     generalize Hencmsl2. rewrite -enc_bits_seq1. move => Hencseq2.
     have Hszeq : size [:: (splitmsl ls1).2]= size [:: (splitmsl ls2).2] by done.
     move : (bit_blast_eq_correct Hbbeq Hszeq Hencseq1 Hencseq2 Hcseq) => Henceq.
@@ -613,8 +623,8 @@ Proof.
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2f size_splitmsl size_splitmsb/=.
       have -> : (bs1 ^# copy (size bs1) true)%bits = invB bs1 by rewrite xorBC xorB_copy_case.
       rewrite His1' Hszlb1 {1 4}(invB_size_ss bs1) addB1 -/(negB bs1) {2 4}Hszb12 His1 -Hszb12.
-      have Hszurem: (size ((udivB (-# bs1)%bits (bs2)).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
-      have Hszudiv: (size ((udivB (-# bs1)%bits (bs2)).1)%bits) = size bs1 by rewrite size_udivB -size_neg_same. 
+      have Hszurem: (size ((udivB (-# bs1)%bits (bs2)).2)%bits) = size bs1 by rewrite size_uremB size_negB.
+      have Hszudiv: (size ((udivB (-# bs1)%bits (bs2)).1)%bits) = size bs1 by rewrite size_udivB size_negB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (bs2)).2))%bits addB1 -/(negB ((udivB (-# bs1) (bs2)).2)%bits).
       by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case -Hszudiv (invB_size_ss ((udivB (-# bs1) (bs2)).1))%bits addB1 -/(negB ((udivB (-# bs1) (bs2)).1)%bits).
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2f size_splitmsl size_splitmsb/=.
@@ -670,7 +680,10 @@ Proof.
     have Hszadd1 : size r_xor1 = size ((splitmsl ls2).2 :: copy (size (splitmsl ls2).1) lit_ff) by rewrite (lock splitmsl)/= size_nseq -lock size_splitmsl -addn1 (subnK Hsz2) -Hszxor1.
     have Henccpcmsb2 : enc_bits E ((splitmsl ls2).2 :: copy (size (splitmsl ls2).1) lit_ff) ((splitmsb bs2).2 :: copy (size (splitmsb bs2).1) false) by rewrite size_splitmsb size_splitmsl enc_bits_cons Hencmsl2 Hszlb2 (enc_bits_copy _ Hencff).
     move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henccpcmsb2 Haddr1 Hcsadd1 Hszadd1) => Hencadd1.
-    move : (bit_blast_udiv_correct Hbbudiv Hencaddr Hencadd1 Hcsu1) => [Hencq Hencr].
+    move : (bit_blast_add_size_max Hbbadd). rewrite Hszadd maxnn Hszzext Hsz12.
+    move : (bit_blast_add_size_ss Hbbadd1 Hszadd1). rewrite (bit_blast_xor_size_max Hbbxor1) size_nseq maxnn.
+    move => Hsz2add1 Hsz2add. rewrite Hsz2add in Hsz2add1.
+    move : (bit_blast_udiv_correct Hbbudiv Hsz2add1 Hencaddr Hencadd1 Hcsu1) => [Hencq Hencr].
     generalize Hencmsl2. rewrite -enc_bits_seq1. move => Hencseq2.
     have Hszeq : size [:: (splitmsl ls1).2]= size [:: (splitmsl ls2).2] by done.
     move : (bit_blast_eq_correct Hbbeq Hszeq Hencseq1 Hencseq2 Hcseq) => Henceq.
@@ -704,9 +717,9 @@ Proof.
       have -> : (bs1 ^# copy (size bs1) true)%bits = invB bs1 by rewrite xorBC xorB_copy_case.
       have -> : (bs2 ^# copy (size bs2) true)%bits = invB bs2 by rewrite xorBC xorB_copy_case.
       rewrite His1' Hszlb1 His1 {1 4}(invB_size_ss bs1) (invB_size_ss bs2) !addB1 -/(negB bs1) -/(negB bs2) {2}Hszb12 His1 -{1}Hszb12.
-      rewrite zeros_cons addB0 unzip1_zip; last by rewrite size_xorB size_udivB -size_neg_same size_zeros -addn1-Hszlb1 (subnK Hsz1).
-      have Hszurem: (size ((udivB (-# bs1)%bits (-# bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
-      have Hszudiv: (size ((udivB (-# bs1)%bits (-# bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB -size_neg_same. 
+      rewrite zeros_cons addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_negB size_zeros -addn1-Hszlb1 (subnK Hsz1).
+      have Hszurem: (size ((udivB (-# bs1)%bits (-# bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB size_negB.
+      have Hszudiv: (size ((udivB (-# bs1)%bits (-# bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB size_negB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)%bits).2))%bits addB1 -/(negB ((udivB (-# bs1) (-# bs2)%bits).2)%bits).
       by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case. 
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2 size_splitmsl !size_splitmsb/=.
@@ -714,8 +727,8 @@ Proof.
       have -> : (bs2 ^# copy (size bs2) false)%bits = bs2 by rewrite xorBC xorB_copy_case.
       rewrite zeros_cons addB0 unzip1_zip; last by rewrite size_zeros -addn1 -Hszlb2 (subnK Hsz2).
       rewrite {2 4}Hszb12 His1 -Hszb12 His1' Hszlb1 {1 4}(invB_size_ss bs1) !addB1 -/(negB bs1).
-      have Hszurem: (size ((udivB (-# bs1)%bits (bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB -size_neg_same.
-      have Hszudiv: (size ((udivB (-# bs1)%bits (bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB -size_neg_same. 
+      have Hszurem: (size ((udivB (-# bs1)%bits (bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB size_negB.
+      have Hszudiv: (size ((udivB (-# bs1)%bits (bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB size_negB. 
       rewrite xorBC -{1 2}Hszurem xorB_copy_case (invB_size_ss ((udivB (-# bs1) bs2).2)%bits) addB1 -/(negB ((udivB (-# bs1) bs2).2)%bits).
       by rewrite xorBC -{1 2}Hszudiv xorB_copy_case (invB_size_ss ((udivB (-# bs1) bs2).1)%bits) addB1 -/(negB ((udivB (-# bs1) bs2).1)%bits).
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2 size_splitmsl !size_splitmsb/=.
