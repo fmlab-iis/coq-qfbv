@@ -39,10 +39,10 @@ Qed .
 (* ===== bit_blast_high ===== *)
 
 Definition bit_blast_high g n ls : generator * cnf * word :=
-  (g, [::], drop (size ls - n) ls ++ copy (n - size ls) lit_ff) .
+  (g, [::], copy (n - size ls) lit_ff ++ drop (size ls - n) ls) .
 
 Definition mk_env_high E g n ls : env * generator * cnf * word :=
-  (E, g, [::], drop (size ls - n) ls ++ copy (n - size ls) lit_ff) .
+  (E, g, [::], copy (n - size ls) lit_ff ++ drop (size ls - n) ls) .
 
 Lemma bit_blast_high_correct E g n bs ls g' cs lrs :
   bit_blast_high g n ls = (g', cs, lrs) ->
@@ -51,9 +51,8 @@ Lemma bit_blast_high_correct E g n bs ls g' cs lrs :
 Proof .
   rewrite /bit_blast_high /high; case => _ <- <- Hlsbs Hcnf .
   rewrite (enc_bits_size Hlsbs) /zeros /b0 enc_bits_cat; first done .
-  - exact : (enc_bits_drop (size bs - n) Hlsbs) => Henc .
-  - move : (add_prelude_enc_bit_ff Hcnf);
-      apply : enc_bits_copy .
+  - apply: enc_bits_copy. exact: (add_prelude_enc_bit_ff Hcnf).
+  - exact : (enc_bits_drop (size bs - n) Hlsbs) .
 Qed .
 
 Lemma mk_env_high_is_bit_blast_high E g n ls E' g' cs lrs :
@@ -76,8 +75,8 @@ Proof .
   rewrite /mk_env_high; case => _ <- _ <- Htt Hls .
   rewrite newer_than_lits_cat .
   apply /andP; split .
-  - exact : newer_than_lits_drop .
   - exact : newer_than_lits_copy .
+  - exact : newer_than_lits_drop .
 Qed .
 
 Lemma mk_env_high_newer_cnf E g n ls E' g' cs lrs :
