@@ -38,6 +38,7 @@ Definition bit_blast_smod g ls1 ls2 : generator * cnf * word :=
 Lemma size_sdivB : forall bs1 bs2, size (sdivB bs1 bs2).2 = size bs1.
 Proof. Admitted.
 
+(*
 Lemma or0B : forall n bs, orB (zeros n) bs = bs.
 Proof. Admitted.
 
@@ -46,6 +47,7 @@ Proof. Admitted.
 
 Lemma andB0: forall n : nat, right_zero (n) -bits of (0)%bits andB.
 Proof. Admitted.
+ *)
 
 Lemma bit_blast_sdiv_size_ss g ls1 ls2 g' cs lrs_q lrs_r:
   bit_blast_sdiv g ls1 ls2 = (g', cs, lrs_q, lrs_r) ->
@@ -57,11 +59,13 @@ Lemma bit_blast_or_size_ss g ls1 ls2 g' cs lrs_r:
   size lrs_r = size ls1.
 Proof. Admitted.
 
+(*
 Lemma or1B: forall (bs : bits), (ones (size bs) ||# bs)%bits = ones (size bs).
 Proof. Admitted.
 
 Lemma orB0: forall (n : nat) (bs : bits), (bs||# zeros n)%bits = bs.
 Proof. Admitted.
+ *)
 
 Lemma bit_blast_smod_correct g ls1 ls2 g' cs rlrs E bs1 bs2 :
   bit_blast_smod g ls1 ls2 = (g', cs, rlrs) ->

@@ -98,6 +98,7 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word * word :=
               let '(E_add1, g_add1, cs_add1, rs_add1) := mk_env_add E_zext1 g_zext1 rs_xor1 rs_zext1 in
               (E_add1, g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
 
+
 Lemma udivB_negB_negB bs1 bs2 :
   udivB (negB bs1) (negB bs2) = ((udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
 Proof.
@@ -108,13 +109,16 @@ Lemma msb_negB bs :
 Proof.
 Admitted.
 
+
 Lemma size_splitmsl ls : (size (splitmsl ls).1) = size ls -1.
 Proof.
 Admitted.
 
+
 Lemma size_xorB bs1 bs2 : size (xorB bs1 bs2) = size bs1.
 Proof.
 Admitted.
+
 
 Lemma bit_blast_xor_zip_size_ss : forall lsp g g' cs rls,
   bit_blast_xor_zip g lsp = (g', cs, rls) ->
@@ -166,6 +170,7 @@ Lemma bit_blast_zeroextend_size :
 Proof.
 Admitted.
 
+
 Lemma xor0B n : left_id (from_nat n 0) xorB.
 Proof.
 Admitted.
@@ -196,6 +201,7 @@ Proof.
     rewrite /right_id. intros; by rewrite Bool.xorb_false_r.
   - by rewrite /lift0 lift_cons liftE -/lift0 (IH ytl) Bool.xorb_comm. 
 Qed.
+
 
 Lemma bit_blast_sdiv_correct g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 :
   bit_blast_sdiv g ls1 ls2 = (g', cs, qlrs, rlrs) ->
