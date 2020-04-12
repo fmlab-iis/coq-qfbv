@@ -227,7 +227,10 @@ Proof.
   move => [] _ <- <- Henc1 Henc2.
   rewrite add_prelude_catrev. move/andP => [Hcnfneg Hcnfadd] Hszeq.
   move : (bit_blast_neg_correct Hneg Henc2 Hcnfneg) => Hencneg.
-  move : (subB_equiv_addB_negB bs1 bs2) => Hencbr. symmetry in Hencbr.
+  have : size bs1 == size bs2 .
+  { by rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) -Hszeq . }
+  move => Hbsszeq .
+  move : (subB_equiv_addB_negB Hbsszeq) => /eqP Hencbr; symmetry in Hencbr .
   move : (bit_blast_neg_size_ss Hneg) => Hnegss. rewrite -Hszeq in Hnegss.
   exact : (bit_blast_add_correct Hadd Henc1 Hencneg Hencbr Hcnfadd Hnegss).
 Qed.
