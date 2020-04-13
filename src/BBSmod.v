@@ -156,25 +156,25 @@ Proof.
       move : (enc_bits_copy (size r_div) Hencff) => Henccpff.
       move : (bit_blast_eq_correct Hbbeq2 Hszcprdiv Hencr Henccpff Hcseq2) => Henceq2r.
       case HsdivB0: ((sdivB bs1 bs2).2 == zeros (size (sdivB bs1 bs2).2)).
-      * have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
-        move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
-        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsb12f (enc_bits_size Hencr) (eqP HsdivB0) size_sdivB size_zeros -/(zeros (size ls2)) eq_refl or0B. 
+      * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
+        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsb12f (enc_bits_size Hencr) (eqP HsdivB0) size_sdivB size_zeros -/(zeros (size ls2)) eq_refl.
+        have {1}-> : (size ls2 = size (copy (size ls2) true)) by rewrite size_nseq. rewrite or0B. 
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_ones. move => Hencnotr.
-        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) -from_natn0 andB0.
+        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB0.
         move => Hencand2r.
-        have Haddr :(addB (zeros (size (sdivB bs1 bs2).2)) ((size bs2) -bits of (0)%bits) = zeros (size bs1)).
-        rewrite size_sdivB add0B unzip2_zip; first by rewrite -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1) from_natn0.
-        by rewrite size_from_nat size_zeros -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1).
+        have Haddr :(addB (zeros (size (sdivB bs1 bs2).2)) (zeros (size bs2)) = zeros (size bs1)).
+        rewrite size_sdivB add0B unzip2_zip; first by rewrite -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1).
+        by rewrite 2!size_zeros -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1).
         rewrite -(eqP HsdivB0) in Haddr.
         move : (bit_blast_sdiv_size_ss Hbbsdiv) => Hszsdiv.
         move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
         move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsdiv in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
-      * have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
-        move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
-        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsb12f (enc_bits_size Hencr) HsdivB0 -/(zeros (size ls2)) or0B. 
+      * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
+        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsb12f (enc_bits_size Hencr) HsdivB0 -/(zeros (size ls2)).
+        have {1}-> : (size ls2 = size (zeros (size ls2))) by rewrite size_nseq. rewrite or0B. 
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_zeros. move => Hencnotr.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.
@@ -205,24 +205,26 @@ Proof.
       move/negP/eqP/eqP => HsdivB0. move : (Bool.not_true_is_false ((sdivB bs1 bs2).2 == copy (size r_div) false) HsdivB0) => HsdivB0f. rewrite (enc_bits_size Hencr) -/(zeros (size (sdivB bs1 bs2).2)) in HsdivB0f.
       rewrite HsdivB0f orbF.
       case Hmsbeq : (msb bs1 == msb bs2).
-      * have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
-        move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
-        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) HsdivB0f orB0.
+      * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
+        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) HsdivB0f.
+        have ->: (copy (size ls2) false = zeros (size (copy (size ls2) true))) by rewrite size_nseq.
+        rewrite orB0.
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_ones. move => Hencnotr.
-        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) -from_natn0 andB0.
+        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB0.
         move => Hencand2r.
-        have Haddr :(addB  (sdivB bs1 bs2).2 ((size bs2) -bits of (0)%bits) = (sdivB bs1 bs2).2).
-        rewrite from_natn0 addB0 unzip1_zip; first done.
+        have Haddr :(addB  (sdivB bs1 bs2).2 (zeros (size bs2)) = (sdivB bs1 bs2).2).
+        rewrite addB0 unzip1_zip; first done.
         by rewrite size_sdivB size_zeros -(enc_bits_size Henc2)-Hsz12 (enc_bits_size Henc1).
         move : (bit_blast_sdiv_size_ss Hbbsdiv) => Hszsdiv.
         move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
         move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsdiv in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
-      * have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
-        move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
-        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) HsdivB0f  orB0.
+      * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
+        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) HsdivB0f.
+        have {2}-> : copy (size ls2) false  = zeros (size (copy (size ls2) false)) by rewrite size_nseq.
+        rewrite orB0.
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_zeros. move => Hencnotr.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.
@@ -256,11 +258,12 @@ Proof.
         rewrite -/b1 -/(ones (size (copy (size ls2) ((sdivB bs1 bs2).2 == copy (size (sdivB bs1 bs2).2) false)))) or1B size_nseq.
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_ones. move => Hencnotr.
-        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) -from_natn0 andB0.
+        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand).
+        rewrite (enc_bits_size Henc2) andB0.
         move => Hencand2r.
-        have Haddr :(addB  (sdivB bs1 bs2).2 ((size bs2) -bits of (0)%bits) = (sdivB bs1 bs2).2).
-        rewrite from_natn0 addB0 unzip1_zip; first done.
-        by rewrite size_sdivB size_zeros -(enc_bits_size Henc2)-Hsz12 (enc_bits_size Henc1).
+        have Haddr :(addB  (sdivB bs1 bs2).2 (zeros (size bs2)) = (sdivB bs1 bs2).2).
+        rewrite addB0 unzip1_zip; first done.
+        by rewrite size_sdivB -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1) size_zeros.
         move : (bit_blast_sdiv_size_ss Hbbsdiv) => Hszsdiv.
         move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
         move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
@@ -270,13 +273,15 @@ Proof.
         have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
         move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
         rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr).
-        rewrite /zeros in Hmsbeq2. rewrite Hmsbeq2 -/b0 -/(zeros (size ls2)) or0B -/b1 -/(ones (size ls2)). 
+        rewrite /zeros in Hmsbeq2.
+        have {1}->: (size ls2 = size (copy (size ls2) true)) by rewrite size_nseq.
+        rewrite Hmsbeq2 -/b0 -/(zeros (size (copy (size ls2) true))) or0B -/b1 -/(ones (size ls2)). 
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_ones. move => Hencnotr.
-        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) -from_natn0 andB0.
+        move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB0.
         move => Hencand2r.
-        have Haddr :(addB  (sdivB bs1 bs2).2 ((size bs2) -bits of (0)%bits) = (sdivB bs1 bs2).2).
-        rewrite from_natn0 addB0 unzip1_zip; first done.
+        have Haddr :(addB  (sdivB bs1 bs2).2 (zeros (size bs2)) = (sdivB bs1 bs2).2).
+        rewrite addB0 unzip1_zip; first done.
         by rewrite size_sdivB size_zeros -(enc_bits_size Henc2)-Hsz12 (enc_bits_size Henc1).
         move : (bit_blast_sdiv_size_ss Hbbsdiv) => Hszsdiv.
         move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
@@ -286,7 +291,9 @@ Proof.
       * rewrite/=.
         have Hszcpeq : (size (copy (size ls2) r_eq)= size (copy (size ls2) r_eq2)) by rewrite 2!size_nseq.
         move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
-        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) Hmsbeq2 orB0.
+        rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsbeq (enc_bits_size Hencr) Hmsbeq2.
+        have {2} -> : (copy (size ls2) false = zeros (size (copy (size ls2) false))) by rewrite size_nseq.
+        rewrite orB0.
         move => Hencorr.
         move : (bit_blast_not_correct Hbbnot Hencorr Hcsnot). rewrite invB_zeros. move => Hencnotr.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.

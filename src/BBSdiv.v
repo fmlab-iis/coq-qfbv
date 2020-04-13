@@ -99,10 +99,10 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word * word :=
               (E_add1, g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
 
 
-Lemma udivB_negB_negB bs1 bs2 :
+(*Lemma udivB_negB_negB bs1 bs2 :
   udivB (negB bs1) (negB bs2) = ((udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
 Proof.
-Admitted.
+Admitted.*)
 
 Lemma msb_negB bs :
   msb (negB bs) = ~~ (msb bs).
