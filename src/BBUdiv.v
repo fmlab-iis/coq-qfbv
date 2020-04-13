@@ -902,6 +902,7 @@ Proof.
       move : (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Hudivr3 Hszudivr Hszlrssub2 Hencls1tl Henc2 Hdjlqs Hencsubrs Haddcsudivr).
       move : (enc_bits_size Henc2) => Hszlsbs2. rewrite Hszlsbs2 andB_copy_case.
       case (~~ (to_nat (dropmsb (joinlsb bs1hd bsr)) < to_nat bs2)); first done.
+      have {1 2}->: (size bs2 = size (dropmsb (joinlsb bs1hd bsr))) by rewrite size_dropmsb size_joinlsb addnK -(enc_bits_size Hencr) - Hszlsbs2 Hszlrs.
       by rewrite from_natn0 subB0.
 Qed.
 
