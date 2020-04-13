@@ -47,44 +47,49 @@ Qed .
 Lemma enc_bits_extract E i j ls bs :
   enc_bit E lit_tt true ->
   enc_bits E ls bs ->
-  enc_bits E (drop (i+1-(i-j+1)) (take (i + 1) ls ++ copy (i+1-size ls) lit_ff) ++ copy (i-j+1-(i+1)) lit_ff)
+  enc_bits E (copy (i-j+1-(i+1)) lit_ff ++
+                   drop (i+1-(i-j+1)) (take (i + 1) ls ++ copy (i+1-size ls) lit_ff))
            (extract i j bs) .
 Proof .
   rewrite enc_bit_tt_ff => Hff Hlsbs .
   move : (enc_bits_size Hlsbs) => Hsize .
   rewrite /extract /b0 !Hsize enc_bits_cat; first done .
+  - rewrite size_low /zeros /b0; exact : enc_bits_copy .
   - rewrite size_low /low .
     apply : enc_bits_drop .
     rewrite enc_bits_cat; first done .
     + exact : enc_bits_take .
     + rewrite /zeros /b0; exact : enc_bits_copy .
-  - rewrite size_low /zeros /b0; exact : enc_bits_copy .
 Qed .
 
 Lemma newer_than_lits_extract g i j ls :
   newer_than_lit g lit_tt ->
   newer_than_lits g ls ->
-  newer_than_lits g (drop (i+1-(i-j+1)) (take (i + 1) ls ++ copy (i+1-size ls) lit_ff) ++ copy (i-j+1-(i+1)) lit_ff) .
+  newer_than_lits g (copy (i-j+1-(i+1)) lit_ff ++
+                          drop (i+1-(i-j+1))
+                          (take (i + 1) ls ++ copy (i+1-size ls) lit_ff)) .
 Proof .
   move => Htt Hls .
   rewrite newer_than_lits_cat .
   apply /andP; split .
+  - exact : newer_than_lits_copy .
   - apply : newer_than_lits_drop .
     rewrite newer_than_lits_cat; apply /andP; split .
     + exact : newer_than_lits_take .
     + exact : newer_than_lits_copy .
-  - exact : newer_than_lits_copy .
 Qed .
 
 (* ===== bit_blast_extract ===== *)
 
 Definition bit_blast_extract g i j ls : generator * cnf * word :=
   let lowls := take (i + 1) ls ++ copy (i + 1 - size ls) lit_ff in
-  (g, [::], drop (size lowls - (i - j + 1)) lowls ++ copy (i - j + 1 - size lowls) lit_ff) .
+  (g, [::], copy (i - j + 1 - size lowls) lit_ff ++
+                 drop (size lowls - (i - j + 1)) lowls) .
 
 Definition mk_env_extract E g i j ls : env * generator * cnf * word :=
   let lowls := take (i + 1) ls ++ copy (i + 1 - size ls) lit_ff in
-  (E, g, [::], drop (size lowls - (i - j + 1)) lowls ++ copy (i - j + 1 - size lowls) lit_ff) .
+  (E, g, [::], copy (i - j + 1 - size lowls) lit_ff ++
+                    drop (size lowls - (i - j + 1)) lowls) .
 
 Lemma bit_blast_extract_correct E g i j bs ls g' cs lr :
   bit_blast_extract g i j ls = (g', cs, lr) ->
@@ -118,11 +123,11 @@ Lemma mk_env_extract_newer_res E g i j ls E' g' cs lrs :
 Proof .
   rewrite /mk_env_extract; case => _ <- _ <- Hlsbs Htt .
   rewrite newer_than_lits_cat; apply /andP; split .
+  - exact : newer_than_lits_copy .
   - apply : newer_than_lits_drop .
     rewrite newer_than_lits_cat; apply/andP; split .
     + exact : newer_than_lits_take .
     + exact : newer_than_lits_copy .
-  - exact : newer_than_lits_copy .
 Qed .
 
 Lemma mk_env_extract_newer_cnf E g i j ls E' g' cs lrs :
