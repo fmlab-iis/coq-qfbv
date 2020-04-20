@@ -63,7 +63,7 @@ Definition bit_blast_sdiv g ls1 ls2 : generator * cnf * word * word :=
               (g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_lneg) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
 
 Definition mk_env_abs E g ls : env * generator * cnf * word :=
-  let (ls_tl, ls_sign) := splitmsl ls in
+  let (ls_tl, ls_sign) := eta_expand (splitmsl ls) in
   if (ls_sign == lit_tt) then  mk_env_neg E g ls
   else if (ls_sign == lit_ff) then (E, g, [::], ls)
        else let ws := copy (size ls_tl) ls_sign in
@@ -73,30 +73,35 @@ Definition mk_env_abs E g ls : env * generator * cnf * word :=
             (E_add, g_add, catrev cs_xor (catrev cs_zext cs_add), rs_add).
 
 Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word * word :=
-  let (ls1_tl, ls1_sign) := splitmsl ls1 in
-  let (ls2_tl, ls2_sign) := splitmsl ls2 in
+  let (ls1_tl, ls1_sign) := eta_expand (splitmsl ls1) in
+  let (ls2_tl, ls2_sign) := eta_expand (splitmsl ls2) in
   let ws1 := copy (size ls1_tl) ls1_sign in
   let '(E_abs1, g_abs1, cs_abs1, lrs_abs1) := mk_env_abs E g ls1 in
   let '(E_abs2, g_abs2, cs_abs2, lrs_abs2) := mk_env_abs E_abs1 g_abs1 ls2 in
   let '(E_udiv, g_udiv, cs_udiv, qs_udiv, rs_udiv) := mk_env_udiv E_abs2 g_abs2 lrs_abs1 lrs_abs2 in
-  let '(E_negq, g_negq, cs_negq, lrs_negq) := mk_env_neg E_udiv g_udiv qs_udiv in
-  let '(E_negr, g_negr, cs_negr, lrs_negr) := mk_env_neg E_udiv g_udiv rs_udiv in
-  if (ls1_sign == ls2_sign) && (ls1_sign == lit_ff) then
+  if (ls1_sign == lit_ff) && (ls1_sign == lit_ff) then
     (E_udiv, g_udiv, catrev cs_udiv (catrev cs_abs1 cs_abs2), qs_udiv, rs_udiv)
-  else if (ls1_sign == ls2_sign) && (ls1_sign == lit_tt) then
-         (E_negr, g_negr, catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_negr, qs_udiv, lrs_negr)
-       else if (ls1_sign != ls2_sign) && (ls1_sign == lit_ff) then
+  else if (ls1_sign == lit_tt) && (ls1_sign == lit_tt) then
+         let '(E_negr, g_negr, cs_negr, lrs_negr) := mk_env_neg E_udiv g_udiv rs_udiv in
+         (E_negr, g_negr, catrev cs_negr (catrev cs_udiv (catrev cs_abs1 cs_abs2)), qs_udiv, lrs_negr)
+       else if (ls1_sign == lit_ff) && (ls1_sign == lit_tt) then
+              let '(E_negq, g_negq, cs_negq, lrs_negq) := mk_env_neg E_udiv g_udiv qs_udiv in
               (E_negq, g_negq, catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_negq, lrs_negq, rs_udiv)
+                else if (ls1_sign == lit_tt) && (ls2_sign == lit_ff) then
+                       let '(E_negq, g_negq, cs_negq, lrs_negq) := mk_env_neg E_udiv g_udiv qs_udiv in
+                       let '(E_negr, g_negr, cs_negr, lrs_negr) := mk_env_neg E_negq g_negq rs_udiv in
+                       (E_negr, g_negr, catrev cs_negr (catrev cs_negq (catrev cs_udiv (catrev cs_abs1 cs_abs2))), lrs_negq, lrs_negr)
             else 
               let '(E_eq, g_eq, cs_eq, r_eq) := mk_env_eq E_udiv g_udiv (ls1_sign::nil) (ls2_sign::nil) in
-              let weq := copy (size ls1_tl) r_eq in 
-              let '(E_xor, g_xor, cs_xor, rs_xor) := mk_env_xor E_eq g_eq qs_udiv weq in
-              let '(E_zext, g_zext, cs_zext, rs_zext) := mk_env_zeroextend (size ls1_tl) E_xor g_xor weq in
+              let '(E_lneg, g_lneg, cs_lneg, r_lneg) := mk_env_lneg E_eq g_eq r_eq in
+              let wneq := copy (size ls1) r_lneg in 
+              let '(E_xor, g_xor, cs_xor, rs_xor) := mk_env_xor E_lneg g_lneg qs_udiv wneq in
+              let '(E_zext, g_zext, cs_zext, rs_zext) := mk_env_zeroextend (size ls1_tl) E_xor g_xor (r_lneg::nil) in
               let '(E_add, g_add, cs_add, rs_add) := mk_env_add E_zext g_zext rs_xor rs_zext in
               let '(E_xor1, g_xor1, cs_xor1, rs_xor1) := mk_env_xor E_add g_add rs_udiv ws1 in
               let '(E_zext1, g_zext1, cs_zext1, rs_zext1) := mk_env_zeroextend (size ls1_tl) E_xor1 g_xor1 (ls1_sign::nil) in
               let '(E_add1, g_add1, cs_add1, rs_add1) := mk_env_add E_zext1 g_zext1 rs_xor1 rs_zext1 in
-              (E_add1, g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
+              (E_add1, g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_lneg) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
 
 
 (*Lemma udivB_negB_negB bs1 bs2 :
@@ -104,21 +109,15 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word * word :=
 Proof.
 Admitted.*)
 
-Lemma msb_negB bs :
-  msb (negB bs) = ~~ (msb bs).
-Proof.
-Admitted.
-
-
 Lemma size_splitmsl ls : (size (splitmsl ls).1) = size ls -1.
 Proof.
 Admitted.
 
-
+(*
 Lemma size_xorB bs1 bs2 : size (xorB bs1 bs2) = size bs1.
 Proof.
 Admitted.
-
+*)
 
 Lemma bit_blast_xor_zip_size_ss : forall lsp g g' cs rls,
   bit_blast_xor_zip g lsp = (g', cs, rls) ->
@@ -170,7 +169,7 @@ Lemma bit_blast_zeroextend_size :
 Proof.
 Admitted.
 
-
+(*
 Lemma xor0B n : left_id (from_nat n 0) xorB.
 Proof.
 Admitted.
@@ -201,7 +200,7 @@ Proof.
     rewrite /right_id. intros; by rewrite Bool.xorb_false_r.
   - by rewrite /lift0 lift_cons liftE -/lift0 (IH ytl) Bool.xorb_comm. 
 Qed.
-
+*)
 
 Lemma bit_blast_sdiv_correct g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 :
   bit_blast_sdiv g ls1 ls2 = (g', cs, qlrs, rlrs) ->
@@ -351,7 +350,7 @@ Proof.
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case size_splitmsb -/(zeros (size bs1 -1)) .
       rewrite Hszb12 His1 -Hszb12 -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)).2)%bits) addB1 -/(negB ((udivB (-# bs1) (-# bs2)).2)%bits) -/(negB ((udivB (-# bs1) (-# bs2)).1)%bits) udivB_negB_negB/=.
       have ->: (false :: zeros (size bs1 - 1)) = zeros (size bs1) by rewrite zeros_cons -addn1 -Hszlb1 (subnK Hsz1).
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_zeros.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_zeros maxnn.
       by rewrite xorBC -{1}Hszudiv xorB_copy_case /=.
     + rewrite -/(msb bs2) Hmsb2 -/(msb bs1) -Hmsb1t size_splitmsb -/(zeros (size bs2 -1)) size_splitmsb/=.
       rewrite zeros_cons -addn1 -Hszlb2 (subnK Hsz2) Hszlb2.
@@ -469,9 +468,9 @@ Proof.
       by rewrite Hszb12 His1 -Hszb12 -{1}Hszudiv xorBC xorB_copy_case -Hszudiv (invB_size_ss ( (udivB bs1 (-# bs2)).1)%bits) addB1 -/(negB ((udivB (bs1) (-# bs2)).1)%bits). 
     + rewrite -/(msb bs2) Hmsb2 -/(msb bs1) Hmsb1f size_splitmsb -/(zeros (size bs2 -1)) size_splitmsb/=.
       rewrite 2!zeros_cons -addn1 -Hszlb2 (subnK Hsz2) Hszlb2.
-      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_uremB -Hszlb1 -addn1 (subnK Hsz1).
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros.
-      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_udivB -addn1 -Hszlb1 (subnK Hsz1).
+      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_uremB -Hszlb1 -addn1 (subnK Hsz1) size_nseq maxnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros maxnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_udivB -addn1 -Hszlb1 (subnK Hsz1) size_nseq maxnn.
       have -> : (bs2 ^# copy (size bs2) false)%bits = bs2 by rewrite xorBC xorB_copy_case.
       rewrite -{1}(size_uremB bs1 bs2) -{1}(size_udivB bs1 bs2).
       by repeat (rewrite xorBC xorB_copy_case).
@@ -553,8 +552,8 @@ Proof.
       by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case zeros_cons -addn1 -{1}Hszlb1 (subnK Hsz1) Hszlb1 addB0 unzip1_zip; last by rewrite size_udivB size_zeros size_negB.
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2t size_splitmsl size_splitmsb/=.
       have ->: [:: false] = zeros 1 by done. 
-      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB size_xorB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) minnn.
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros Hszlb1.
+      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB size_xorB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) maxnn minnn maxnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros Hszlb1 size_nseq maxnn.
       have -> : (bs1 ^# copy (size bs1) false)%bits = bs1 by rewrite xorBC xorB_copy_case.
       have Hszurem: (size ((udivB (bs1)%bits (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB.
       have Hszudiv: (size ((udivB (bs1)%bits (-# bs2)).1)%bits) = size bs1 by rewrite size_udivB.
@@ -635,9 +634,9 @@ Proof.
       by rewrite {1}xorBC -{1}Hszudiv xorB_copy_case -Hszudiv (invB_size_ss ((udivB (-# bs1) (bs2)).1))%bits addB1 -/(negB ((udivB (-# bs1) (bs2)).1)%bits).
     + rewrite -/(msb bs1) -/(msb bs2) Hmsb1 Hmsb2f size_splitmsl size_splitmsb/=.
       have ->: [:: false] = zeros 1 by done. 
-      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB size_xorB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) minnn.
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros Hszlb1.
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_xorB size_zeros -addn1 -Hszlb1 (subnK Hsz1).
+      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB size_xorB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) maxnn minnn maxnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_zeros Hszlb1 size_nseq maxnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_xorB size_zeros -addn1 -Hszlb1 (subnK Hsz1) size_nseq 2!maxnn.
       have -> : (bs1 ^# copy (size bs1) false)%bits = bs1 by rewrite xorBC xorB_copy_case.
       have Hszurem: (size ((udivB (bs1)%bits (bs2)).2)%bits) = size bs1 by rewrite size_uremB.
       have Hszudiv: (size ((udivB (bs1)%bits (bs2)).1)%bits) = size bs1 by rewrite size_udivB.
@@ -723,7 +722,7 @@ Proof.
       have -> : (bs1 ^# copy (size bs1) true)%bits = invB bs1 by rewrite xorBC xorB_copy_case.
       have -> : (bs2 ^# copy (size bs2) true)%bits = invB bs2 by rewrite xorBC xorB_copy_case.
       rewrite His1' Hszlb1 His1 {1 4}(invB_size_ss bs1) (invB_size_ss bs2) !addB1 -/(negB bs1) -/(negB bs2) {2}Hszb12 His1 -{1}Hszb12.
-      rewrite zeros_cons addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_negB size_zeros -addn1-Hszlb1 (subnK Hsz1).
+      rewrite zeros_cons addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_negB size_zeros -addn1-Hszlb1 (subnK Hsz1) size_nseq maxnn.
       have Hszurem: (size ((udivB (-# bs1)%bits (-# bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB size_negB.
       have Hszudiv: (size ((udivB (-# bs1)%bits (-# bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB size_negB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)%bits).2))%bits addB1 -/(negB ((udivB (-# bs1) (-# bs2)%bits).2)%bits).
@@ -741,7 +740,7 @@ Proof.
       have ->: [:: false] = zeros 1 by done. 
       have -> : (bs1 ^# copy (size bs1) false)%bits = bs1 by rewrite xorBC xorB_copy_case.
       have -> : (bs2 ^# copy (size bs2) true)%bits = invB bs2 by rewrite xorBC xorB_copy_case.
-      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB !size_zeros -Hszlb1 -addn1 (subnK Hsz1) minnn.
+      rewrite zeros_cons zext_zero (subnK Hsz1) addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB !size_zeros -Hszlb1 -addn1 (subnK Hsz1)  minnn maxnn.
       rewrite {3}Hszb12 His1 addB0 unzip1_zip; last by rewrite size_zeros Hszlb1.
       have Hszurem: (size ((udivB (bs1)%bits (-# bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB.
       have Hszudiv: (size ((udivB (bs1)%bits (-# bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB. 
@@ -752,11 +751,13 @@ Proof.
       have -> : (bs1 ^# copy (size bs1) false)%bits = bs1 by rewrite xorBC xorB_copy_case.
       have -> : (bs2 ^# copy (size bs2) false)%bits = bs2 by rewrite xorBC xorB_copy_case.
       rewrite !zeros_cons zext_zero (subnK Hsz1).
-      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB !size_zeros -addn1 -Hszlb1 (subnK Hsz1) minnn.
+      rewrite addB0 unzip1_zip; last by rewrite size_xorB size_uremB size_addB !size_zeros -addn1 -Hszlb1 (subnK Hsz1) minnn maxnn.
       rewrite addB0 unzip1_zip; last by rewrite size_zeros Hszlb1.
       rewrite addB0 unzip1_zip; last by rewrite size_zeros -Hszlb2 -addn1 (subnK Hsz2).
-      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_udivB -addn1 -Hszlb1 (subnK Hsz1).
+      rewrite addB0 unzip1_zip; last by rewrite size_zeros size_xorB size_udivB -addn1 -Hszlb1 (subnK Hsz1) size_nseq maxnn.
       have Hszurem: (size ((udivB (bs1)%bits (bs2)%bits).2)%bits) = size bs1 by rewrite size_uremB.
       have Hszudiv: (size ((udivB (bs1)%bits (bs2)%bits).1)%bits) = size bs1 by rewrite size_udivB. 
       by rewrite xorBC -{1}Hszurem -{1}Hszudiv xorB_copy_case xorBC xorB_copy_case.
 Qed.
+
+
