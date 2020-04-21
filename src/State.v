@@ -92,6 +92,9 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
       x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
       conform s te ->
       conform (upd2 x2 v2 x1 v1 s) (TE.add x1 ty1 (TE.add x2 ty2 te)).
+  Parameter conform_add_not_mem :
+    forall E s x ty,
+      conform s (TE.add x ty E) -> ~~ TE.mem x E -> conform s E.
 
 End BitsStore.
 
@@ -156,6 +159,15 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   Proof.
     move=> Hne Hs1 Hs2 Hcon.
     exact: (conform_Upd2 Hne Hs1 Hs2 (Upd2_upd2 x2 v2 x1 v1 s) Hcon).
+  Qed.
+
+  Lemma conform_add_not_mem E s x ty :
+    conform s (TE.add x ty E) -> ~~ TE.mem x E -> conform s E.
+  Proof.
+    move=> Hco Hmem y Hmemy. move: (Hco y). rewrite Lemmas.OP.P.F.add_b Hmemy orbT.
+    move=> <-; last by exact: is_true_true. case Hyx: (y == x).
+    - rewrite (eqP Hyx) in Hmemy. rewrite Hmemy in Hmem. discriminate.
+    - move/idP/negP: Hyx => Hyx. rewrite (TE.vsize_add_neq Hyx). reflexivity.
   Qed.
 
 End MakeBitsStore.
