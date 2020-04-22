@@ -73,6 +73,10 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
     forall v e s1 s2 s, Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
 
   Parameter conform : t -> TE.env -> Prop.
+  Parameter conform_def :
+    forall (s : t) (E : TE.env),
+      (forall (v : V.t), TE.mem v E -> TE.vsize v E = size (acc v s)) ->
+      conform s E.
   Parameter conform_mem :
     forall v s te, conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
   Parameter conform_Upd :
@@ -110,6 +114,12 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   Definition conform (s : t) (te : TE.env) : Prop :=
     forall (v : V.t),
       TE.mem v te -> TE.vsize v te = size (acc v s).
+
+  Lemma conform_def :
+    forall (s : t) (E : TE.env),
+      (forall (v : V.t), TE.mem v E -> TE.vsize v E = size (acc v s)) ->
+      conform s E.
+  Proof. move=> s E H. assumption. Qed.
 
   Lemma conform_mem v s te :
     conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
@@ -168,6 +178,16 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
     move=> <-; last by exact: is_true_true. case Hyx: (y == x).
     - rewrite (eqP Hyx) in Hmemy. rewrite Hmemy in Hmem. discriminate.
     - move/idP/negP: Hyx => Hyx. rewrite (TE.vsize_add_neq Hyx). reflexivity.
+  Qed.
+
+  Lemma conform_submap E1 E2 s :
+    Lemmas.submap E1 E2 -> conform s E2 -> conform s E1.
+  Proof.
+    move=> Hsubm Hco x Hmem1. move: (Lemmas.submap_mem Hsubm Hmem1) => Hmem2.
+    move: (Lemmas.mem_find_some Hmem1) => [ty Hfind1].
+    move: (Hsubm x ty Hfind1) => Hfind2. move: (TE.find_some_vtyp Hfind1) => Hty1.
+     move: (TE.find_some_vtyp Hfind2) => Hty2. rewrite -(Hco _ Hmem2).
+    rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
   Qed.
 
 End MakeBitsStore.
