@@ -66,36 +66,31 @@ Section Conform .
                   /andP [/andP [Hwf0 Hwf1] Hsize]
                   /andP [Hcf0 Hcf1] .
       + rewrite /andB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite /orB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite /xorB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite size_addB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent minnE subKn // .
+        reflexivity.
       + rewrite size_subB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent minnE subKn // .
-      + rewrite size_mulB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + rewrite size_shlB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_shrB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_sarB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
+        reflexivity.
+      + rewrite size_mulB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_uremB (IH0 Hwf0 Hcf0). reflexivity.
+      + rewrite size_sremB (IH0 Hwf0 Hcf0). reflexivity.
+      + rewrite size_smodB_ss.
+        * rewrite (IH0 Hwf0 Hcf0). reflexivity.
+        * rewrite (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1). exact: (eqP Hsize).
+      + rewrite size_shlB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_shrB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_sarB (IH0 Hwf0 Hcf0) . reflexivity.
       + rewrite size_cat (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) addnC // .
     - move => b e0 IH0 e1 IH1
                 /andP [/andP [/andP [Hwfb Hwf0] Hwf1] Hsize]
                 /andP [/andP [Hcfb Hcf0] Hcf1] .
       case (QFBV.eval_bexp b s) .
-      * rewrite -(eqP Hsize) (IH0 Hwf0 Hcf0) Max.max_idempotent // .
-      * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) Max.max_idempotent // .
+      * rewrite -(eqP Hsize) (IH0 Hwf0 Hcf0) maxnn. reflexivity.
+      * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) maxnn. reflexivity.
   Qed .
 
 

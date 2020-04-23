@@ -44,7 +44,7 @@ Module MakeQFBV
   | Bshl
   | Blshr
   | Bashr
-  | Bconcat.
+  | Bconcat. (* Bconcat high_bits low_bits *)
 
   Inductive bbinop : Set :=
   | Beq
@@ -335,9 +335,9 @@ Module MakeQFBV
     | Badd => addB
     | Bsub => subB
     | Bmul => mulB
-    | Bmod => fun b1 b2 => b1 (* TODO: define this *)
-    | Bsrem => fun b1 b2 => b1 (* TODO: define this *)
-    | Bsmod => fun b1 b2 => b1 (* TODO: define this *)
+    | Bmod => uremB
+    | Bsrem => sremB
+    | Bsmod => smodB
     | Bshl => fun b1 b2 => shlB (to_nat b2) b1
     | Blshr => fun b1 b2 => shrB (to_nat b2) b1
     | Bashr => fun b1 b2 => sarB (to_nat b2) b1
@@ -1388,10 +1388,16 @@ Module MakeQFBV
          end)
       | Ebinop op e1 e2 =>
         (match op with
+         | Band | Bor | Bxor => maxn (exp_size e1 te) (exp_size e2 te)
+         | Badd | Bsub => minn (exp_size e1 te) (exp_size e2 te)
+         | Bmul => exp_size e1 te
+         | Bmod => exp_size e1 te
+         | Bsrem => exp_size e1 te
+         | Bsmod => exp_size e1 te (* TODO: size_smodB is not fixed *)
+         | Bshl | Blshr | Bashr => exp_size e1 te
          | Bconcat => exp_size e1 te + exp_size e2 te
-         | _ => max (exp_size e1 te) (exp_size e2 te)
          end)
-      | Eite b e1 e2 => max (exp_size e1 te) (exp_size e2 te)
+      | Eite b e1 e2 => maxn (exp_size e1 te) (exp_size e2 te)
       end.
 
     Fixpoint well_formed_exp (e : exp) (te : TE.env) : bool :=
@@ -1429,65 +1435,44 @@ Module MakeQFBV
     Proof.
       elim: e te s => //=.
       - move=> v te s Hmem Hcon. by rewrite (S.conform_mem Hcon Hmem).
-      - case => /= .
-        + move => e IH te s Hwf Hcon .
-          rewrite -(IH _ _ Hwf Hcon) /invB size_map // .
-        + move => e IH te s Hwf Hcon .
-          rewrite /negB /invB size_succB size_map (IH _ _ Hwf Hcon) // .
-        + move => e IH te s Hwf Hcon .
-          rewrite size_extract //.
-        + move => e IH te s Hwf Hcon .
-          rewrite size_high // .
-        + move => e IH te s Hwf Hcon .
-          rewrite size_low // .
-        + move => n e IH te s Hwf Hcon .
-          rewrite size_zext (IH _ _ Hwf Hcon) // .
-        + move => n e IH te s Hwf Hcon .
-          rewrite size_sext (IH _ _ Hwf Hcon) // .
-      - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /= .
-        + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-          rewrite Max.max_idempotent maxnE .
-          apply : subnKC; apply : leqnn .
-        + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-          rewrite Max.max_idempotent maxnE .
-          apply : subnKC; apply : leqnn .
-        + rewrite /xorB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-          rewrite Max.max_idempotent maxnE .
-          apply : subnKC; apply : leqnn .
-        + rewrite size_addB .
-          rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) -(eqP Hsize) .
-          rewrite Max.max_idempotent minnE .
-          apply : subKn; apply : leqnn .
-        + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
-          rewrite (eqP Hsize) Max.max_idempotent minnE .
-          apply : subKn; apply : leqnn .
-        + rewrite size_mulB -(eqP Hsize) Max.max_idempotent (IH0 _ _ Hwf0 Hcon) // .
-        + (* TODO *)
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + (* TODO *)
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + (* TODO *)
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + rewrite size_shlB .
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + rewrite size_shrB .
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + rewrite size_sarB .
-          rewrite (IH0 _ _ Hwf0 Hcon) (eqP Hsize) .
-          rewrite Max.max_idempotent // .
-        + rewrite size_cat .
-          rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon) .
-          rewrite addnC // .
-      - move => c e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon .
-        case (eval_bexp c s);
-          [rewrite (IH0 _ _ Hwf0 Hcon) | rewrite (IH1 _ _ Hwf1 Hcon)];
-          rewrite (eqP Hsize) Max.max_idempotent // .
-    Qed .
+      - case => /=.
+        + move => e IH te s Hwf Hcon. rewrite -(IH _ _ Hwf Hcon) /invB size_map.
+          reflexivity.
+        + move=> e IH te s Hwf Hcon.
+          rewrite /negB /invB size_succB size_map (IH _ _ Hwf Hcon). reflexivity.
+        + move=> *. rewrite size_extract. reflexivity.
+        + move=> *. rewrite size_high. reflexivity.
+        + move=> *. rewrite size_low. reflexivity.
+        + move => n e IH te s Hwf Hcon. rewrite size_zext (IH _ _ Hwf Hcon).
+          reflexivity.
+        + move => n e IH te s Hwf Hcon. rewrite size_sext (IH _ _ Hwf Hcon).
+          reflexivity.
+      - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /=.
+        + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
+          reflexivity.
+        + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
+          reflexivity.
+        + rewrite /xorB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
+          reflexivity.
+        + rewrite size_addB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). reflexivity.
+        + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). reflexivity.
+        + rewrite size_mulB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_uremB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_sremB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_smodB_ss.
+          * rewrite (IH0 _ _ Hwf0 Hcon). reflexivity.
+          * rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). exact: (eqP Hsize).
+        + rewrite size_shlB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_shrB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_sarB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_cat (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). rewrite addnC.
+          reflexivity.
+      - move => c e0 IH0 e1 IH1 te s /andP
+                  [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon.
+        rewrite (eqP Hsize) maxnn. case: (eval_bexp c s).
+        + rewrite (IH0 _ _ Hwf0 Hcon). exact: (eqP Hsize).
+        + rewrite (IH1 _ _ Hwf1 Hcon). reflexivity.
+    Qed.
 
   End WellFormed.
 

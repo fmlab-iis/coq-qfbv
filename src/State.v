@@ -21,6 +21,8 @@ End ZValueType.
 
 Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
 
+  Module Lemmas := FMapLemmas TE.
+
   Local Notation var := V.t.
   Local Notation value := bits.
 
@@ -99,6 +101,9 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
   Parameter conform_add_not_mem :
     forall E s x ty,
       conform s (TE.add x ty E) -> ~~ TE.mem x E -> conform s E.
+  Parameter conform_submap :
+    forall E1 E2 s,
+      Lemmas.submap E1 E2 -> conform s E2 -> conform s E1.
 
 End BitsStore.
 
