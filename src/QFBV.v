@@ -1369,6 +1369,10 @@ Module MakeQFBV
 
   (* Well-formedness *)
 
+  From ssrlib Require Import FMaps.
+
+  Module TELemmas := FMapLemmas TE.
+
   Section WellFormed.
 
     Fixpoint exp_size (e : exp) (te : TE.env) : nat :=
@@ -1472,6 +1476,59 @@ Module MakeQFBV
         rewrite (eqP Hsize) maxnn. case: (eval_bexp c s).
         + rewrite (IH0 _ _ Hwf0 Hcon). exact: (eqP Hsize).
         + rewrite (IH1 _ _ Hwf1 Hcon). reflexivity.
+    Qed.
+
+    Lemma exp_size_submap E1 E2 e :
+      TELemmas.submap E1 E2 -> well_formed_exp e E1 ->
+      exp_size e E1 = exp_size e E2.
+    Proof.
+      move=> Hsub. elim: e => //=.
+      - move=> v Hmem1. move: (TELemmas.mem_find_some Hmem1) => [ty Hfind1].
+        move: (Hsub _ _ Hfind1) => Hfind2.
+        move: (TE.find_some_vtyp Hfind1) (TE.find_some_vtyp Hfind2) => Hty1 Hty2.
+        rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
+      - move=> op e IH Hwf. move: (IH Hwf) => {IH} IH. case: op => //=.
+        + move=> n. rewrite IH. reflexivity.
+        + move=> n. rewrite IH. reflexivity.
+      - move=> op e1 IH1 e2 IH2 /andP [/andP [Hwf1 Hwf2] Hs].
+        move: (IH1 Hwf1) (IH2 Hwf2) => {IH1 IH2} IH1 IH2.
+        case: op => //=; rewrite IH1 IH2; reflexivity.
+      - move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hs].
+        rewrite (IH1 Hwf1) (IH2 Hwf2). reflexivity.
+    Qed.
+
+    Lemma well_formed_exp_submap E1 E2 e :
+      TELemmas.submap E1 E2 -> well_formed_exp e E1 -> well_formed_exp e E2
+    with well_formed_bexp_submap E1 E2 e :
+           TELemmas.submap E1 E2 -> well_formed_bexp e E1 -> well_formed_bexp e E2.
+    Proof.
+      (* well_formed_exp_submap *)
+      move=> Hsub. elim: e => //=.
+      - move=> v Hmem1. exact: (TELemmas.submap_mem Hsub Hmem1).
+      - move=> op e1 IH1 e2 IH2 /andP [/andP [Hwf1 Hwf2] Hs].
+        rewrite (well_formed_exp_submap _ _ _ Hsub Hwf1)
+                (well_formed_exp_submap _ _ _ Hsub Hwf2).
+        rewrite -(exp_size_submap Hsub Hwf1) -(exp_size_submap Hsub Hwf2).
+          by rewrite Hs.
+      - move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hs].
+        rewrite (well_formed_bexp_submap _ _ _ Hsub Hwfb)
+                (well_formed_exp_submap _ _ _ Hsub Hwf1)
+                (well_formed_exp_submap _ _ _ Hsub Hwf2).
+        rewrite -(exp_size_submap Hsub Hwf1) -(exp_size_submap Hsub Hwf2).
+          by rewrite Hs.
+      (* well_formed_bexp_submap *)
+      move=> Hsub. elim: e => //=.
+      - move=> op e1 e2 /andP [/andP [Hwf1 Hwf2] Hs].
+        rewrite (well_formed_exp_submap _ _ _ Hsub Hwf1)
+                (well_formed_exp_submap _ _ _ Hsub Hwf2).
+        rewrite -(exp_size_submap Hsub Hwf1) -(exp_size_submap Hsub Hwf2).
+          by rewrite Hs.
+      - move=> e1 IH1 e2 IH2 /andP [Hwf1 Hwf2].
+        by rewrite (well_formed_bexp_submap _ _ _ Hsub Hwf1)
+                   (well_formed_bexp_submap _ _ _ Hsub Hwf2).
+      - move=> e1 IH1 e2 IH2 /andP [Hwf1 Hwf2].
+        by rewrite (well_formed_bexp_submap _ _ _ Hsub Hwf1)
+                   (well_formed_bexp_submap _ _ _ Hsub Hwf2).
     Qed.
 
   End WellFormed.
