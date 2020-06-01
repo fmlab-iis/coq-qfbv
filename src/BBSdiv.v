@@ -104,10 +104,10 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word * word :=
               (E_add1, g_add1, catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev (catrev cs_abs1 cs_abs2) cs_udiv) cs_eq) cs_lneg) cs_xor) cs_zext) cs_add) cs_xor1) cs_zext1) cs_add1, rs_add, rs_add1).
 
 
-(*Lemma udivB_negB_negB bs1 bs2 :
-  udivB (negB bs1) (negB bs2) = ((udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
+Lemma udivB_negB_negB bs1 bs2 :
+  size bs1 = size bs2 -> udivB (negB bs1) (negB bs2) = ((udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
 Proof.
-Admitted.*)
+Admitted.
 
 Lemma size_splitmsl ls : (size (splitmsl ls).1) = size ls -1.
 Proof.
@@ -239,8 +239,12 @@ Proof.
     rewrite (bit_blast_neg_size_ss Hbbneg1) (bit_blast_neg_size_ss Hbbneg). move => Hszn.
     move : (bit_blast_udiv_correct Hbbudiv Hszn Hencneg Hencneg1 Hcsu) => [Hencuq Hencur].
     move : (bit_blast_neg_correct Hbbneg3 Hencur Hcsneg3).
-    rewrite udivB_negB_negB. move => Hencneg3.
-    rewrite udivB_negB_negB in Hencuq. by rewrite Hencuq Hencneg3.
+    have Hszaux : size (-# bs1)%bits = size (-# bs2)%bits
+      by rewrite 2!size_negB -(enc_bits_size Henc1) -(enc_bits_size Henc2) Hsz12.
+    rewrite udivB_negB_negB; last by rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) Hsz12.
+    move => Hencneg3.
+    rewrite udivB_negB_negB in Hencuq; last by rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) Hsz12.
+      by rewrite Hencuq Hencneg3.
   - rewrite /=. 
     dcase (bit_blast_udiv g_neg lrs_neg ls2) => [[[[g_udiv ] cs_udiv] lqs_udiv] lrs_udiv] Hbbudiv.
     dcase (bit_blast_neg g_udiv lqs_udiv) => [[[g_neg2 ] cs_neg2] lrs_neg2] Hbbneg2.
@@ -348,7 +352,8 @@ Proof.
       have Hszurem: (size ((udivB (-# bs1) (-# bs2)).2)%bits) = size bs1 by rewrite size_uremB size_negB.
       have Hszudiv: (size ((udivB (bs1) (bs2)).1)%bits) = size bs1 by rewrite size_udivB. 
       rewrite {1}xorBC -{1}Hszurem xorB_copy_case size_splitmsb -/(zeros (size bs1 -1)) .
-      rewrite Hszb12 His1 -Hszb12 -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)).2)%bits) addB1 -/(negB ((udivB (-# bs1) (-# bs2)).2)%bits) -/(negB ((udivB (-# bs1) (-# bs2)).1)%bits) udivB_negB_negB/=.
+      rewrite Hszb12 His1 -Hszb12 -{1}Hszurem (invB_size_ss ((udivB (-# bs1) (-# bs2)).2)%bits) addB1 -/(negB ((udivB (-# bs1) (-# bs2)).2)%bits) -/(negB ((udivB (-# bs1) (-# bs2)).1)%bits).
+      rewrite udivB_negB_negB/=; last by rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) Hsz12/=.
       have ->: (false :: zeros (size bs1 - 1)) = zeros (size bs1) by rewrite zeros_cons -addn1 -Hszlb1 (subnK Hsz1).
       rewrite addB0 unzip1_zip; last by rewrite size_xorB size_udivB size_zeros maxnn.
       by rewrite xorBC -{1}Hszudiv xorB_copy_case /=.
