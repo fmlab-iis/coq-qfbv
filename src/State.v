@@ -60,6 +60,9 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
   Parameter acc_Upd2_neq :
     forall x y1 v1 y2 v2 s1 s2,
       x != y1 -> x != y2 -> Upd2 y1 v1 y2 v2 s1 s2 -> acc x s2 = acc x s1.
+  Parameter Equal_def :
+    forall s1 s2,
+      Equal s1 s2 <-> (forall v, acc v s1 = acc v s2).
   Parameter Equal_refl : forall s, Equal s s.
   Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
   Parameter Equal_trans : forall s1 s2 s3, Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
@@ -104,7 +107,12 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
   Parameter conform_submap :
     forall E1 E2 s,
       Lemmas.submap E1 E2 -> conform s E2 -> conform s E1.
-
+  Parameter conform_equal :
+    forall E1 E2 s,
+      TE.Equal E1 E2 -> conform s E1 <-> conform s E2.
+  Parameter equal_conform :
+    forall E s1 s2,
+      Equal s1 s2 -> conform s1 E <-> conform s2 E.
 End BitsStore.
 
 Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
@@ -193,6 +201,28 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
     move: (Hsubm x ty Hfind1) => Hfind2. move: (TE.find_some_vtyp Hfind1) => Hty1.
      move: (TE.find_some_vtyp Hfind2) => Hty2. rewrite -(Hco _ Hmem2).
     rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
+  Qed.
+
+  Lemma conform_equal E1 E2 s :
+    TE.Equal E1 E2 -> conform s E1 <-> conform s E2.
+  Proof.
+    move=> Heq. move: (Lemmas.Equal_submap Heq) => H12.
+    move: (Lemmas.Equal_sym Heq) => {Heq} Heq.
+    move: (Lemmas.Equal_submap Heq) => H21. split.
+    - exact: (conform_submap H21).
+    - exact: (conform_submap H12).
+  Qed.
+
+  Lemma equal_conform E s1 s2 :
+    Equal s1 s2 -> conform s1 E <-> conform s2 E.
+  Proof.
+    move=> Heq. split.
+    - move=> H1. apply: conform_def. move=> v Hmem.
+      rewrite (conform_mem H1 Hmem). rewrite /acc. rewrite (Heq v).
+      reflexivity.
+    - move=> H2. apply: conform_def. move=> v Hmem.
+      rewrite (conform_mem H2 Hmem). rewrite /acc. rewrite (Heq v).
+      reflexivity.
   Qed.
 
 End MakeBitsStore.

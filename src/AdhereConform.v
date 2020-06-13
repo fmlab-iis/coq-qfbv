@@ -100,6 +100,47 @@ Section Conform .
     | b :: bs' => conform_bexp b s te && conform_bexps bs' s te
     end.
 
+
+  Lemma conform_exp_mem E e s v :
+    conform_exp e s E ->
+    SSAVS.mem v (QFBV.vars_exp e) ->
+    size (SSAStore.acc v s) = SSATE.vsize v E
+  with conform_bexp_mem E e s v :
+    conform_bexp e s E ->
+    SSAVS.mem v (QFBV.vars_bexp e) ->
+    size (SSAStore.acc v s) = SSATE.vsize v E.
+  Proof.
+    (* conform_exp_mem *)
+    case: e => //=.
+    - move=> x /eqP Hs Hmem. move: (SSAVS.Lemmas.mem_singleton1 Hmem) => Heq.
+      rewrite (eqP Heq) Hs. reflexivity.
+    - move=> _ e Hco Hmem. exact: (conform_exp_mem _ _ _ _ Hco Hmem).
+    - move=> _ e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    - move=> b e1 e2 /andP [/andP [Hco_b Hco1] Hco2].
+      rewrite !SSAVS.Lemmas.mem_union. (case/orP; last case/orP) => Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco_b Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    (* conform_bexp_mem *)
+    case: e => //=.
+    - move=> _ e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    - move=> e Hco Hmem. exact: (conform_bexp_mem _ _ _ _ Hco Hmem).
+    - move=> e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_bexp_mem _ _ _ _ Hco2 Hmem).
+    - move=> e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_bexp_mem _ _ _ _ Hco2 Hmem).
+  Qed.
+
 End Conform .
 
 Section Adhere .
