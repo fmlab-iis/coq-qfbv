@@ -107,6 +107,37 @@ Definition valid (f : cnf) := forall (E : env), interp_cnf E f.
 
 
 
+Lemma size_joinlsl T l (ls : seq T) :
+  size (joinlsl l ls) = size ls + 1 .
+Proof .
+  rewrite /joinlsl /=. rewrite addn1. reflexivity.
+Qed .
+
+Lemma size_joinmsl T l (ls : seq T) :
+  size (joinmsl ls l) = size ls + 1 .
+Proof .
+  destruct ls => /= .
+  - reflexivity .
+  - by rewrite /joinmsl /= size_rcons addn1 .
+Qed .
+
+Lemma size_droplsl ls :
+  size (droplsl ls) = size ls - 1 .
+Proof .
+  elim : ls => [| l ls Hls] .
+  - done .
+  - by rewrite /droplsl /= subn1 .
+Qed .
+
+Lemma size_dropmsl ls :
+  size (dropmsl ls) = size ls - 1 .
+Proof .
+  destruct ls => /= .
+  - reflexivity .
+  - by rewrite subn1 -pred_Sn size_belast .
+Qed .
+
+
 (* interp_lit *)
 
 Lemma interp_lit_neg_involutive E a :
