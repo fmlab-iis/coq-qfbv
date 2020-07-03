@@ -1434,6 +1434,18 @@ Module MakeQFBV
       | b :: bs' => well_formed_bexp b te && well_formed_bexps bs' te
       end.
 
+    Lemma well_formed_bexps_cons E e es :
+      well_formed_bexps (e::es) E = well_formed_bexp e E && well_formed_bexps es E.
+    Proof. reflexivity. Qed.
+
+    Lemma well_formed_bexps_cat E es1 es2 :
+      well_formed_bexps (es1 ++ es2) E =
+      well_formed_bexps es1 E && well_formed_bexps es2 E.
+    Proof.
+      elim: es1 es2 => [| e1 es1 IH] es2 //=. rewrite IH. rewrite andbA.
+      reflexivity.
+    Qed.
+
     Lemma eval_exp_size e te s :
       well_formed_exp e te -> S.conform s te -> size (eval_exp e s) = exp_size e te.
     Proof.
