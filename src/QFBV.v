@@ -1533,6 +1533,147 @@ Module MakeQFBV
 
   End WellFormed.
 
+  (* Simplification *)
+
+  Fixpoint simplify_bexp (e : bexp) : bexp :=
+    match e with
+    | Btrue | Bfalse | Bbinop _ _ _ => e
+    | Blneg e => match simplify_bexp e with
+                 | Btrue => Bfalse
+                 | Bfalse => Btrue
+                 | Blneg e => e
+                 | e => Blneg e
+                 end
+    | Bconj e1 e2 => match simplify_bexp e1, simplify_bexp e2 with
+                        | Btrue, e2 => e2
+                        | Bfalse, _ => Bfalse
+                        | e1, Btrue => e1
+                        | _, Bfalse => Bfalse
+                        | e1, e2 => Bconj e1 e2
+                        end
+    | Bdisj e1 e2 => match simplify_bexp e1, simplify_bexp e2 with
+                        | Btrue, _ => Btrue
+                        | Bfalse, e2 => e2
+                        | _, Btrue => Btrue
+                        | e1, Bfalse => e1
+                        | e1, e2 => Bdisj e1 e2
+                        end
+    end.
+
+  Ltac mytac :=
+    match goal with
+    | H : _ <-> _ |- _ =>
+      let H1 := fresh in
+      let H2 := fresh in
+      (case: H => H1 H2); mytac
+    | |- _ <-> _ =>
+      let H := fresh in
+      split; move=> H; mytac
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in
+      let H2 := fresh in
+      (move/andP: H => [H1 H2]); mytac
+    | |- is_true (_ && _) =>
+      apply/andP; split; mytac
+    | H : is_true (_ || _) |- _ =>
+      (case/orP: H => H); mytac
+    | |- is_true (_ || _) =>
+      apply/orP; mytac
+    | H : is_true true -> ?e |- _ =>
+      (move: (H is_true_true) => {H} H); mytac
+    | H1 : ?e1 -> _, H2 : ?e1 |- _ => (move: (H1 H2) => {H1} H1); mytac
+    | |- is_true (~~ _) => let H := fresh in apply/negP=> H; mytac
+    | H1 : is_true ?e,
+      H2 : is_true (~~ ?e)
+      |- _ => rewrite H1 in H2; discriminate
+    | H1 : is_true (~~ ?b) -> is_true ?e,
+      H2 : is_true (~~ ?e)
+      |- is_true ?b =>
+      let Hbs := fresh in
+      let He := fresh in
+      (dcase b); (case=> Hbs); [
+        reflexivity
+      | (move/idP/negP: Hbs => Hbs); (move: (H1 Hbs) => He); rewrite He in H2;
+        discriminate ]
+    | H1 : is_true (?e1 && ?e2) -> _,
+      H2 : is_true ?e1, H3 : is_true ?e2 |- _ =>
+      (rewrite H2 H3 /= in H1); (move: (H1 is_true_true) => {H1} H1); mytac
+    | H1 : is_true (?e1 || ?e2) -> _,
+      H2 : is_true ?e1 |- _ =>
+      (rewrite H2 orTb in H1); (move: (H1 is_true_true) => {H1} H1); mytac
+    | H1 : is_true (?e1 || ?e2) -> _,
+      H2 : is_true ?e2 |- _ =>
+      (rewrite H2 orbT in H1); (move: (H1 is_true_true) => {H1} H1); mytac
+    | H1 : is_true (~~ (?e1 && ?e2)),
+      H2 : is_true ?e1, H3 : is_true ?e2 |- _ =>
+      rewrite H2 H3 /= in H1; discriminate
+    | H1 : is_true (~~ (?e1 || ?e2)),
+      H2 : is_true ?e1 |- _ =>
+      rewrite H2 orTb in H1; discriminate
+    | H1 : is_true (~~ (?e1 || ?e2)),
+      H2 : is_true ?e2 |- _ =>
+      rewrite H2 orbT in H1; discriminate
+    | H1 : is_true ?e |- context f [?e] => rewrite H1 /=; mytac
+    | |- context f [_ || true] => rewrite orbT; mytac
+    | |- is_true true \/ _ => left; reflexivity
+    | |- _ \/ is_true true => right; reflexivity
+    | H1 : ?e -> is_true false,
+      H2 : ?e |- _ => move: (H1 H2); discriminate
+    | H : is_true false |- _ => discriminate
+    | |- is_true true => reflexivity
+    | H : ?e |- ?e => assumption
+    | |- _ => idtac
+    end.
+
+  Lemma simplify_bexp_eqsat s e :
+    eval_bexp (simplify_bexp e) s <-> eval_bexp e s.
+  Proof.
+    elim: e => //=.
+    - move=> e. case: (simplify_bexp e) => /=; intros; by mytac.
+    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
+      (case: (simplify_bexp e1)); (case: (simplify_bexp e2)); (move => /=);
+        intros; by mytac.
+    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
+      (case: (simplify_bexp e1)); (case: (simplify_bexp e2)); (move => /=);
+        intros; by mytac.
+  Qed.
+
+  Corollary simplify_bexp_eqvalid e :
+    valid (simplify_bexp e) <-> valid e.
+  Proof.
+    split=> He s.
+    - apply/simplify_bexp_eqsat. exact: (He s).
+    - apply/simplify_bexp_eqsat. exact: (He s).
+  Qed.
+
+  Ltac mytac ::=
+    match goal with
+    | H : true = ?e |- context f [?e] => rewrite -H /=; mytac
+    | H : is_true ?e |- context f [?e] => rewrite H /=; mytac
+    | H : is_true (_ && _) |- _ =>
+      let H1 := fresh in
+      let H2 := fresh in
+      move/andP: H => [H1 H2]; mytac
+    | H1 : ?e -> _, H2 : ?e |- _ =>
+      move: (H1 H2); clear H1; move=> H1; mytac
+    | |- true = true => reflexivity
+    | |- is_true true => reflexivity
+    | |- _ => idtac
+    end.
+
+  Lemma simplify_bexp_well_formed E e :
+    well_formed_bexp e E -> well_formed_bexp (simplify_bexp e) E.
+  Proof.
+    elim: e => //=.
+    - move=> e. by case Hsb: (simplify_bexp e) => //=.
+    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
+      (case Hse1: (simplify_bexp e1)); (case Hse2: (simplify_bexp e2));
+        (move => //=); intros; by mytac.
+    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
+      (case Hse1: (simplify_bexp e1)); (case Hse2: (simplify_bexp e2));
+        (move => //=); intros; by mytac.
+  Qed.
+
 End MakeQFBV.
 
 
