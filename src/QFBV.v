@@ -2,7 +2,7 @@
 From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics.
+From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics Seqs.
 From BitBlasting Require Import Typ TypEnv State.
 
 Set Implicit Arguments.
@@ -382,14 +382,17 @@ Module MakeQFBV
       | Bdisj e1 e2 => (eval_bexp e1 s) || (eval_bexp e2 s)
       end.
 
-  Definition valid (e : bexp) : Prop := forall s, eval_bexp e s.
+  Definition valid E (e : bexp) : Prop :=
+    forall s, S.conform s E -> eval_bexp e s.
 
-  Definition sat (e : bexp) : Prop := exists s, eval_bexp e s.
+  Definition sat E (e : bexp) : Prop :=
+    exists s, S.conform s E /\ eval_bexp e s.
 
-  Lemma valid_unsat e : valid e -> ~ (sat (Blneg e)).
+  Lemma valid_unsat E e : valid E e -> ~ (sat E (Blneg e)).
   Proof.
-    move=> Hv [s /= Hs]. apply/idP: Hs. exact: (Hv s).
+    move=> H [s /= [Hco He]]. apply/idP: He. exact: (H _ Hco).
   Qed.
+
 
   (* Variables in expressions *)
 
@@ -411,6 +414,7 @@ Module MakeQFBV
     | Bconj e1 e2
     | Bdisj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
+
 
   (* Ordering on expressions *)
 
@@ -782,6 +786,7 @@ Module MakeQFBV
   End BexpOrderMinimal.
 
   Module BexpOrder <: SsrOrder := MakeSsrOrder BexpOrderMinimal.
+
 
   (* Subexpression *)
 
@@ -1367,6 +1372,7 @@ Module MakeQFBV
 
   End Subexp.
 
+
   (* Well-formedness *)
 
   From ssrlib Require Import FMaps.
@@ -1444,6 +1450,15 @@ Module MakeQFBV
     Proof.
       elim: es1 es2 => [| e1 es1 IH] es2 //=. rewrite IH. rewrite andbA.
       reflexivity.
+    Qed.
+
+    Lemma well_formed_bexps_rcons E es e :
+      well_formed_bexps (rcons es e) E =
+      well_formed_bexps es E && well_formed_bexp e E.
+    Proof.
+      elim: es => [| hd tl IH] //=.
+      - rewrite andbT. reflexivity.
+      - rewrite IH. rewrite andbA. reflexivity.
     Qed.
 
     Lemma eval_exp_size e te s :
@@ -1544,6 +1559,86 @@ Module MakeQFBV
     Qed.
 
   End WellFormed.
+
+
+  (* Check validity of a sequence of QFBV formulas *)
+
+  Definition valid_qfbv_bexps E (es : seq bexp) :=
+    forall s, S.conform s E ->
+              forall e, e \in es -> eval_bexp e s.
+
+  Lemma valid_qfbv_bexps_hd E e es :
+    valid_qfbv_bexps E (e::es) ->
+    (forall s, S.conform s E -> eval_bexp e s).
+  Proof.
+    move=> Hv s Hco. apply: (Hv _ Hco). rewrite in_cons eqxx orTb. reflexivity.
+  Qed.
+
+  Lemma valid_qfbv_bexps_tl E e es :
+    valid_qfbv_bexps E (e::es) -> valid_qfbv_bexps E es.
+  Proof.
+    move=> Hv s Hco e' Hin. apply: (Hv _ Hco). rewrite in_cons Hin orbT.
+    reflexivity.
+  Qed.
+
+  Lemma valid_qfbv_bexps_cat E es1 es2 :
+    valid_qfbv_bexps E (es1 ++ es2) ->
+    valid_qfbv_bexps E es1 /\ valid_qfbv_bexps E es2.
+  Proof.
+    move=> H; split=> s Hco e Hin.
+    - apply: (H s Hco e). rewrite mem_cat Hin /=. reflexivity.
+    - apply: (H s Hco e). rewrite mem_cat Hin orbT. reflexivity.
+  Qed.
+
+  Lemma valid_qfbv_bexps_prefix E es e :
+    valid_qfbv_bexps E (rcons es e) ->
+    valid_qfbv_bexps E es.
+  Proof.
+    move=> Hv s Hco f Hinf. apply: (Hv _ Hco). rewrite Seqs.in_rcons Hinf orTb.
+    reflexivity.
+  Qed.
+
+  Lemma valid_qfbv_bexps_last E es e :
+    valid_qfbv_bexps E (rcons es e) -> valid E e.
+  Proof.
+    move=> Hv s Hco. apply: (Hv _ Hco). rewrite Seqs.in_rcons eqxx orbT.
+    reflexivity.
+  Qed.
+
+
+  (* Split conjunctions *)
+
+  Fixpoint split_conj (e : bexp) : seq bexp :=
+    match e with
+    | Bconj e1 e2 => split_conj e1 ++ split_conj e2
+    | _ => [:: e]
+    end.
+
+  Lemma split_conj_eval s e :
+    eval_bexp e s <-> (forall f, (f \in split_conj e) -> eval_bexp f s).
+  Proof.
+    split.
+    - elim: e => //=.
+      + move=> _ ef Hin. rewrite mem_seq1 in Hin. by rewrite (eqP Hin).
+      + move=> op e1 e2 He f Hin. rewrite mem_seq1 in Hin. by rewrite (eqP Hin).
+      + move=> e IH He f Hin. rewrite mem_seq1 in Hin. by rewrite (eqP Hin).
+      + move=> e1 IH1 e2 IH2 /andP [He1 He2] f Hin. rewrite mem_cat in Hin.
+        case/orP: Hin => Hin.
+        * exact: (IH1 He1 _  Hin).
+        * exact: (IH2 He2 _  Hin).
+      + move=> e1 IH1 e2 IH2 He f Hin. rewrite mem_seq1 in Hin. by rewrite (eqP Hin).
+    - elim: e => //=.
+      + move=> H. move: (H Bfalse). rewrite mem_seq1 eqxx. by apply.
+      + move=> op e1 e2 H. move: (H (Bbinop op e1 e2)).
+        rewrite mem_seq1 eqxx. by apply.
+    + move=> e IH H. move: (H (Blneg e)). rewrite mem_seq1 eqxx. by apply.
+    + move=> e1 IH1 e2 IH2 H. apply/andP; split.
+      * apply: IH1. move=> f Hin. apply: H. rewrite mem_cat Hin orTb. reflexivity.
+      * apply: IH2. move=> f Hin. apply: H. rewrite mem_cat Hin orbT. reflexivity.
+    + move=> e1 IH1 e2 IH2 H. move: (H (Bdisj e1 e2)).
+       rewrite mem_seq1 eqxx. by apply.
+  Qed.
+
 
   (* Simplification *)
 
@@ -1650,12 +1745,12 @@ Module MakeQFBV
         intros; by mytac.
   Qed.
 
-  Corollary simplify_bexp_eqvalid e :
-    valid (simplify_bexp e) <-> valid e.
+  Corollary simplify_bexp_eqvalid E e :
+    valid E (simplify_bexp e) <-> valid E e.
   Proof.
-    split=> He s.
-    - apply/simplify_bexp_eqsat. exact: (He s).
-    - apply/simplify_bexp_eqsat. exact: (He s).
+    split=> He s Hco.
+    - apply/simplify_bexp_eqsat. exact: (He s Hco).
+    - apply/simplify_bexp_eqsat. exact: (He s Hco).
   Qed.
 
   Ltac mytac ::=
