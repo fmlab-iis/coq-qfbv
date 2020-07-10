@@ -82,4 +82,7 @@ src/bbcache/BitBlastingCCacheDefGeneral.v
 src/bbcache/BitBlastingCCacheGeneral.v
 src/bbcache/BitBlastingCacheDef.v
 src/bbcache/BitBlastingCache.v
+src/bbcache/CompTableFlatten.v
+src/bbcache/CacheFlatten.v
+src/bbcache/BitBlastingCacheFlatten.v
 src/Extract.v
