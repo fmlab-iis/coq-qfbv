@@ -747,22 +747,22 @@ Definition bit_blast_bexp_fcache_tflatten E m c g e :=
   let '(m', c', g', css', lr') := bit_blast_bexp_fcache E m c g e in
   (m', c', g', tflatten css', lr').
 
-Fixpoint bit_blast_bexps_fcache_flatten E (es : seq QFBV.bexp) :=
+Fixpoint bit_blast_bexps_fcache E (es : seq QFBV.bexp) :=
   match es with
   | [::] => (init_vm, init_fcache, init_gen, add_prelude [::], lit_tt)
   | e :: es' =>
-    let '(m, c, g, cs, lr) := bit_blast_bexps_fcache_flatten E es' in
+    let '(m, c, g, cs, lr) := bit_blast_bexps_fcache E es' in
     bit_blast_bexp_fcache_tflatten E m (CacheFlatten.reset_ct c) g e
   end.
 
-Lemma bit_blast_bexps_fcache_flatten_valid E es m c g cs lr m' c' g' cs' lr' :
-  bit_blast_bexps_fcache_flatten E es = (m, c, g, cs, lr) ->
+Lemma bit_blast_bexps_fcache_valid E es m c g cs lr m' c' g' cs' lr' :
+  bit_blast_bexps_fcache E es = (m, c, g, cs, lr) ->
   bit_blast_bexps_cache E es = (m', c', g', cs', lr') ->
   m = m' /\ cache_compatible c c' /\ g = g' /\ cnf_eqsat cs cs' /\ lr = lr'.
 Proof.
   elim: es m c g cs lr m' c' g' cs' lr' => [| e es IH] m c g cs lr m' c' g' cs' lr' /=.
   - move=> [] ? ? ? ? ? [] ? ? ? ? ?; subst. done.
-  - dcase (bit_blast_bexps_fcache_flatten E es) => [[[[[m1 c1] g1] cs1] lr1] Hbbe1].
+  - dcase (bit_blast_bexps_fcache E es) => [[[[[m1 c1] g1] cs1] lr1] Hbbe1].
     move=> Hbbe2.
     dcase (bit_blast_bexps_cache E es) => [[[[[m1' c1'] g1'] cs1'] lr1'] Hbb1].
     move=> Hbb2. move: (IH _ _ _ _ _ _ _ _ _ _ Hbbe1 Hbb1).
@@ -776,8 +776,8 @@ Qed.
 
 
 
-Theorem bit_blast_bexps_fcache_flatten_sound e es E m c g cs lr :
-  bit_blast_bexps_fcache_flatten E (e::es) = (m, c, g, cs, lr) ->
+Theorem bit_blast_bexps_fcache_sound e es E m c g cs lr :
+  bit_blast_bexps_fcache E (e::es) = (m, c, g, cs, lr) ->
   QFBV.well_formed_bexps (e::es) E ->
   ~ (sat (add_prelude ([::neg_lit lr]::cs))) ->
   (forall s, AdhereConform.conform_bexps (e::es) s E ->
@@ -785,7 +785,7 @@ Theorem bit_blast_bexps_fcache_flatten_sound e es E m c g cs lr :
 Proof.
   move=> Hbbe Hwf Hsat.
   dcase (bit_blast_bexps_cache E (e::es)) => [[[[[m' c'] g'] cs'] lr'] Hbb].
-  move: (bit_blast_bexps_fcache_flatten_valid Hbbe Hbb).
+  move: (bit_blast_bexps_fcache_valid Hbbe Hbb).
   move=> [Hm [Hc [Hg [Heqs Hlr]]]]; subst.
   have Hsat': ~ sat (add_prelude ([:: neg_lit lr'] :: cs')).
   { move=> H. apply: Hsat.
@@ -794,8 +794,8 @@ Proof.
   exact: (bit_blast_cache_sound_general Hbb Hwf Hsat').
 Qed.
 
-Theorem bit_blast_bexps_fcache_flatten_complete e es E m c g cs lr :
-  bit_blast_bexps_fcache_flatten E (e::es) = (m, c, g, cs, lr) ->
+Theorem bit_blast_bexps_fcache_complete e es E m c g cs lr :
+  bit_blast_bexps_fcache E (e::es) = (m, c, g, cs, lr) ->
   QFBV.well_formed_bexps (e::es) E ->
   (forall s, AdhereConform.conform_bexps (e::es) s E ->
              QFBV.eval_bexp e s) ->
@@ -803,7 +803,7 @@ Theorem bit_blast_bexps_fcache_flatten_complete e es E m c g cs lr :
 Proof.
   move=> Hbbe Hwf Hev Hsat.
   dcase (bit_blast_bexps_cache E (e::es)) => [[[[[m' c'] g'] cs'] lr'] Hbb].
-  move: (bit_blast_bexps_fcache_flatten_valid Hbbe Hbb).
+  move: (bit_blast_bexps_fcache_valid Hbbe Hbb).
   move=> [Hm [Hc [Hg [Heqs Hlr]]]]; subst.
   have Hsat': sat (add_prelude ([:: neg_lit lr'] :: cs')).
   { move: (cnf_eqsat_cons (clause_eqsat_refl [:: neg_lit lr']) Heqs) => Heqs'.
@@ -811,6 +811,6 @@ Proof.
   move: Hsat'. exact: (bit_blast_cache_complete_general Hbb Hwf Hev).
 Qed.
 
-Definition bexp_to_cnf_fcache_flatten E m c g e :=
+Definition bexp_to_cnf_fcache E m c g e :=
   let '(m', c', g', cs, lr) := bit_blast_bexp_fcache_tflatten E m c g e in
   (m', c', g', add_prelude ([::neg_lit lr]::cs)).
