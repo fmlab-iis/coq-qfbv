@@ -85,4 +85,9 @@ src/bbcache/BitBlastingCache.v
 src/bbcache/CompTableFlatten.v
 src/bbcache/CacheFlatten.v
 src/bbcache/BitBlastingCacheFlatten.v
+src/bbcache/QFBVHash.v
+src/bbcache/SimpTableHash.v
+src/bbcache/CompTableHash.v
+src/bbcache/CacheHash.v
+src/bbcache/BitBlastingCacheHash.v
 src/Extract.v
