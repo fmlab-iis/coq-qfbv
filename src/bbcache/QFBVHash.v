@@ -625,12 +625,24 @@ Section HashLtn.
     | HBdisj _ _ => 5
     end.
 
+  Fixpoint sizen (bs : bits) : N :=
+    match bs with
+    | [::] => 0%num
+    | hd::tl => N.succ (sizen tl)
+    end.
+
+  Lemma sizen_size bs : sizen bs = N.of_nat (size bs).
+  Proof.
+    elim: bs => [| b bs IH] //=. rewrite IH. rewrite -Nnat.Nat2N.inj_succ.
+    by case: (size bs).
+  Qed.
+
   Fixpoint hashed_exp_ltn (e1 e2 : hashed_exp) {struct e1} : bool :=
     match e1, e2 with
     | HEvar v1, HEvar v2 => SSAVarOrder.ltn v1 v2
     | HEconst n1, HEconst n2 =>
-      (size n1 < size n2)
-      || ((size n1 == size n2) && (n1 <# n2)%bits)
+      (sizen n1 <? sizen n2)%num
+      || ((sizen n1 == sizen n2) && (n1 <# n2)%bits)
     | HEunop o1 f1, HEunop o2 f2 =>
       (eunop_ltn o1 o2)
       || ((o1 == o2) && (hexp_ltn f1 f2))
@@ -683,7 +695,7 @@ Section HashLtn.
     (* hashed_exp_ltnn *)
     - case: e => //=.
       + move=> v. exact: SSAVarOrder.ltnn.
-      + move=> bs. rewrite eqxx ltnn ltBnn. reflexivity.
+      + move=> bs. rewrite eqxx N.ltb_irrefl ltBnn. reflexivity.
       + move=> op e. rewrite eqxx eunop_ltnn (hexp_ltnn e). reflexivity.
       + move=> op e1 e2. rewrite !eqxx ebinop_ltnn (hexp_ltnn e1) (hexp_ltnn e2).
         reflexivity.
@@ -729,6 +741,9 @@ Section HashLtn.
     | H1 : (is_true (?e1 <? ?e2)%Z),
       H2 : (is_true (?e2 <? ?e3)%Z) |- context [(?e1 <? ?e3)%Z] =>
       rewrite (Z_ltb_trans H1 H2); clear H1 H2
+    | H1 : (is_true (?e1 <? ?e2)%num),
+      H2 : (is_true (?e2 <? ?e3)%num) |- context [(?e1 <? ?e3)%num] =>
+      rewrite (Nltn_trans H1 H2); clear H1 H2
     | H1 : (is_true (SSAVarOrder.ltn ?e1 ?e2)),
       H2 : (is_true (SSAVarOrder.ltn ?e2 ?e3)) |-
       context [(SSAVarOrder.ltn ?e1 ?e3)] =>
@@ -862,9 +877,10 @@ Section HashLtn.
         case: (SSAVarOrder.compare v1 v2);
           rewrite /SSAVarOrder.lt /SSAVarOrder.eq=> H; by t_auto.
       + move=> b1; case: e2 => /=; try eauto. move=> b2.
-        move: (Nats.eqn_ltn_gtn_cases (size b1) (size b2)).
+        move: (N_eqn_ltn_gtn_cases (sizen b1) (sizen b2)).
         case/orP; [case/orP; [| by t_auto] | by t_auto]. move/eqP => H.
-        move: (eqB_ltB_gtB_cases_ss H). by t_auto.
+        move: (H). rewrite !sizen_size => Hs. move: (Nnat.Nat2N.inj _ _ Hs) => {Hs} Hs.
+        move: (eqB_ltB_gtB_cases_ss Hs). by t_auto.
       + move=> op1 ne1. case: e2 => /=; try eauto. move=> op2 ne2.
         move: (eunop_eqn_ltn_gtn op1 op2) (hexp_eqn_ltn_gtn ne1 ne2).
           by t_auto.
@@ -903,44 +919,178 @@ Section HashLtn.
         by t_auto.
   Qed.
 
-  Definition hashed_exp_compare e1 e2 : Compare hashed_exp_ltn eq_op e1 e2.
+  Fixpoint hashed_exp_compare e1 e2 : Compare hashed_exp_ltn eq_op e1 e2
+  with hashed_bexp_compare e1 e2 : Compare hashed_bexp_ltn eq_op e1 e2
+  with hexp_compare e1 e2 : Compare hexp_ltn eq_op e1 e2
+  with hbexp_compare e1 e2 : Compare hbexp_ltn eq_op e1 e2.
   Proof.
-    case Heq: (e1 == e2).
-    - apply: EQ. assumption.
-    - case Hlt: (hashed_exp_ltn e1 e2).
-      + apply: LT. assumption.
-      + move: (hashed_exp_eqn_ltn_gtn e1 e2). rewrite Heq Hlt /=. move=> Hgt.
-        apply: GT. assumption.
-  Defined.
-
-  Definition hashed_bexp_compare e1 e2 : Compare hashed_bexp_ltn eq_op e1 e2.
-  Proof.
-    case Heq: (e1 == e2).
-    - apply: EQ. assumption.
-    - case Hlt: (hashed_bexp_ltn e1 e2).
-      + apply: LT. assumption.
-      + move: (hashed_bexp_eqn_ltn_gtn e1 e2). rewrite Heq Hlt /=. move=> Hgt.
-        apply: GT. assumption.
-  Defined.
-
-  Definition hexp_compare e1 e2 : Compare hexp_ltn eq_op e1 e2.
-  Proof.
-    case Heq: (e1 == e2).
-    - apply: EQ. assumption.
-    - case Hlt: (hexp_ltn e1 e2).
-      + apply: LT. assumption.
-      + move: (hexp_eqn_ltn_gtn e1 e2). rewrite Heq Hlt /=. move=> Hgt.
-        apply: GT. assumption.
-  Defined.
-
-  Definition hbexp_compare e1 e2 : Compare hbexp_ltn eq_op e1 e2.
-  Proof.
-    case Heq: (e1 == e2).
-    - apply: EQ. assumption.
-    - case Hlt: (hbexp_ltn e1 e2).
-      + apply: LT. assumption.
-      + move: (hbexp_eqn_ltn_gtn e1 e2). rewrite Heq Hlt /=. move=> Hgt.
-        apply: GT. assumption.
+    (* hashed_exp_compare *)
+    - case: e1.
+      + move=> v1. case: e2.
+        * move=> v2. case: (SSAVarOrder.compare v1 v2) => H.
+          -- apply: LT => /=. exact: H.
+          -- apply: EQ => /=. exact: H.
+          -- apply: GT => /=. exact: H.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move=> bs1. case: e2.
+        * move=> v2. by apply: GT.
+        * move=> bs2. case Heq: (bs1 == bs2).
+          -- by apply: EQ.
+          -- case Hs: (sizen bs1 <? sizen bs2)%num.
+             ++ apply: LT => /=. by rewrite Hs orTb.
+             ++ case H: ((sizen bs1 == sizen bs2) && (bs1 <# bs2)%bits).
+                ** apply: LT => /=. by rewrite H orbT.
+                ** apply: GT => /=. move/idP/negP: Hs. rewrite Nltn_neqAlt.
+                   rewrite negb_and !Bool.negb_involutive. case/orP => Hs.
+                   --- rewrite eq_sym. rewrite Hs /= in H *.
+                       move/idP/negP: H. rewrite !sizen_size in Hs.
+                       move/eqP: Hs => Hs. move: (Nnat.Nat2N.inj _ _ Hs) => {Hs} Hs.
+                       rewrite -(leBNlt (Logic.eq_sym Hs)) => Hle.
+                       move/idP/negP: Heq => Hne. rewrite eq_sym in Hne.
+                         by rewrite (leB_neq_ltB Hle Hne) orbT.
+                   --- by rewrite Hs.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move=> op1 e1. case: e2.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> op2 e2. case Hop: (op1 == op2).
+          -- case: (hexp_compare e1 e2) => H.
+             ++ apply: LT => /=. by rewrite Hop H orbT.
+             ++ apply: EQ => /=. by rewrite (eqP Hop) (eqP H).
+             ++ apply: GT => /=. by rewrite eq_sym Hop H orbT.
+          -- case Hlt: (eunop_ltn op1 op2).
+             ++ apply: LT => /=. by rewrite Hlt.
+             ++ apply: GT => /=. move: (eunop_eqn_ltn_gtn op1 op2).
+                rewrite Hop Hlt /=. by move=> ->.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move: e2. move=> e3 op1 e1 e2. case: e3.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> op2 e3 e4. case Hop: (op1 == op2).
+          -- case: (hexp_compare e1 e3) => H1.
+             ++ apply: LT => /=. by rewrite Hop H1 orbT.
+             ++ case: (hexp_compare e2 e4) => H2.
+                ** apply: LT => /=. by rewrite Hop H1 H2 orbT.
+                ** apply: EQ => /=. by rewrite (eqP Hop) (eqP H1) (eqP H2).
+                ** apply: GT => /=. by rewrite (eq_sym op2) (eq_sym e3) Hop H1 H2 orbT.
+             ++ apply: GT => /=. by rewrite (eq_sym op2) Hop H1 orbT.
+          -- case Hlt: (ebinop_ltn op1 op2).
+             ++ apply: LT => /=. by rewrite Hlt.
+             ++ apply: GT => /=. move: (ebinop_eqn_ltn_gtn op1 op2).
+                rewrite Hop Hlt /=. by move=> ->.
+        * move=> *; by apply: LT.
+      + move: e2 => e3 b1 e1 e2. case: e3.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> b2 e3 e4. case: (hbexp_compare b1 b2) => Hb.
+          -- apply: LT => /=. by rewrite Hb.
+          -- case: (hexp_compare e1 e3) => H1.
+             ++ apply: LT => /=. by rewrite Hb H1 orbT.
+             ++ case: (hexp_compare e2 e4) => H2.
+                ** apply: LT => /=. by rewrite Hb H1 H2 orbT.
+                ** apply: EQ => /=. by rewrite (eqP Hb) (eqP H1) (eqP H2).
+                ** apply: GT => /=. by rewrite (eq_sym b2) (eq_sym e3) Hb H1 H2 orbT.
+             ++ apply: GT => /=. by rewrite (eq_sym b2) Hb H1 orbT.
+          -- apply: GT => /=. by rewrite Hb.
+    (* hashed_bexp_compare *)
+    - case: e1.
+      + case: e2.
+        * apply: EQ. exact: eqxx.
+        * by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + case: e2.
+        * by apply: GT.
+        * by apply: EQ.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move: e2 => e3 op1 e1 e2. case: e3.
+        * by apply: GT.
+        * by apply: GT.
+        * move=> op2 e3 e4. case Hop: (op1 == op2).
+          -- case: (hexp_compare e1 e3) => H1.
+             ++ apply: LT => /=. by rewrite Hop H1 orbT.
+             ++ case: (hexp_compare e2 e4) => H2.
+                ** apply: LT => /=. by rewrite Hop H1 H2 orbT.
+                ** apply: EQ => /=. by rewrite (eqP Hop) (eqP H1) (eqP H2).
+                ** apply: GT => /=. by rewrite (eq_sym op2) (eq_sym e3) Hop H1 H2 orbT.
+             ++ apply: GT => /=. by rewrite (eq_sym op2) Hop H1 orbT.
+          -- case Hlt: (bbinop_ltn op1 op2).
+             ++ apply: LT => /=. by rewrite Hlt.
+             ++ apply: GT => /=. move: (bbinop_eqn_ltn_gtn op1 op2).
+                rewrite Hop Hlt /=. by move=> ->.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move=> e1. case: e2.
+        * by apply: GT.
+        * by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> e2. case: (hbexp_compare e1 e2) => H.
+          -- apply: LT => /=. assumption.
+          -- apply: EQ => /=. by rewrite (eqP H).
+          -- apply: GT => /=. assumption.
+        * move=> *; by apply: LT.
+        * move=> *; by apply: LT.
+      + move: e2 => e3 e1 e2. case: e3.
+        * by apply: GT.
+        * by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> e3 e4. case: (hbexp_compare e1 e3) => H1.
+          -- apply: LT => /=. by rewrite H1.
+          -- case: (hbexp_compare e2 e4) => H2.
+             ++ apply: LT => /=. by rewrite H1 H2 orbT.
+             ++ apply: EQ => /=. by rewrite (eqP H1) (eqP H2).
+             ++ apply: GT => /=. by rewrite (eq_sym e3) H1 H2 orbT.
+          -- apply: GT => /=. by rewrite H1.
+        * move=> *; by apply: LT.
+      + move: e2 => e3 e1 e2. case: e3.
+        * by apply: GT.
+        * by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> *; by apply: GT.
+        * move=> e3 e4. case: (hbexp_compare e1 e3) => H1.
+          -- apply: LT => /=. by rewrite H1.
+          -- case: (hbexp_compare e2 e4) => H2.
+             ++ apply: LT => /=. by rewrite H1 H2 orbT.
+             ++ apply: EQ => /=. by rewrite (eqP H1) (eqP H2).
+             ++ apply: GT => /=. by rewrite (eq_sym e3) H1 H2 orbT.
+          -- apply: GT => /=. by rewrite H1.
+    (* hexp_compare *)
+    - case: e1 => e1 h1. case: e2 => e2 h2. case Hlt: (h1 <? h2)%Z.
+      + apply: LT => /=. by rewrite Hlt.
+      + case Heq: (h1 == h2)%Z.
+        * case: (hashed_exp_compare e1 e2) => H.
+          -- apply: LT => /=. by rewrite Heq H orbT.
+          -- apply: EQ => /=. by rewrite (eqP Heq) (eqP H).
+          -- apply: GT => /=. by rewrite (eq_sym h2) Heq H orbT.
+        * apply: GT => /=. move: (Z_eqn_ltn_gtn_cases h1 h2).
+          rewrite Hlt Heq /=. by move=> ->.
+    (* hbexp_compare *)
+    - case: e1 => e1 h1. case: e2 => e2 h2. case Hlt: (h1 <? h2)%Z.
+      + apply: LT => /=. by rewrite Hlt.
+      + case Heq: (h1 == h2)%Z.
+        * case: (hashed_bexp_compare e1 e2) => H.
+          -- apply: LT => /=. by rewrite Heq H orbT.
+          -- apply: EQ => /=. by rewrite (eqP Heq) (eqP H).
+          -- apply: GT => /=. by rewrite (eq_sym h2) Heq H orbT.
+        * apply: GT => /=. move: (Z_eqn_ltn_gtn_cases h1 h2).
+          rewrite Hlt Heq /=. by move=> ->.
   Defined.
 
 End HashLtn.
