@@ -2026,4 +2026,120 @@ Section Reorder.
 End Reorder.
 
 
+Section EqSat.
+
+  Definition clause_eqsat (cs1 cs2 : clause) : Prop :=
+    forall E, interp_clause E cs1 = interp_clause E cs2.
+
+  Definition clause_eqsat_refl cs : clause_eqsat cs cs.
+  Proof. move=> E. reflexivity. Qed.
+
+  Definition clause_eqsat_sym cs1 cs2 :
+    clause_eqsat cs1 cs2 -> clause_eqsat cs2 cs1.
+  Proof. move=> H12 E. rewrite (H12 E). reflexivity. Qed.
+
+  Definition clause_eqsat_trans cs1 cs2 cs3 :
+    clause_eqsat cs1 cs2 -> clause_eqsat cs2 cs3 -> clause_eqsat cs1 cs3.
+  Proof. move=> H12 H23 E. rewrite (H12 E) (H23 E). reflexivity. Qed.
+
+  Instance clause_eqsat_equivalence : Equivalence clause_eqsat :=
+    { Equivalence_Reflexive := clause_eqsat_refl;
+      Equivalence_Symmetric := clause_eqsat_sym;
+      Equivalence_Transitive := clause_eqsat_trans }.
+
+
+  Definition cnf_eqsat (cs1 cs2 : cnf) : Prop :=
+    forall E, interp_cnf E cs1 = interp_cnf E cs2.
+
+  Definition cnf_eqsat_refl cs : cnf_eqsat cs cs.
+  Proof. move=> E. reflexivity. Qed.
+
+  Definition cnf_eqsat_sym cs1 cs2 : cnf_eqsat cs1 cs2 -> cnf_eqsat cs2 cs1.
+  Proof. move=> H12 E. rewrite (H12 E). reflexivity. Qed.
+
+  Definition cnf_eqsat_trans cs1 cs2 cs3 :
+    cnf_eqsat cs1 cs2 -> cnf_eqsat cs2 cs3 -> cnf_eqsat cs1 cs3.
+  Proof. move=> H12 H23 E. rewrite (H12 E) (H23 E). reflexivity. Qed.
+
+  Instance cnf_eqsat_equivalence : Equivalence cnf_eqsat :=
+    { Equivalence_Reflexive := cnf_eqsat_refl;
+      Equivalence_Symmetric := cnf_eqsat_sym;
+      Equivalence_Transitive := cnf_eqsat_trans }.
+
+  Lemma cnf_eqsat_cons c1 cs1 c2 cs2 :
+    clause_eqsat c1 c2 -> cnf_eqsat cs1 cs2 ->
+    cnf_eqsat (c1::cs1) (c2::cs2).
+  Proof. move=> Hc Hcs E /=. rewrite (Hc E) (Hcs E). reflexivity. Qed.
+
+  Lemma cnf_eqsat_add_prelude_interp_cnf E cs1 cs2 :
+    cnf_eqsat cs1 cs2 ->
+    interp_cnf E (add_prelude cs1) = interp_cnf E (add_prelude cs2).
+  Proof.
+    move=> Heqs. rewrite !add_prelude_expand. rewrite (Heqs E). reflexivity.
+  Qed.
+
+  Lemma cnf_eqsat_add_prelude_sat cs1 cs2 :
+    cnf_eqsat cs1 cs2 ->
+    sat (add_prelude cs1) <-> sat (add_prelude cs2).
+  Proof.
+    move=> Heqs. split; move=> [E Hs]; exists E.
+    - rewrite -(cnf_eqsat_add_prelude_interp_cnf _ Heqs). assumption.
+    - rewrite (cnf_eqsat_add_prelude_interp_cnf _ Heqs). assumption.
+  Qed.
+
+
+  Lemma eq_mem_cnf_eqsat cs1 cs2 :
+    cs1 =i cs2 -> cnf_eqsat cs1 cs2.
+  Proof.
+    move=> H E. rewrite /interp_cnf. case H2: (all (interp_clause E) cs2).
+    - apply/allP => c Hin. move/allP: H2=> H2.
+      rewrite H in Hin. exact: (H2 c Hin).
+    - apply/negP=> H1. move/negP: H2; apply. apply/allP => c Hin. move/allP: H1=> H1.
+      rewrite -H in Hin. exact: (H1 c Hin).
+  Qed.
+
+  Lemma cnf_eqsat_rev cs : cnf_eqsat (rev cs) cs.
+  Proof. apply: eq_mem_cnf_eqsat. exact: mem_rev. Qed.
+
+  Lemma interp_cnf_tflatten_cons E c cs :
+    interp_cnf E (tflatten (c::cs)) = interp_cnf E c && interp_cnf E (tflatten cs).
+  Proof.
+    rewrite /tflatten /=. rewrite -/(rev c). rewrite tflatten_rec_expand.
+    rewrite interp_cnf_cat. rewrite interp_cnf_rev_eqsat. rewrite andbC.
+    reflexivity.
+  Qed.
+
+  Lemma interp_cnf_tflatten_catrev E cs1 cs2 :
+    interp_cnf E (tflatten (catrev cs1 cs2)) = interp_cnf E (tflatten cs1) &&
+                                               interp_cnf E (tflatten cs2).
+  Proof.
+    elim: cs1 cs2 => [| c1 cs1 IH] cs2 //=.
+    rewrite IH. rewrite !interp_cnf_tflatten_cons. case: (interp_cnf E c1) => //=.
+    rewrite andbF. reflexivity.
+  Qed.
+
+  Lemma tflatten_singleton_eqsat cs :
+    cnf_eqsat (tflatten [:: cs]) cs.
+  Proof. rewrite /tflatten /=. rewrite -/(rev cs). exact: cnf_eqsat_rev. Qed.
+
+  Lemma tflatten_catrev_eqsat ecs1 ecs2 cs1 cs2 :
+    cnf_eqsat (tflatten ecs1) cs1 ->
+    cnf_eqsat (tflatten ecs2) cs2 ->
+    cnf_eqsat (tflatten (catrev ecs1 ecs2)) (catrev cs1 cs2).
+  Proof.
+    move=> H1 H2 E. rewrite interp_cnf_catrev. rewrite interp_cnf_tflatten_catrev.
+    rewrite (H1 E) (H2 E). reflexivity.
+  Qed.
+
+  Lemma tflatten_cons_catrev_eqsat ec ecs c cs :
+    cnf_eqsat ec c -> cnf_eqsat (tflatten ecs) cs ->
+    cnf_eqsat (tflatten (ec :: ecs)) (catrev c cs).
+  Proof.
+    move=> Hc Hcs. move=> E. rewrite interp_cnf_tflatten_cons.
+    rewrite interp_cnf_catrev. rewrite (Hc E) (Hcs E). reflexivity.
+  Qed.
+
+End EqSat.
+
+
 Global Opaque add_prelude.
