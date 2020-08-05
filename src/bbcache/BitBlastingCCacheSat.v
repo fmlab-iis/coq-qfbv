@@ -44,7 +44,7 @@ Proof.
       apply (mk_env_add_sat Hmk) |
       apply (mk_env_sub_sat Hmk) |
       apply (mk_env_mul_sat Hmk) |
-      admit (* TODO: mod *) |
+      apply (mk_env_umod_sat Hmk) |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       apply (mk_env_shl_sat Hmk) |

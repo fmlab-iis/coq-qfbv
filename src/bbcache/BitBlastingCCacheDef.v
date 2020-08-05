@@ -31,7 +31,7 @@ Definition bit_blast_ebinop (op : QFBV.ebinop) :=
   | QFBV.Badd => bit_blast_add 
   | QFBV.Bsub => bit_blast_sub 
   | QFBV.Bmul => bit_blast_mul 
-  | QFBV.Bmod => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
+  | QFBV.Bmod => bit_blast_umod
   | QFBV.Bsrem => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
   | QFBV.Bsmod => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
   | QFBV.Bshl => bit_blast_shl 
@@ -322,7 +322,7 @@ Definition mk_env_ebinop (op : QFBV.ebinop) :=
   | QFBV.Badd => mk_env_add 
   | QFBV.Bsub => mk_env_sub 
   | QFBV.Bmul => mk_env_mul 
-  | QFBV.Bmod => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
+  | QFBV.Bmod => mk_env_umod
   | QFBV.Bsrem => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
   | QFBV.Bsmod => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
   | QFBV.Bshl => mk_env_shl 

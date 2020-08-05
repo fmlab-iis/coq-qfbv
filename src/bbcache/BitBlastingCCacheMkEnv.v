@@ -44,7 +44,7 @@ Proof.
       rewrite (mk_env_add_is_bit_blast_add Hmk) |
       rewrite (mk_env_sub_is_bit_blast_sub Hmk) |
       rewrite (mk_env_mul_is_bit_blast_mul Hmk) |
-      admit (* TODO: mod *) |
+      rewrite (mk_env_umod_is_bit_blast_umod Hmk) |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       rewrite (mk_env_shl_is_bit_blast_shl Hmk) |

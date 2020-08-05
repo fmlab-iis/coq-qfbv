@@ -50,7 +50,7 @@ Proof.
       apply (bit_blast_add_correct Hbb Henc1 Henc2) |
       apply (bit_blast_sub_correct Hbb) |
       apply (bit_blast_mul_correct Hbb) |
-      admit (* TODO: mod *) |
+      apply (bit_blast_umod_correct Hbb) |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       apply (bit_blast_shl_correct Hbb) |

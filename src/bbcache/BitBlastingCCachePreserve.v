@@ -325,7 +325,7 @@ Proof.
       exact: mk_env_add_preserve |
       exact: mk_env_sub_preserve |
       exact: mk_env_mul_preserve |
-      admit (* TODO: mod *) |
+      exact: mk_env_umod_preserve |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       exact: mk_env_shl_preserve |

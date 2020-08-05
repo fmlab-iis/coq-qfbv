@@ -35,7 +35,7 @@ Proof.
       exact: mk_env_add_newer_gen |
       exact: mk_env_sub_newer_gen |
       exact: mk_env_mul_newer_gen |
-      admit (* TODO: mod *) |
+      exact: mk_env_umod_newer_gen |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       exact: mk_env_shl_newer_gen |
@@ -778,7 +778,7 @@ Proof.
       apply (mk_env_add_newer_res Hmk) |
       apply (mk_env_sub_newer_res Hmk) |
       apply (mk_env_mul_newer_res Hmk) |
-      admit (* TODO: mod *) |
+      apply (mk_env_umod_newer_res Hmk) |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       apply (mk_env_shl_newer_res Hgtt Hgls1 Hgls2 Hmk) |
@@ -840,7 +840,7 @@ Proof.
       apply (mk_env_add_newer_cnf Hmk) |
       apply (mk_env_sub_newer_cnf Hmk) |
       apply (mk_env_mul_newer_cnf Hmk) |
-      admit (* TODO: mod *) |
+      apply (mk_env_umod_newer_cnf Hmk) |
       admit (* TODO: srem *) |
       admit (* TODO: smod *) |
       apply (mk_env_shl_newer_cnf Hmk) |
