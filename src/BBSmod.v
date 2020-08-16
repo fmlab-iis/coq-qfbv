@@ -23,7 +23,7 @@ Definition bit_blast_smod g ls1 ls2 : generator * cnf * word :=
   let '(g_eq, cs_eq, r_eq) := bit_blast_eq g_srem (ls1_sign::nil) (ls2_sign::nil) in
   let '(g_eq2, cs_eq2, r_eq2) := bit_blast_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff) in
   if (r_eq == lit_tt) || (r_eq2 == lit_tt) then
-    (g_eq, catrev cs_srem (catrev cs_eq2 cs_eq), lrs_srem)
+    (g_eq2, catrev cs_srem (catrev cs_eq2 cs_eq), lrs_srem)
   else if (r_eq == lit_ff) && (r_eq2 == lit_ff) then
     let '(g_add, cs_add, lrs_add) := bit_blast_add g_eq2 lrs_srem ls2 in
     (g_add, catrev cs_srem (catrev cs_eq (catrev cs_eq2 cs_add)), lrs_add)
@@ -299,4 +299,300 @@ Proof.
 Qed.
 
 
+Definition mk_env_smod E g ls1 ls2 : env * generator * cnf * word :=
+  let (ls1_tl, ls1_sign) := eta_expand (splitmsl ls1) in
+  let (ls2_tl, ls2_sign) := eta_expand (splitmsl ls2) in
+  let '(E_srem, g_srem, cs_srem, lrs_srem) := mk_env_srem E g ls1 ls2 in
+  let '(E_eq, g_eq, cs_eq, r_eq) := mk_env_eq E_srem g_srem (ls1_sign::nil) (ls2_sign::nil) in
+  let '(E_eq2, g_eq2, cs_eq2, r_eq2) := mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff) in
+  if (r_eq == lit_tt) || (r_eq2 == lit_tt) then
+    (E_eq2, g_eq2, catrev cs_srem (catrev cs_eq2 cs_eq), lrs_srem)
+  else if (r_eq == lit_ff) && (r_eq2 == lit_ff) then
+    let '(E_add, g_add, cs_add, lrs_add) := mk_env_add E_eq2 g_eq2 lrs_srem ls2 in
+    (E_add, g_add, catrev cs_srem (catrev cs_eq (catrev cs_eq2 cs_add)), lrs_add)
+       else let '(E_or, g_or, cs_or, lrs_or) := mk_env_or E_eq2 g_eq2 (copy (size ls2) r_eq) (copy (size ls2) r_eq2) in
+            let '(E_not, g_not, cs_not, lrs_not) := mk_env_not E_or g_or lrs_or in
+            let '(E_and2, g_and2, cs_and2, lrs_and2) := mk_env_and E_not g_not ls2 lrs_not in
+            let '(E_add2, g_add2, cs_add2, lrs_add2) := mk_env_add E_and2 g_and2 lrs_srem lrs_and2 in
+            (E_add2, g_add2, catrev cs_srem (catrev cs_eq (catrev cs_eq2 (catrev cs_or (catrev cs_not (catrev cs_and2 cs_add2))))), lrs_add2).
+
+  
+Lemma mk_env_smod_is_bit_blast_smod E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  bit_blast_smod g ls1 ls2  = (g', cs, lrs).
+Proof.
+  rewrite /mk_env_smod /bit_blast_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq] g_eq] cs_eq] lr_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))
+  => [[[[E_eq2] g_eq2] cs_eq2] lr_eq2] Hmkeq2.
+  rewrite (mk_env_srem_is_bit_blast_srem Hmksrem).
+  rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_eq_is_bit_blast_eq Hmkeq2).
+  case ((lr_eq == lit_tt) || (lr_eq2 == lit_tt)); 
+    last case ((lr_eq == lit_ff) && (lr_eq2 == lit_ff)).
+  - by case=> _ <- <- <-.
+  - dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) 
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    rewrite (mk_env_add_is_bit_blast_add Hmkadd). by case=> _ <- <- <-.
+  - dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) lr_eq) (copy (size ls2) lr_eq2))
+    => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not)
+    => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    rewrite (mk_env_or_is_bit_blast_or Hmkor) (mk_env_not_is_bit_blast_not Hmknot)
+      (mk_env_and_is_bit_blast_and Hmkand) (mk_env_add_is_bit_blast_add Hmkadd).
+    by case=> _ <- <- <-.
+Qed.
+
+
+Lemma mk_env_smod_newer_gen E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  (g <=? g')%positive.
+Proof.
+  rewrite /mk_env_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq] g_eq] cs_eq] lr_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))
+  => [[[[E_eq2] g_eq2] cs_eq2] lr_eq2] Hmkeq2.
+  move: (mk_env_srem_newer_gen Hmksrem) => Hggsrem.
+  move: (mk_env_eq_newer_gen Hmkeq) => Hgsremgeq.
+  move: (mk_env_eq_newer_gen Hmkeq2) => Hgeqgeq2.
+  case ((lr_eq == lit_tt) || (lr_eq2 == lit_tt)); 
+    last case ((lr_eq == lit_ff) && (lr_eq2 == lit_ff)).
+  - case=> _ <- _ _. 
+    exact: (pos_leb_trans Hggsrem (pos_leb_trans Hgsremgeq Hgeqgeq2)).
+  - dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) 
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- _ _.
+    move: (mk_env_add_newer_gen Hmkadd) => Hgeq2gadd.
+    exact: (pos_leb_trans Hggsrem (pos_leb_trans Hgsremgeq
+           (pos_leb_trans Hgeqgeq2 Hgeq2gadd))).
+  - dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) lr_eq) (copy (size ls2) lr_eq2))
+    => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not)
+    => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- _ _.
+    move: (mk_env_or_newer_gen Hmkor) => Hgeq2gor.
+    move: (mk_env_not_newer_gen Hmknot) => Hgorgnot.
+    move: (mk_env_and_newer_gen Hmkand) => Hgnotgand.
+    move: (mk_env_add_newer_gen Hmkadd) => Hgandgadd.
+    by apply (pos_leb_trans Hggsrem), (pos_leb_trans Hgsremgeq), 
+       (pos_leb_trans Hgeqgeq2), (pos_leb_trans Hgeq2gor), (pos_leb_trans Hgorgnot),
+       (pos_leb_trans Hgnotgand).
+Qed.
+
+Lemma mk_env_smod_newer_res E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  newer_than_lit g lit_tt ->
+  newer_than_lits g ls1 ->
+  newer_than_lits g ls2 ->
+  newer_than_lits g' lrs.
+Proof.
+  move=> Hmk Hgtt Hgls1 Hgls2. move: Hmk. rewrite /mk_env_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq] g_eq] cs_eq] lr_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))
+  => [[[[E_eq2] g_eq2] cs_eq2] lr_eq2] Hmkeq2.
+  case ((lr_eq == lit_tt) || (lr_eq2 == lit_tt)); 
+    last case ((lr_eq == lit_ff) && (lr_eq2 == lit_ff)).
+  - case=> _ <- _ <-. 
+    move: (mk_env_srem_newer_res Hmksrem Hgtt Hgls1 Hgls2) => Hgsremlsrem.
+    move: (mk_env_eq_newer_gen Hmkeq) => Hgsremgeq.
+    move: (mk_env_eq_newer_gen Hmkeq2) => Hgeqgeq2.
+    exact: (newer_than_lits_le_newer Hgsremlsrem (pos_leb_trans Hgsremgeq Hgeqgeq2)).
+  - dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) 
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- _ <-. exact: (mk_env_add_newer_res Hmkadd).
+  - dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) lr_eq) (copy (size ls2) lr_eq2))
+    => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not)
+    => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- _ <-. exact: (mk_env_add_newer_res Hmkadd).
+Qed.
+
+Lemma mk_env_smod_newer_cnf E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  newer_than_lit g lit_tt ->
+  newer_than_lits g ls1 ->
+  newer_than_lits g ls2 ->
+  newer_than_cnf g' cs.
+Proof.
+  move=> Hmk Hgtt Hgls1 Hgls2. move: Hmk. rewrite /mk_env_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq] g_eq] cs_eq] lr_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))
+  => [[[[E_eq2] g_eq2] cs_eq2] lr_eq2] Hmkeq2.
+  move: (mk_env_srem_newer_gen Hmksrem) => Hggsrem.
+  move: (mk_env_eq_newer_gen Hmkeq) => Hgsremgeq.
+  move: (mk_env_eq_newer_gen Hmkeq2) => Hgeqgeq2.
+  move: (mk_env_srem_newer_cnf Hmksrem Hgtt Hgls1 Hgls2) => Hgsremcssrem.
+  move: (newer_than_lit_le_newer Hgtt Hggsrem) => Hgsremtt.
+  move: (newer_than_lits_le_newer Hgls1 Hggsrem) => Hgsremls1.
+  move: (newer_than_lits_msl Hgsremtt Hgsremls1) => Hgsremmsl1.
+  move: (newer_than_lits_copy 1 Hgsremmsl1) => Hgsrem1msl1.
+  move: (newer_than_lits_le_newer Hgls2 Hggsrem) => Hgsremls2.
+  move: (newer_than_lits_msl Hgsremtt Hgsremls2) => Hgsremmsl2.
+  move: (newer_than_lits_copy 1 Hgsremmsl2) => Hgsrem1msl2.
+  move: (mk_env_eq_newer_cnf Hmkeq Hgsremtt Hgsrem1msl1 Hgsrem1msl2) => Hgeqcseq.
+  move: (newer_than_lit_le_newer Hgsremtt Hgsremgeq) => Hgeqtt.
+  move: (mk_env_srem_newer_res Hmksrem Hgtt Hgls1 Hgls2) => Hgsremlsrem.
+  move: (newer_than_lits_le_newer Hgsremlsrem Hgsremgeq) => Hgeqlsrem.
+  rewrite newer_than_lit_tt_ff in Hgeqtt.
+  move: (newer_than_lits_copy (size lrs_srem) Hgeqtt) => Hgeqcopy.
+  move: (mk_env_eq_newer_cnf Hmkeq2 Hgeqtt Hgeqlsrem Hgeqcopy) => Hgeq2cseq2.
+  move: (newer_than_cnf_le_newer Hgsremcssrem (pos_leb_trans Hgsremgeq Hgeqgeq2)) => Hgeq2cssrem.
+  move: (newer_than_cnf_le_newer Hgeqcseq Hgeqgeq2) => Hgeq2cseq.
+  case ((lr_eq == lit_tt) || (lr_eq2 == lit_tt)); 
+    last case ((lr_eq == lit_ff) && (lr_eq2 == lit_ff)).
+  - case=> _ <- <- _. 
+    by rewrite !newer_than_cnf_catrev Hgeq2cssrem Hgeq2cseq2 Hgeq2cseq.
+  - dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) 
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- <- _. 
+    move: (newer_than_lits_le_newer Hgeqlsrem Hgeqgeq2) => Hgeq2lsrem.
+    move: (newer_than_lits_le_newer Hgsremls2 (pos_leb_trans Hgsremgeq Hgeqgeq2)) => Hgeq2ls2.
+    move: (newer_than_lit_le_newer Hgeqtt Hgeqgeq2) => Hgeq2tt.
+    move: (mk_env_add_newer_cnf Hmkadd Hgeq2lsrem Hgeq2ls2 Hgeq2tt) => Hgaddcsadd.
+    move: (mk_env_add_newer_gen Hmkadd) => Hgeq2gadd.
+    move: (newer_than_cnf_le_newer Hgeq2cssrem Hgeq2gadd) => Hgaddcssrem.
+    move: (newer_than_cnf_le_newer Hgeq2cseq Hgeq2gadd) => Hgaddcseq.
+    move: (newer_than_cnf_le_newer Hgeq2cseq2 Hgeq2gadd) => Hgaddcseq2.
+    by rewrite !newer_than_cnf_catrev Hgaddcssrem Hgaddcseq2 Hgaddcseq Hgaddcsadd.
+  - dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) lr_eq) (copy (size ls2) lr_eq2))
+    => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not)
+    => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> _ <- <- _.
+    move: (mk_env_or_newer_gen Hmkor) => Hgeq2gor.
+    move: (mk_env_not_newer_gen Hmknot) => Hgorgnot.
+    move: (mk_env_and_newer_gen Hmkand) => Hgnotgand.
+    move: (mk_env_add_newer_gen Hmkadd) => Hgandgadd.
+    move: (pos_leb_trans Hgnotgand Hgandgadd) => Hgnotgadd.
+    move: (pos_leb_trans Hgorgnot Hgnotgadd) => Hgorgadd.
+    move: (pos_leb_trans Hgeq2gor Hgorgadd) => Hgeq2gadd.
+    move: (newer_than_cnf_le_newer Hgeq2cssrem Hgeq2gadd) => Hgaddcssrem.
+    move: (newer_than_cnf_le_newer Hgeq2cseq Hgeq2gadd) => Hgaddcseq.
+    move: (newer_than_cnf_le_newer Hgeq2cseq2 Hgeq2gadd) => Hgaddcseq2.
+    move: (newer_than_lit_le_newer Hgeqtt Hgeqgeq2) => Hgeq2tt.
+    rewrite -newer_than_lit_tt_ff in Hgeq2tt.
+    move: (mk_env_eq_newer_res Hmkeq) => Hgeqleq.
+    move: (newer_than_lit_le_newer Hgeqleq Hgeqgeq2) => Hgeq2leq.
+    move: (newer_than_lits_copy (size ls2) Hgeq2leq) => Hgeq2leqs.
+    move: (mk_env_eq_newer_res Hmkeq2) => Hgeq2leq2.
+    move: (newer_than_lits_copy (size ls2) Hgeq2leq2) => Hgeq2leq2s.
+    move: (mk_env_or_newer_cnf Hmkor Hgeq2tt Hgeq2leqs Hgeq2leq2s) => Hgorcsor.
+    move: (newer_than_cnf_le_newer Hgorcsor Hgorgadd) => Hgaddcsor.
+    move: (mk_env_or_newer_res Hmkor Hgeq2tt Hgeq2leqs Hgeq2leq2s) => Hgorlor.
+    move: (mk_env_not_newer_cnf Hmknot Hgorlor) => Hgnotcsnot.
+    move: (newer_than_cnf_le_newer Hgnotcsnot Hgnotgadd) => Hgaddcsnot.
+    move: (newer_than_lit_le_newer Hgeq2tt (pos_leb_trans Hgeq2gor Hgorgnot)) => Hgnottt.
+    move: (newer_than_lits_le_newer Hgsremls2 (pos_leb_trans Hgsremgeq 
+          (pos_leb_trans Hgeqgeq2 (pos_leb_trans Hgeq2gor Hgorgnot)))) => Hgnotls2.
+    move: (mk_env_not_newer_res Hmknot Hgorlor) => Hgnotlnot.
+    move: (mk_env_and_newer_cnf Hmkand Hgnottt Hgnotls2 Hgnotlnot) => Hgandcsand.
+    move: (newer_than_cnf_le_newer Hgandcsand Hgandgadd) => Hgaddcsand.
+    move: (newer_than_lits_le_newer Hgeqlsrem (pos_leb_trans Hgeqgeq2 
+          (pos_leb_trans Hgeq2gor (pos_leb_trans Hgorgnot Hgnotgand)))) => Hgandlsrem.
+    move: (mk_env_and_newer_res Hmkand Hgnottt Hgnotls2 Hgnotlnot) => Hgandland.
+    move: (newer_than_lit_le_newer Hgnottt Hgnotgand) => Hgandtt.
+    rewrite newer_than_lit_tt_ff in Hgandtt.
+    move: (mk_env_add_newer_cnf Hmkadd Hgandlsrem Hgandland Hgandtt) => Hgaddcsadd.
+    by rewrite !newer_than_cnf_catrev Hgaddcssrem Hgaddcseq Hgaddcseq2 Hgaddcsor
+               Hgaddcsnot Hgaddcsand Hgaddcsadd.
+Qed.
+
+Lemma mk_env_smod_preserve E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  env_preserve E E' g.
+Proof.
+  rewrite /mk_env_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq] g_eq] cs_eq] lr_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))
+  => [[[[E_eq2] g_eq2] cs_eq2] lr_eq2] Hmkeq2.
+  move: (mk_env_srem_newer_gen Hmksrem) => Hggsrem.
+  move: (mk_env_eq_newer_gen Hmkeq) => Hgsremgeq.
+  move: (mk_env_eq_newer_gen Hmkeq2) => Hgeqgeq2.
+  move: (pos_leb_trans Hggsrem Hgsremgeq) => Hggeq.
+  move: (pos_leb_trans Hggeq Hgeqgeq2) => Hggeq2.
+  move: (mk_env_srem_preserve Hmksrem) => HEEsremg.
+  move: (mk_env_eq_preserve Hmkeq) => HEsremEeqgsrem.
+  move: (mk_env_eq_preserve Hmkeq2) => HEeqEeq2geq.
+  move: (env_preserve_le HEsremEeqgsrem Hggsrem) => {HEsremEeqgsrem} HEsremEeqg.
+  move: (env_preserve_le HEeqEeq2geq Hggeq) => {HEeqEeq2geq} HEeqEeq2g.
+  move: (env_preserve_trans HEEsremg (env_preserve_trans HEsremEeqg HEeqEeq2g)) => HEEeq2g.
+  case ((lr_eq == lit_tt) || (lr_eq2 == lit_tt)); 
+    last case ((lr_eq == lit_ff) && (lr_eq2 == lit_ff)).
+  - by case=> <- _ _ _. 
+  - dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) 
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> <- _ _ _. 
+    move: (mk_env_add_preserve Hmkadd) => HEeq2Eaddgeq2.
+    move: (env_preserve_le HEeq2Eaddgeq2 Hggeq2) => {HEeq2Eaddgeq2} HEeq2Eaddg.
+    by apply (env_preserve_trans HEEeq2g).
+  - dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) lr_eq) (copy (size ls2) lr_eq2))
+    => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not)
+    => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> <- _ _ _.
+    move: (mk_env_or_newer_gen Hmkor) => Hgeq2gor.
+    move: (mk_env_not_newer_gen Hmknot) => Hgorgnot.
+    move: (mk_env_and_newer_gen Hmkand) => Hgnotgand.
+    move: (pos_leb_trans Hggeq2 Hgeq2gor) => Hggor.
+    move: (pos_leb_trans Hggor Hgorgnot) => Hggnot.
+    move: (pos_leb_trans Hggnot Hgnotgand) => Hggand.
+    move: (mk_env_or_preserve Hmkor) => HEeq2Eorgeq2.
+    move: (mk_env_not_preserve Hmknot) => HEorEnotgor.
+    move: (mk_env_and_preserve Hmkand) => HEnotEandgnot.
+    move: (mk_env_add_preserve Hmkadd) => HEandEaddgand.
+    move: (env_preserve_le HEeq2Eorgeq2 Hggeq2) => {HEeq2Eorgeq2} HEeq2Eorg.
+    move: (env_preserve_le HEorEnotgor Hggor) => {HEorEnotgor} HEorEnotg.
+    move: (env_preserve_le HEnotEandgnot Hggnot) => {HEnotEandgnot} HEnotEandg.
+    move: (env_preserve_le HEandEaddgand Hggand) => {HEandEaddgand} HEandEaddg.
+    by apply (env_preserve_trans HEEeq2g), (env_preserve_trans HEeq2Eorg),
+       (env_preserve_trans HEorEnotg), (env_preserve_trans HEnotEandg).
+Qed.
+
+Lemma mk_env_smod_sat E g ls1 ls2 E' g' cs lrs :
+  mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
+  newer_than_lit g lit_tt ->
+  newer_than_lits g ls1 ->
+  newer_than_lits g ls2 ->
+  interp_cnf E' cs.
+Proof.
+  rewrite /mk_env_smod.
+  dcase (mk_env_srem E g ls1 ls2) => [[[[E_srem] g_srem] cs_srem] lrs_srem] Hmksrem.
+  dcase (mk_env_eq E_srem g_srem [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] r_eq] Hmkeq.
+  dcase (mk_env_eq E_eq g_eq lrs_srem (copy (size lrs_srem) lit_ff))  => [[[[E_eq2] g_eq2] cs_eq2] r_eq2] Hmkeq2.
+    move : (mk_env_srem_newer_gen Hmksrem) => Hnewsrem.
+    move : (mk_env_eq_newer_gen Hmkeq) => Hneweq.
+    move : (mk_env_eq_newer_gen Hmkeq2) => Hneweq2.
+  case Htt1 : (r_eq == lit_tt) ; case Hff1 : (r_eq == lit_ff); case Htt2 : (r_eq2 == lit_tt); case Hff2 : (r_eq2 == lit_ff);
+    try rewrite (eqP Htt1)// in Hff1; try rewrite (eqP Htt2)// in Hff2.
+  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2)).
+
+Admitted.
   
