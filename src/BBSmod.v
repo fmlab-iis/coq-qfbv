@@ -588,11 +588,399 @@ Proof.
     move : (mk_env_eq_newer_gen Hmkeq2) => Hneweq2.
   case Htt1 : (r_eq == lit_tt) ; case Hff1 : (r_eq == lit_ff); case Htt2 : (r_eq2 == lit_tt); case Hff2 : (r_eq2 == lit_ff);
     try rewrite (eqP Htt1)// in Hff1; try rewrite (eqP Htt2)// in Hff2.
-  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2.
+  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
     rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
     move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
     move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
-    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2)).
-
-Admitted.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) .
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq//.
+  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq Hcnfeq2//.
+  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq Hcnfeq2//.
+  - rewrite /=. case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq Hcnfeq2//.
+  - rewrite /=.
+    dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) => [[[[E_add] g_add] cs_add] lrs_add] Hmkaddr.
+    case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_newer_cnf Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcseq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkaddr) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq Hneweq2))).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkaddr) (newer_than_cnf_le_newer Hcseq Hneweq2)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkaddr) Hcseq2) Hcnfeq2.
+    rewrite (mk_env_add_sat Hmkaddr (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq Hneweq2)) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))))//.
+  - rewrite /=.
+    dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) r_eq) (copy (size ls2) r_eq2)) => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not ] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not) => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and) => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    move : (mk_env_eq_newer_res Hmkeq2) => Hgeq2.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewcp2 : (newer_than_lits g_eq (copy (size ls2) r_eq)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq).
+    }
+    have Hnewcp22 : (newer_than_lits g_eq2 (copy (size ls2) r_eq2)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq2).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_newer_cnf Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcseq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    move : (mk_env_or_newer_gen Hmkor) => Hnewor.
+    move : (mk_env_or_newer_res Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hgor.
+    move : (mk_env_or_sat Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcnfor.
+    move : (mk_env_or_newer_cnf Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcsor.
+    move : (mk_env_not_newer_gen Hmknot) => Hnewnot.
+    move : (mk_env_not_newer_res Hmknot Hgor) => Hgnot.
+    move : (mk_env_not_sat Hmknot Hgor) => Hcnfnot.
+    move : (mk_env_not_newer_cnf Hmknot Hgor) => Hcsnot.
+    move : (mk_env_and_newer_gen Hmkand) => Hnewand.
+    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hgand.
+    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcsand.
+    move : (mk_env_and_sat Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcnfand.
+    move : (mk_env_add_newer_gen Hmkadd) => Hnewadd.
+    move : (mk_env_add_newer_res Hmkadd) => Hgadd.
+    move : (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcnfadd.
+    move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcsadd.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 Hnewor)))).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq Hneweq2))).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot)))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 Hnewor))). 
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcseq Hneweq2)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor Hnewnot))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq2 Hnewor)).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) Hcseq2) Hcnfeq2.
+    rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))).
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsor (pos_leb_trans Hnewnot Hnewand))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcsor Hnewnot)).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) Hcsor) Hcnfor.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsnot Hnewand)).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) Hcsnot) Hcnfnot.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hcsand) Hcnfand//.
+  - rewrite /=.
+    dcase (mk_env_add E_eq2 g_eq2 lrs_srem ls2) => [[[[E_add] g_add] cs_add] lrs_add] Hmkaddr.
+    case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_newer_cnf Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcseq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq Hcnfeq2//.
+  - rewrite /=.
+    dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) r_eq) (copy (size ls2) r_eq2)) => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not ] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not) => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and) => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    move : (mk_env_eq_newer_res Hmkeq2) => Hgeq2.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewcp2 : (newer_than_lits g_eq (copy (size ls2) r_eq)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq).
+    }
+    have Hnewcp22 : (newer_than_lits g_eq2 (copy (size ls2) r_eq2)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq2).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_newer_cnf Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcseq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    move : (mk_env_or_newer_gen Hmkor) => Hnewor.
+    move : (mk_env_or_newer_res Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hgor.
+    move : (mk_env_or_sat Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcnfor.
+    move : (mk_env_or_newer_cnf Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcsor.
+    move : (mk_env_not_newer_gen Hmknot) => Hnewnot.
+    move : (mk_env_not_newer_res Hmknot Hgor) => Hgnot.
+    move : (mk_env_not_sat Hmknot Hgor) => Hcnfnot.
+    move : (mk_env_not_newer_cnf Hmknot Hgor) => Hcsnot.
+    move : (mk_env_and_newer_gen Hmkand) => Hnewand.
+    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hgand.
+    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcsand.
+    move : (mk_env_and_sat Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcnfand.
+    move : (mk_env_add_newer_gen Hmkadd) => Hnewadd.
+    move : (mk_env_add_newer_res Hmkadd) => Hgadd.
+    move : (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcnfadd.
+    move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcsadd.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 Hnewor)))).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq Hneweq2))).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot)))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 Hnewor))). 
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcseq Hneweq2)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor Hnewnot))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq2 Hnewor)).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) Hcseq2) Hcnfeq2.
+    rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))).
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsor (pos_leb_trans Hnewnot Hnewand))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcsor Hnewnot)).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) Hcsor) Hcnfor.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsnot Hnewand)).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) Hcsnot) Hcnfnot.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hcsand) Hcnfand//.
+  - rewrite /=.
+    dcase (mk_env_or E_eq2 g_eq2 (copy (size ls2) r_eq) (copy (size ls2) r_eq2)) => [[[[E_or] g_or] cs_or] lrs_or] Hmkor.
+    dcase (mk_env_not E_or g_or lrs_or) => [[[[E_not] g_not] cs_not ] lrs_not] Hmknot.
+    dcase (mk_env_and E_not g_not ls2 lrs_not) => [[[[E_and] g_and] cs_and] lrs_and] Hmkand.
+    dcase (mk_env_add E_and g_and lrs_srem lrs_and) => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case => <- _ <- _; move => Htt Hls1 Hls2; generalize Htt; rewrite newer_than_lit_tt_ff; move => Hff.
+    rewrite !interp_cnf_catrev.
+    move : (mk_env_srem_newer_res Hmksrem Htt Hls1 Hls2) => Hgsrem.
+    move : (mk_env_srem_newer_cnf Hmksrem Htt Hls1 Hls2) => Hcssrem.
+    move : (mk_env_srem_sat Hmksrem Htt Hls1 Hls2) => Hcnfsrem.
+    move : (mk_env_eq_newer_res Hmkeq ) => Hgeq.
+    move : (mk_env_eq_newer_res Hmkeq2) => Hgeq2.
+    have Hnewcp : (newer_than_lits g (copy (size lrs_srem) lit_ff)).
+    {
+      exact : (newer_than_lits_copy (size lrs_srem) Hff).
+    }
+    have Hnewcp2 : (newer_than_lits g_eq (copy (size ls2) r_eq)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq).
+    }
+    have Hnewcp22 : (newer_than_lits g_eq2 (copy (size ls2) r_eq2)).
+    {
+      exact : (newer_than_lits_copy (size ls2) Hgeq2).
+    }
+    have Hnewmsl: (newer_than_lits g [:: (splitmsl ls1).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls1) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc).
+    }
+    have Hnewmsl2 : (newer_than_lits g [:: (splitmsl ls2).2]).
+    {
+      move/andP : (newer_than_lits_splitmsl Htt Hls2) => [_ Hnewc].
+      exact : (newer_than_lits_copy 1 Hnewc) .
+    }
+    move : (mk_env_eq_sat Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcnfeq2.
+    move : (mk_env_eq_newer_cnf Hmkeq2 (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem Hneweq)) (newer_than_lits_le_newer Hgsrem Hneweq) (newer_than_lits_le_newer Hnewcp (pos_leb_trans Hnewsrem Hneweq))) => Hcseq2.
+    move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcnfeq.
+    move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hnewsrem) (newer_than_lits_le_newer Hnewmsl Hnewsrem) (newer_than_lits_le_newer Hnewmsl2 Hnewsrem)) => Hcseq.
+    move : (mk_env_or_newer_gen Hmkor) => Hnewor.
+    move : (mk_env_or_newer_res Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hgor.
+    move : (mk_env_or_sat Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcnfor.
+    move : (mk_env_or_newer_cnf Hmkor (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq Hneweq2))) (newer_than_lits_le_newer Hnewcp2 Hneweq2) Hnewcp22) => Hcsor.
+    move : (mk_env_not_newer_gen Hmknot) => Hnewnot.
+    move : (mk_env_not_newer_res Hmknot Hgor) => Hgnot.
+    move : (mk_env_not_sat Hmknot Hgor) => Hcnfnot.
+    move : (mk_env_not_newer_cnf Hmknot Hgor) => Hcsnot.
+    move : (mk_env_and_newer_gen Hmkand) => Hnewand.
+    move : (mk_env_and_newer_res Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hgand.
+    move : (mk_env_and_newer_cnf Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcsand.
+    move : (mk_env_and_sat Hmkand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) (newer_than_lits_le_newer Hls2 (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))) Hgnot) => Hcnfand.
+    move : (mk_env_add_newer_gen Hmkadd) => Hnewadd.
+    move : (mk_env_add_newer_res Hmkadd) => Hgadd.
+    move : (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcnfadd.
+    move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Hff (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))) => Hcsadd.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot))))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 Hnewor)))).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcssrem (pos_leb_trans Hneweq Hneweq2))).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) (newer_than_cnf_le_newer Hcssrem Hneweq)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq) Hcssrem) Hcnfsrem.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor Hnewnot)))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq (pos_leb_trans Hneweq2 Hnewor))). 
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) (newer_than_cnf_le_newer Hcseq Hneweq2)).
+    rewrite (env_preserve_cnf (mk_env_eq_preserve Hmkeq2) Hcseq) Hcnfeq.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand)))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcseq2 (pos_leb_trans Hnewor Hnewnot))).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) (newer_than_cnf_le_newer Hcseq2 Hnewor)).
+    rewrite (env_preserve_cnf (mk_env_or_preserve Hmkor) Hcseq2) Hcnfeq2.
+    rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))) Hgand (newer_than_lit_le_newer Htt (pos_leb_trans Hnewsrem (pos_leb_trans Hneweq (pos_leb_trans Hneweq2 (pos_leb_trans Hnewor (pos_leb_trans Hnewnot Hnewand))))))).
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsor (pos_leb_trans Hnewnot Hnewand))).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) (newer_than_cnf_le_newer Hcsor Hnewnot)).
+    rewrite (env_preserve_cnf (mk_env_not_preserve Hmknot) Hcsor) Hcnfor.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) (newer_than_cnf_le_newer Hcsnot Hnewand)).
+    rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) Hcsnot) Hcnfnot.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hcsand) Hcnfand//.
+Qed.
   

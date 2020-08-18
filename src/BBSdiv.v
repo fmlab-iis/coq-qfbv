@@ -248,9 +248,11 @@ Qed.
 
 Lemma bit_blast_zeroextend_size :
   forall n l g g' cs lrs,
-    bit_blast_zeroextend n g l = (g', cs, lrs) -> size lrs = n.+1.
+    bit_blast_zeroextend n g l = (g', cs, lrs) -> size lrs = (size l) + n.
 Proof.
-Admitted.
+  rewrite /bit_blast_zeroextend. intros; move : H.
+  case => _ _ <-; rewrite seq.size_cat/= size_nseq//. 
+Qed.
 
 (*
 Lemma xor0B n : left_id (from_nat n 0) xorB.
@@ -476,7 +478,7 @@ Proof.
     move : (add_prelude_enc_bit_ff Hcsudiv) => Hencff.
     generalize Hencmsl1; rewrite -enc_bits_seq1; move => Hencseq1.
     move : (bit_blast_zeroextend_correct Hbbzext Hencseq1 Hcszext) => Henczext.
-    move : (bit_blast_zeroextend_size Hbbzext). rewrite size_splitmsl -addn1 (subnK Hsz1). move => Hszzext.
+    move : (bit_blast_zeroextend_size Hbbzext). rewrite size_splitmsl/= addnC (subnK Hsz1). move => Hszzext.
     have Hszadd : size lrs_xor = size lrs_zext by rewrite (bit_blast_xor_size_max Hbbxor) size_nseq maxnn Hszzext.
     move : (eq_refl (((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits)). move/eqP => Haddr.
     move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszadd) => Hencaddr.
@@ -536,7 +538,7 @@ Proof.
     move : (add_prelude_enc_bit_ff Hcsudiv) => Hencff.
     generalize Hencmsl1; rewrite -enc_bits_seq1; move => Hencseq1.
     move : (bit_blast_zeroextend_correct Hbbzext Hencseq1 Hcszext) => Henczext.
-    move : (bit_blast_zeroextend_size Hbbzext); rewrite size_splitmsl -addn1 (subnK Hsz1); move => Hszzext.
+    move : (bit_blast_zeroextend_size Hbbzext); rewrite size_splitmsl addnC (subnK Hsz1); move => Hszzext.
     have Hszadd : size lrs_xor = size lrs_zext by rewrite (bit_blast_xor_size_max Hbbxor) size_nseq maxnn Hszzext.
     move/eqP : (eq_refl ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits) => Haddr.
     move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszadd) => Hencaddr.
@@ -585,7 +587,7 @@ Proof.
     move : (add_prelude_enc_bit_ff Hcsudiv) => Hencff.
     generalize Hencmsl1. rewrite -enc_bits_seq1. move => Hencseq1.
     move : (bit_blast_zeroextend_correct Hbbzext Hencseq1 Hcszext) => Henczext.
-    move : (bit_blast_zeroextend_size Hbbzext). rewrite size_splitmsl -addn1 (subnK Hsz1). move => Hszzext.
+    move : (bit_blast_zeroextend_size Hbbzext). rewrite size_splitmsl addnC (subnK Hsz1). move => Hszzext.
     have Hszadd : size lrs_xor = size lrs_zext by rewrite (bit_blast_xor_size_max Hbbxor) size_nseq maxnn Hszzext.
     have Haddr : ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits = ((bs1 ^# copy (size bs1) (splitmsb bs1).2)%bits +# (zext (size (splitmsl ls1).1) [:: (splitmsb bs1).2]))%bits by done.
     move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszadd) => Hencaddr.
