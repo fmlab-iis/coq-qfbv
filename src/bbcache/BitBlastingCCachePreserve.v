@@ -326,13 +326,13 @@ Proof.
       exact: mk_env_sub_preserve |
       exact: mk_env_mul_preserve |
       exact: mk_env_umod_preserve |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      exact: mk_env_srem_preserve |
+      exact: mk_env_smod_preserve |
       exact: mk_env_shl_preserve |
       exact: mk_env_lshr_preserve |
       exact: mk_env_ashr_preserve |
       exact: mk_env_concat_preserve ].
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_preserve op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) -> env_preserve E E' g.

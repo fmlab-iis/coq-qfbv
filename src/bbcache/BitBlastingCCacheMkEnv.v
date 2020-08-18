@@ -45,14 +45,14 @@ Proof.
       rewrite (mk_env_sub_is_bit_blast_sub Hmk) |
       rewrite (mk_env_mul_is_bit_blast_mul Hmk) |
       rewrite (mk_env_umod_is_bit_blast_umod Hmk) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      rewrite (mk_env_srem_is_bit_blast_srem Hmk) |
+      rewrite (mk_env_smod_is_bit_blast_smod Hmk) |
       rewrite (mk_env_shl_is_bit_blast_shl Hmk) |
       rewrite (mk_env_lshr_is_bit_blast_lshr Hmk) |
       rewrite (mk_env_ashr_is_bit_blast_ashr Hmk) |
       rewrite (mk_env_concat_is_bit_blast_concat Hmk) ];
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_is_bit_blast_bbinop :
   forall op E g ls1 ls2 E' g' cs l,

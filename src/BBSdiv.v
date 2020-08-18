@@ -11,8 +11,8 @@ Import Prenex Implicits.
 
 
 (* ===== bit_blast_sdiv ===== *)
-Definition absB bs :=
-  if msb bs then negB bs else bs.
+(* Definition absB bs := *)
+(*   if msb bs then negB bs else bs. *)
 
 Definition sdivB bs1' bs2' : bits * bits :=
   let bs1 := absB bs1' in let bs2 := absB bs2' in
@@ -21,12 +21,6 @@ Definition sdivB bs1' bs2' : bits * bits :=
        else if (msb bs1' != msb bs2') && negb (msb bs1') then (negB (udivB bs1 bs2).1, (udivB bs1 bs2).2)
             else (negB (udivB bs1 bs2).1, negB (udivB bs1 bs2).2).
 
-Definition sremB bs1' bs2' : bits :=
-  let bs1 := absB bs1' in
-  let bs2 := absB bs2' in
-  if (msb bs1')
-  then negB (udivB bs1 bs2).2
-  else (udivB bs1 bs2).2.
 
 Definition bit_blast_abs g ls : generator * cnf * word :=
   let (ls_tl, ls_sign) := eta_expand (splitmsl ls) in
@@ -303,14 +297,14 @@ Proof.
   rewrite to_nat_from_nat_bounded/= -/(zeros _); [rewrite to_nat_zeros //|rewrite -{1}(expn0 2) (ltn_exp2l _ _ (ltnSn 1))//].
 Qed.
 
-Lemma bit_blast_srem_correct g ls1 ls2 g' cs rlrs E bs1 bs2 :
+Lemma bit_blast_srem_correct' g ls1 ls2 g' cs rlrs E bs1 bs2 :
   bit_blast_srem g ls1 ls2 = (g', cs, rlrs) ->
   size ls1 = size ls2 ->
   0 < size ls2 ->
   enc_bits E ls1 bs1 ->
   enc_bits E ls2 bs2 ->
   interp_cnf E (add_prelude cs) ->
-  enc_bits E rlrs (sremB bs1 bs2).
+  enc_bits E rlrs (sremB' bs1 bs2).
 Proof.
   rewrite/bit_blast_srem /bit_blast_abs.
   dcase (bit_blast_neg g ls1) => [[[g_neg ] cs_neg] lrs_neg] Hbbneg.
@@ -331,7 +325,7 @@ Proof.
     move : (add_prelude_enc_bit_true (msb bs1) Hcsu). rewrite Hencmsb1. move => Hmsb1t.
     move : (enc_bit_msb Htt Henc2). rewrite/msl (eqP Hls2mb1). move => Hencmsb2.
     move : (add_prelude_enc_bit_true (msb bs2) Hcsu). rewrite Hencmsb2. move => Hmsb2t.
-    rewrite /sremB /absB -Hmsb1t -Hmsb2t/=. 
+    rewrite /sremB' /absB -Hmsb1t -Hmsb2t/=. 
     move : (bit_blast_neg_correct Hbbneg Henc1 Hcsneg) => Hencneg.
     move : (bit_blast_neg_correct Hbbneg1 Henc2 Hcsneg1) => Hencneg1.
     generalize Hsz12.
@@ -349,7 +343,7 @@ Proof.
     move : (enc_bit_msb Htt Henc2). rewrite/msl (eqP Hls2mb0). move => Hencmsb2.
     move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsudiv). rewrite Hencmsb2. move => Hmsb2f.
     symmetry in Hmsb2f. rewrite->Bool.negb_true_iff in Hmsb2f.
-    rewrite/sremB /absB -Hmsb1t Hmsb2f/=.
+    rewrite/sremB' /absB -Hmsb1t Hmsb2f/=.
     move : (bit_blast_neg_correct Hbbneg Henc1 Hcsneg) => Hencneg.
     generalize Hsz12.
     rewrite (bit_blast_neg_size_ss Hbbneg). move => Hszn.
@@ -367,7 +361,7 @@ Proof.
     move : (add_prelude_ff Hcsudiv) => Hff. 
     move : (enc_bit_msb Htt Henc1). rewrite/msl (eqP Hls1mb1). move => Hencmsb1.
     move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1. move => Hmsb1t.
-    rewrite /sremB /absB -Hmsb1t.
+    rewrite /sremB' /absB -Hmsb1t.
     move : (bit_blast_neg_correct Hbbneg Henc1 Hcsneg) => Hencnegbs1.
     move : (enc_bits_size Henc2) => Hszlb2.
     have Hencmsl2 : enc_bit E (splitmsl ls2).2 (splitmsb bs2).2 by rewrite (enc_bit_msb Htt Henc2).
@@ -409,7 +403,7 @@ Proof.
     move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsu). rewrite Hencmsb1. move => Hmsb1f. symmetry in Hmsb1f.
     rewrite<- Bool.negb_false_iff in Hmsb1f; rewrite Bool.negb_involutive in Hmsb1f.
     move : (add_prelude_enc_bit_true (msb bs2) Hcsu); rewrite Hencmsb2; move => Hmsb2t.
-    rewrite /sremB /absB -Hmsb2t Hmsb1f//.
+    rewrite /sremB' /absB -Hmsb2t Hmsb1f//.
   - dcase (bit_blast_udiv g ls1 ls2 ) =>[[[[g_udiv] cs_udiv] qs_udiv] rs_udiv] Hbbudiv.
     case => _ <- <-. move => Hsz12 Hsz2 Henc1 Henc2.
     (*rewrite add_prelude_catrev.*) move => Hcsu.
@@ -420,7 +414,7 @@ Proof.
     rewrite<- Bool.negb_false_iff in Hmsb1f; rewrite Bool.negb_involutive in Hmsb1f.
     move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsu). rewrite Hencmsb2. move => Hmsb2f. symmetry in Hmsb2f.
     rewrite<- Bool.negb_false_iff in Hmsb2f; rewrite Bool.negb_involutive in Hmsb2f.
-    rewrite /sremB /absB Hmsb2f Hmsb1f//.
+    rewrite /sremB' /absB Hmsb2f Hmsb1f//.
     move : (bit_blast_udiv_correct Hbbudiv Hsz12 Henc1 Henc2 Hcsu) => [_ Henr]; rewrite//.
   - rewrite (lock splitmsl)/= -!lock.
     dcase (bit_blast_xor g ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[g_xor1] cs_xor1] lrs_xor1] Hbbxor1.
@@ -433,7 +427,7 @@ Proof.
     move : (enc_bit_msb Htt Henc1); rewrite/msl (eqP Hls1mb0); move => Hencmsb1.
     move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsudiv); rewrite Hencmsb1; move => Hmsb1f.
     symmetry in Hmsb1f; rewrite->Bool.negb_true_iff in Hmsb1f.
-    rewrite /sremB /absB Hmsb1f. 
+    rewrite /sremB' /absB Hmsb1f. 
     move : (enc_bits_size Henc2) => Hszlb2.
     have Hencmsl2 : enc_bit E (splitmsl ls2).2 (splitmsb bs2).2 by rewrite (enc_bit_msb Htt Henc2).
     have Henccp2 : enc_bits E (copy (size ls2) (splitmsl ls2).2) (copy (size bs2) (splitmsb bs2).2) by rewrite -Hszlb2 (enc_bits_copy (size ls2) Hencmsl2).
@@ -466,7 +460,7 @@ Proof.
     move : (enc_bit_msb Htt Henc2); rewrite/msl (eqP Hls2mb1); move => Hencmsb2.
     move : (add_prelude_enc_bit_true (msb bs2) Hcsudiv); rewrite Hencmsb2; move => Hmsb2t.
     generalize Hsz2; rewrite -{1}Hsz12; move => Hsz1.
-    rewrite /sremB /absB -Hmsb2t /=.
+    rewrite /sremB' /absB -Hmsb2t /=.
     move : (enc_bits_size Henc1) => Hszlb1.
     move : (enc_bits_size Henc2) => Hszlb2.
     have Hencmsl2 : enc_bit E (splitmsl ls2).2 (splitmsb bs2).2 by rewrite (enc_bit_msb Htt Henc2).
@@ -527,7 +521,7 @@ Proof.
     move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsudiv); rewrite Hencmsb2; move => Hmsb2f.
     symmetry in Hmsb2f; rewrite->Bool.negb_true_iff in Hmsb2f.
     generalize Hsz2; rewrite -{1}Hsz12; move => Hsz1.
-    rewrite /sremB /absB Hmsb2f /=.
+    rewrite /sremB' /absB Hmsb2f /=.
     move : (enc_bits_size Henc1) => Hszlb1.
     have Hencmsl2 : enc_bit E (splitmsl ls2).2 (splitmsb bs2).2 by rewrite (enc_bit_msb Htt Henc2).
     have Hencmsl1 : enc_bit E (splitmsl ls1).2 (splitmsb bs1).2 by rewrite (enc_bit_msb Htt Henc1).
@@ -574,7 +568,7 @@ Proof.
     move/andP : Hcsu1 => [Hcsxor Hcszext]; move/andP : Hcsu2 => [Hcsu2 Hcsadd1]; move/andP : Hcsu2 => [Hcsxor1 _].
     move : (add_prelude_tt Hcsudiv) => Htt.
     generalize Hsz2; rewrite -{1}Hsz12; move => Hsz1.
-    rewrite /sremB /absB /=.
+    rewrite /sremB' /absB /=.
     move : (enc_bits_size Henc1) => Hszlb1.
     move : (enc_bits_size Henc2) => Hszlb2.
     have Hencmsl2 : enc_bit E (splitmsl ls2).2 (splitmsb bs2).2 by rewrite (enc_bit_msb Htt Henc2).
@@ -629,6 +623,18 @@ Proof.
     + have -> : [::false] = zeros 1 by done. rewrite zext_zero !zeros_cons !subn1 {1}addn1 !(ltn_predK Hszgt0) (ltn_predK Hszgt02).
       rewrite !addB0 !unzip1_zip; try rewrite size_zeros//; last rewrite size_xorB size_copy size_uremB maxnn//.
       rewrite -(size_uremB bs1 bs2) xorB_copy_case//.
+Qed.
+
+Lemma bit_blast_srem_correct g ls1 ls2 g' cs rlrs E bs1 bs2 :
+  bit_blast_srem g ls1 ls2 = (g', cs, rlrs) ->
+  size ls1 = size ls2 ->
+  0 < size ls2 ->
+  enc_bits E ls1 bs1 ->
+  enc_bits E ls2 bs2 ->
+  interp_cnf E (add_prelude cs) ->
+  enc_bits E rlrs (sremB bs1 bs2).
+Proof.
+  rewrite sremB_is_sremB'. exact: bit_blast_srem_correct'.
 Qed.
 
 Lemma mk_env_srem_is_bit_blast_srem : forall ls1 E g ls2 g' cs rlrs E',

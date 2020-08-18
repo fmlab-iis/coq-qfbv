@@ -51,14 +51,14 @@ Proof.
       apply (bit_blast_sub_correct Hbb) |
       apply (bit_blast_mul_correct Hbb) |
       apply (bit_blast_umod_correct Hbb) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (bit_blast_srem_correct Hbb) |
+      apply (bit_blast_smod_correct Hbb) |
       apply (bit_blast_shl_correct Hbb) |
       apply (bit_blast_lshr_correct Hbb) |
       apply (bit_blast_ashr_correct Hbb) |
       apply (bit_blast_concat_correct Hbb) ];
     done.
-Admitted.
+Qed.
 
 Lemma bit_blast_bbinop_correct op g bs1 bs2 E ls1 ls2 g' cs l:
   bit_blast_bbinop op g ls1 ls2 = (g', cs, l) ->

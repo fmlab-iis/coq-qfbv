@@ -45,14 +45,14 @@ Proof.
       apply (mk_env_sub_sat Hmk) |
       apply (mk_env_mul_sat Hmk) |
       apply (mk_env_umod_sat Hmk) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_srem_sat Hmk) |
+      apply (mk_env_smod_sat Hmk) |
       apply (mk_env_shl_sat Hmk) |
       apply (mk_env_lshr_sat Hmk) |
       apply (mk_env_ashr_sat Hmk) |
       apply (mk_env_concat_sat Hmk) ];
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_sat :
   forall op E g ls1 ls2 E' g' cs l,

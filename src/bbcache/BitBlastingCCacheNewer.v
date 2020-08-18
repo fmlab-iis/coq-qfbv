@@ -36,13 +36,13 @@ Proof.
       exact: mk_env_sub_newer_gen |
       exact: mk_env_mul_newer_gen |
       exact: mk_env_umod_newer_gen |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      exact: mk_env_srem_newer_gen |
+      exact: mk_env_smod_newer_gen |
       exact: mk_env_shl_newer_gen |
       exact: mk_env_lshr_newer_gen |
       exact: mk_env_ashr_newer_gen |
       exact: mk_env_concat_newer_gen ].
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_gen op E g ls1 ls2 E' g' cs l : 
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) -> (g <=? g')%positive.
@@ -779,14 +779,14 @@ Proof.
       apply (mk_env_sub_newer_res Hmk) |
       apply (mk_env_mul_newer_res Hmk) |
       apply (mk_env_umod_newer_res Hmk) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_srem_newer_res Hmk) |
+      apply (mk_env_smod_newer_res Hmk) |
       apply (mk_env_shl_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_lshr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_ashr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_concat_newer_res Hmk) ]; 
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_res op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) ->
@@ -841,14 +841,14 @@ Proof.
       apply (mk_env_sub_newer_cnf Hmk) |
       apply (mk_env_mul_newer_cnf Hmk) |
       apply (mk_env_umod_newer_cnf Hmk) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_srem_newer_cnf Hmk) |
+      apply (mk_env_smod_newer_cnf Hmk) |
       apply (mk_env_shl_newer_cnf Hmk) |
       apply (mk_env_lshr_newer_cnf Hmk) |
       apply (mk_env_ashr_newer_cnf Hmk) |
       apply (mk_env_concat_newer_cnf Hmk) ]; 
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_cnf op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) ->
