@@ -41,9 +41,9 @@ Qed.
 Lemma bit_blast_ebinop_correct op g bs1 bs2 E ls1 ls2 g' cs ls :
   bit_blast_ebinop op g ls1 ls2 = (g', cs, ls) ->
   enc_bits E ls1 bs1 -> enc_bits E ls2 bs2 -> interp_cnf E (add_prelude cs) ->
-  size ls1 == size ls2 -> enc_bits E ls ((QFBV.ebinop_denote op) bs1 bs2).
+  0 < size ls1 -> size ls1 == size ls2 -> enc_bits E ls ((QFBV.ebinop_denote op) bs1 bs2).
 Proof.
-  move=> Hbb Henc1 Henc2 Hics /eqP Hsize; move: Hbb; case op => /= Hbb;
+  move=> Hbb Henc1 Henc2 Hics Hszgt0 /eqP Hsize; move: Hbb; case op => /= Hbb;
     [ apply (bit_blast_and_correct Hbb) |
       apply (bit_blast_or_correct Hbb) |
       apply (bit_blast_xor_correct Hbb) |
@@ -192,7 +192,7 @@ Lemma bit_blast_exp_ccache_correct_cache_nocet_binop :
         well_formed c -> correct m c -> correct m' c'.
 Proof.
   move=> op e1 IH1 e2 IH2 te m c g m' c' g' cs ls Hfcet Hbb /= 
-            /andP [/andP [Hwf1 Hwf2] _] Hwfc Hcrmc. 
+            /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] _] Hwfc Hcrmc. 
   move: Hbb. rewrite /= Hfcet.
   case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
   move: (IH1 _ _ _ _ _ _ _ _ _ He1 Hwf1 Hwfc Hcrmc) => Hcrm1c1.
@@ -221,7 +221,7 @@ Proof.
     move: Hence. case: Hfe1 => _ <-; case: Hfe2 => _ <-. 
     done.
   - case Hr : (bit_blast_ebinop op g2 ls1 ls2) => [[gr csr] lsr].
-    case=> <- <- _ _ _.
+    case=> <- <- _ _ _. 
     apply CompCache.correct_add_cet_het; (try done); rewrite /=;
       [ exists cse1c, ls1, cse2c, ls2 | exists cse1h, ls1, cse2h, ls2 ];
       repeat (split; try done);
@@ -776,9 +776,10 @@ Proof.
   move=> [cs1cp [ls1cp [cs2cp [ls2cp [Hfe1cp [Hfe2cp Hence]]]]]].
   move: (Hence E s Hcon) => {Hence} Hence.
   move: Hcf Hwf Hbb Hcon Hics 
-        => /= /andP [Hcf1 Hcf2] /andP [/andP [Hwf1 Hwf2] Hsize].
+        => /= /andP [Hcf1 Hcf2] /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
-          -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+  -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+  rewrite -(eval_conform_exp_size Hwf1 Hcf1) in Hszgt0.
   rewrite Hfcet. 
   case He1 : (bit_blast_exp_ccache te m c g e1) => [[[[m1 c1] g1] cs1] ls1].
   case He2 : (bit_blast_exp_ccache te m1 c1 g1 e2) => [[[[m2 c2] g2] cs2] ls2].
@@ -809,6 +810,7 @@ Proof.
          move: (IH2 _ _ _ _ _ _ _ _ _ _ _ He2 Hcf2 Hconm2 
                     Hwf2 Hwfc1 Hics2 HiEc1 Hcrm1c1) => Henc2.
     all: rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
+    all: rewrite -(enc_bits_size Henc1) in Hszgt0.
     all: by apply Hence. 
 Qed.
 

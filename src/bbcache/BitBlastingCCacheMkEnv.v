@@ -174,7 +174,7 @@ Lemma mk_env_exp_ccache_is_bit_blast_exp_ccache_nocet_binop :
         bit_blast_exp_ccache te m c g (QFBV.Ebinop op e1 e2) = (m', c', g', cs, ls).
 Proof.
   move=> op e1 IH1 e2 IH2 te m c s E g m' c' E' g' cs ls /= /andP [Hcf1 Hcf2]
-           /andP [/andP [Hwf1 Hwf2] Hsize] Hfcet. 
+           /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize] Hfcet. 
   rewrite Hfcet /=.  
   case Hmke1 : (mk_env_exp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
   move: (IH1 _ _ _ _ _ _ _ _ _ _ _ _ Hcf1 Hwf1 Hmke1) => Hbbe1.

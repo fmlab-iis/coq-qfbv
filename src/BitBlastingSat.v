@@ -100,7 +100,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_and E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] _] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -158,7 +158,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_or E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] _] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -213,7 +213,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_xor E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] _] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -306,7 +306,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_add E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -365,7 +365,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_sub E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -423,7 +423,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_mul E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -571,7 +571,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_shl E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -629,7 +629,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_lshr E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -687,7 +687,7 @@ Proof.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_ashr E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.
@@ -743,7 +743,7 @@ Proof.
   move=> e1 IH1 e2 IH2 te m s E g m' E' g' cs lrs /=.
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
-  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [Hwf1 Hwf2] Hsize].
+  case=> _ <- _ <- _ Hgm Hgt /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize].
   rewrite !interp_cnf_cat.
   (* interp_cnf Er cs1 *)
   move: (IH1 _ _ _ _ _ _ _ _ _ _ Hmke1 Hgm Hgt Hwf1) => HiE1c1.

@@ -143,7 +143,8 @@ Definition enc_correct_exp e cs ls vm t :=
     /\ (forall E s, consistent vm E s 
                     -> enc_bits E ls1 (QFBV.eval_exp e1 s) 
                     -> enc_bits E ls2 (QFBV.eval_exp e2 s) 
-                    -> interp_cnf E (add_prelude cs) 
+                    -> interp_cnf E (add_prelude cs)
+                    -> 0 < size ls1
                     -> size ls1 == size ls2
                     -> enc_bits E ls (QFBV.eval_exp e s))
   | QFBV.Eite c e1 e2 => 
@@ -456,14 +457,16 @@ Proof.
       [cs1 [ls1 [Hfe1 Hence]]].
     move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) => Henc1.
     by apply Hence.
-  - move: Hwf Hcf => /= /andP [/andP [Hwf1 Hwf2] Hsize] /andP [Hcf1 Hcf2].
+  - move: Hwf Hcf => /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize] /andP [Hcf1 Hcf2].
     rewrite -(eval_conform_exp_size Hwf1 Hcf1) 
-            -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+    -(eval_conform_exp_size Hwf2 Hcf2) in Hsize.
+    rewrite  -(eval_conform_exp_size Hwf1 Hcf1) in Hszgt0.
     move: (correct_find_et Hcrmt Hfe) => /= 
       [cs1 [ls1 [cs2 [ls2 [Hfe1 [Hfe2 Hence]]]]]].
     move: (IH1 _ _ _ Hcon Htt HiEt Hfe1 Hwf1 Hcf1 Hcrmt) 
             (IH2 _ _ _ Hcon Htt HiEt Hfe2 Hwf2 Hcf2 Hcrmt) => Henc1 Henc2.
     rewrite -(enc_bits_size Henc1) -(enc_bits_size Henc2) in Hsize.
+    rewrite -(enc_bits_size Henc1) in Hszgt0.
     by apply Hence.
   - move: Hwf => /= /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hsize].
     move: Hcf => /= /andP [/andP [Hcfb Hcf1] Hcf2].

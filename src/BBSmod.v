@@ -55,7 +55,7 @@ Proof. Admitted.
 Lemma bit_blast_smod_correct' g ls1 ls2 g' cs rlrs E bs1 bs2 :
   bit_blast_smod g ls1 ls2 = (g', cs, rlrs) ->
   size ls1 = size ls2 ->
-  0 < size ls2 ->
+  0 < size ls1 ->
   enc_bits E ls1 bs1 ->
   enc_bits E ls2 bs2 ->
   interp_cnf E (add_prelude cs) ->
@@ -295,7 +295,7 @@ Qed.
 Lemma bit_blast_smod_correct g ls1 ls2 g' cs rlrs E bs1 bs2 :
   bit_blast_smod g ls1 ls2 = (g', cs, rlrs) ->
   size ls1 = size ls2 ->
-  0 < size ls2 ->
+  0 < size ls1 ->
   enc_bits E ls1 bs1 ->
   enc_bits E ls2 bs2 ->
   interp_cnf E (add_prelude cs) ->

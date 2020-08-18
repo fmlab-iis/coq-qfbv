@@ -1417,6 +1417,7 @@ Module MakeQFBV
       | Eunop op e => well_formed_exp e te
       | Ebinop op e1 e2 =>
         well_formed_exp e1 te && well_formed_exp e2 te &&
+                        (0 < exp_size e1 te) &&
                         (exp_size e1 te == exp_size e2 te)
       | Eite b e1 e2 =>
         well_formed_bexp b te && well_formed_exp e1 te && well_formed_exp e2 te &&
@@ -1478,7 +1479,7 @@ Module MakeQFBV
           reflexivity.
         + move => n e IH te s Hwf Hcon. rewrite size_sext (IH _ _ Hwf Hcon).
           reflexivity.
-      - case => e0 IH0 e1 IH1 te s /andP [/andP [Hwf0 Hwf1] Hsize] Hcon /=.
+      - case => e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hsize] Hcon /=.
         + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
           reflexivity.
         + rewrite /orB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
@@ -1517,7 +1518,7 @@ Module MakeQFBV
       - move=> op e IH Hwf. move: (IH Hwf) => {IH} IH. case: op => //=.
         + move=> n. rewrite IH. reflexivity.
         + move=> n. rewrite IH. reflexivity.
-      - move=> op e1 IH1 e2 IH2 /andP [/andP [Hwf1 Hwf2] Hs].
+      - move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hs].
         move: (IH1 Hwf1) (IH2 Hwf2) => {IH1 IH2} IH1 IH2.
         case: op => //=; rewrite IH1 IH2; reflexivity.
       - move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hs].
@@ -1532,11 +1533,11 @@ Module MakeQFBV
       (* well_formed_exp_submap *)
       move=> Hsub. elim: e => //=.
       - move=> v Hmem1. exact: (TELemmas.submap_mem Hsub Hmem1).
-      - move=> op e1 IH1 e2 IH2 /andP [/andP [Hwf1 Hwf2] Hs].
+      - move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hs].
         rewrite (well_formed_exp_submap _ _ _ Hsub Hwf1)
                 (well_formed_exp_submap _ _ _ Hsub Hwf2).
         rewrite -(exp_size_submap Hsub Hwf1) -(exp_size_submap Hsub Hwf2).
-          by rewrite Hs.
+          by rewrite Hszgt0 Hs.
       - move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hs].
         rewrite (well_formed_bexp_submap _ _ _ Hsub Hwfb)
                 (well_formed_exp_submap _ _ _ Hsub Hwf1)

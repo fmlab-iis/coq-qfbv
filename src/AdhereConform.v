@@ -63,7 +63,7 @@ Section Conform .
         rewrite -(IH Hwf Hcf) /sext size_cat size_copy // .
     - elim; rewrite /=;
        move => e0 IH0 e1 IH1
-                  /andP [/andP [Hwf0 Hwf1] Hsize]
+                  /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hsize]
                   /andP [Hcf0 Hcf1] .
       + rewrite /andB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
         reflexivity.
