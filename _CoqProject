@@ -25,6 +25,9 @@ src/BBLshr.v
 src/BBAshr.v
 src/BBZeroExtend.v
 src/BBSignExtend.v
+src/BBRepeat.v
+src/BBRotateLeft.v
+src/BBRotateRight.v
 src/BBEq.v
 src/BBConj.v
 src/BBDisj.v
