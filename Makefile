@@ -16,7 +16,6 @@ all: libs default
 
 clean:
 	make -f $(COQMAKEFILE) clean
-	rm src/extraction/*
 
 distclean:
 	for lib in $(LIBS); do \

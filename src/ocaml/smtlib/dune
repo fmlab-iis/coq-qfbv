@@ -1,0 +1,16 @@
+(ocamllex
+  (modules         smtlibLexer)
+)
+
+(menhir
+  (modules         smtlibParser)
+  (flags           --explain --dump)
+  (infer           true)
+)
+
+(library
+  (name            smtlib)
+  (libraries       str zarith util)
+  (flags           (:standard -w -3-32-33-27-39))
+  (modules         smtlibLexer smtlibParser ast parser)
+)
