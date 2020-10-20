@@ -1418,7 +1418,8 @@ Module MakeQFBV
       | Ebinop op e1 e2 =>
         well_formed_exp e1 te && well_formed_exp e2 te &&
                         (0 < exp_size e1 te) &&
-                        (exp_size e1 te == exp_size e2 te)
+                        (if op == Bconcat then true
+                         else exp_size e1 te == exp_size e2 te)
       | Eite b e1 e2 =>
         well_formed_bexp b te && well_formed_exp e1 te && well_formed_exp e2 te &&
                          (exp_size e1 te == exp_size e2 te)
@@ -1519,7 +1520,7 @@ Module MakeQFBV
         + move=> n. rewrite IH. reflexivity.
         + move=> n. rewrite IH. reflexivity.
       - move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hs].
-        move: (IH1 Hwf1) (IH2 Hwf2) => {IH1 IH2} IH1 IH2.
+        move: (IH1 Hwf1) (IH2 Hwf2) => {IH1 IH2} IH1 IH2. move: Hs.
         case: op => //=; rewrite IH1 IH2; reflexivity.
       - move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hwfb Hwf1] Hwf2] Hs].
         rewrite (IH1 Hwf1) (IH2 Hwf2). reflexivity.
@@ -1786,3 +1787,8 @@ End MakeQFBV.
 
 
 Module QFBV := MakeQFBV SSAVarOrder SSAVS SSATE SSAStore.
+Canonical eunop_eqType := Eval hnf in EqType QFBV.eunop QFBV.eunop_eqMixin.
+Canonical ebinop_eqType := Eval hnf in EqType QFBV.ebinop QFBV.ebinop_eqMixin.
+Canonical bbinop_eqType := Eval hnf in EqType QFBV.bbinop QFBV.bbinop_eqMixin.
+Canonical exp_eqType := Eval hnf in EqType QFBV.exp QFBV.exp_eqMixin.
+Canonical bexp_eqType := Eval hnf in EqType QFBV.bexp QFBV.bexp_eqMixin.
