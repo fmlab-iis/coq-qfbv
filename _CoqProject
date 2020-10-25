@@ -1,6 +1,6 @@
 -Q lib/coq-bits/src Bits
 -Q lib/coq-ssrlib/src ssrlib
--Q /Users/jiaxiang/coq-nbits/src nbits
+-Q lib/coq-nbits/src nbits
 -Q src BitBlasting
 -Q src/bbcache BBCache
 src/Typ.v
