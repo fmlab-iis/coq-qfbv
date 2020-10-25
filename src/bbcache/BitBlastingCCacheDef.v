@@ -21,6 +21,9 @@ Definition bit_blast_eunop (op : QFBV.eunop) :=
   | QFBV.Ulow n => (fun g ls => bit_blast_low g n ls)
   | QFBV.Uzext n => bit_blast_zeroextend n
   | QFBV.Usext n => bit_blast_signextend n
+  | QFBV.Urepeat n => (fun g ls => bit_blast_repeat g n ls)
+  | QFBV.Urotl n => (fun g ls => bit_blast_rotateleft g n ls)
+  | QFBV.Urotr n => (fun g ls => bit_blast_rotateright g n ls)
   end .
 
 Definition bit_blast_ebinop (op : QFBV.ebinop) :=
@@ -312,6 +315,9 @@ Definition mk_env_eunop (op : QFBV.eunop) :=
   | QFBV.Ulow n => (fun E g ls => mk_env_low E g n ls)
   | QFBV.Uzext n => mk_env_zeroextend n
   | QFBV.Usext n => mk_env_signextend n
+  | QFBV.Urepeat n => (fun E g ls => mk_env_repeat E g n ls)
+  | QFBV.Urotl n => (fun E g ls => mk_env_rotateleft E g n ls)
+  | QFBV.Urotr n => (fun E g ls => mk_env_rotateright E g n ls)
   end .
 
 Definition mk_env_ebinop (op : QFBV.ebinop) :=

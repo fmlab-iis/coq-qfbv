@@ -19,7 +19,7 @@ Lemma mk_env_eunop_is_bit_blast_eunop :
     bit_blast_eunop op g ls = (g', cs, lrs).
 Proof.
   move=> op E g ls E' g' cs lrs.
-  case op => [ | | i j | n | n | n | n ]; 
+  case op => [ | | i j | n | n | n | n | n | n | n ]; 
     rewrite /mk_env_eunop /bit_blast_eunop => Hmk;
     [ rewrite (mk_env_not_is_bit_blast_not Hmk) |
       rewrite (mk_env_neg_is_bit_blast_neg Hmk) |
@@ -27,7 +27,10 @@ Proof.
       rewrite (mk_env_high_is_bit_blast_high Hmk) |
       rewrite (mk_env_low_is_bit_blast_low Hmk) |
       rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmk) |
-      rewrite (mk_env_signextend_is_bit_blast_signextend Hmk) ];
+      rewrite (mk_env_signextend_is_bit_blast_signextend Hmk) |
+      rewrite (mk_env_repeat_is_bit_blast_repeat Hmk) |
+      rewrite (mk_env_rotateleft_is_bit_blast_rotateleft Hmk) |
+      rewrite (mk_env_rotateright_is_bit_blast_rotateright Hmk) ];
     done.
 Qed.
 

@@ -7,7 +7,7 @@ From Coq Require Import List.
 From mathcomp Require Import tuple.
 From nbits Require Import NBits.
 From ssrlib Require Import Var.
-From BitBlasting Require Import QFBV CNF BBCommon BitBlasting.
+From BitBlasting Require Import QFBV CNF BBCommon.  (* BitBlasting. *)
 From BBCache Require Import BitBlastingInit BitBlastingCache BitBlastingCCache.
 
 Extraction Language OCaml.
@@ -23,6 +23,6 @@ Separate Extraction
          QFBV.well_formed_bexp QFBV.well_formed_bexps
          init_vm init_gen init_cache init_ccache
          Cache.reset_ct CompCache.reset_ct
-         bexp_to_cnf bexp_to_cnf_cache bexp_to_cnf_ccache
+         (* bexp_to_cnf *) bexp_to_cnf_cache bexp_to_cnf_ccache
          max_var_of_cnf num_clauses dimacs_cnf_with_header.
 Cd "../..".

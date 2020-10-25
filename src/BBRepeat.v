@@ -9,13 +9,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-(* repeat and its properties *)
-
-Fixpoint repeat {A : Type} (n : nat) (s : seq A) := 
-  match n with 
-  | O => [::]
-  | S m => s ++ (repeat m s)
-  end.
+(* auxiliary lemmas *)
 
 Lemma enc_bits_repeat E n ls bs :
   enc_bits E ls bs -> enc_bits E (repeat n ls) (repeat n bs) .

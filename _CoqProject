@@ -1,6 +1,6 @@
 -Q lib/coq-bits/src Bits
 -Q lib/coq-ssrlib/src ssrlib
--Q lib/coq-nbits/src nbits
+-Q /Users/jiaxiang/coq-nbits/src nbits
 -Q src BitBlasting
 -Q src/bbcache BBCache
 src/Typ.v
@@ -51,19 +51,19 @@ src/BBHigh.v
 src/BBExtract.v
 src/BBSlice.v
 src/BBConcat.v
-src/BBExport.v
 src/BBUdiv.v
 src/BBSdiv.v
 src/BBSmod.v
+src/BBExport.v
 src/AdhereConform.v
-src/BitBlastingDef.v
-src/BitBlastingNewer.v
-src/BitBlastingPreserve.v
-src/BitBlastingConsistent.v
-src/BitBlastingCorrect.v
-src/BitBlastingSat.v
-src/BitBlastingMkEnv.v
-src/BitBlasting.v
+# src/BitBlastingDef.v
+# src/BitBlastingNewer.v
+# src/BitBlastingPreserve.v
+# src/BitBlastingConsistent.v
+# src/BitBlastingCorrect.v
+# src/BitBlastingSat.v
+# src/BitBlastingMkEnv.v
+# src/BitBlasting.v
 src/bbcache/CompTable.v
 src/bbcache/CompCache.v
 src/bbcache/SimpTable.v
@@ -89,8 +89,8 @@ src/bbcache/CompTableFlatten.v
 src/bbcache/CacheFlatten.v
 src/bbcache/BitBlastingCacheFlatten.v
 src/bbcache/QFBVHash.v
-src/bbcache/SimpTableHash.v
 src/bbcache/CompTableHash.v
+src/bbcache/SimpTableHash.v
 src/bbcache/CacheHash.v
 src/bbcache/BitBlastingCacheHash.v
 src/Extract.v

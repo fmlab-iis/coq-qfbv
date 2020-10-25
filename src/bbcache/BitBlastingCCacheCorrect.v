@@ -28,14 +28,17 @@ Lemma bit_blast_eunop_correct op g bs E ls g' cs lrs:
   enc_bits E ls bs -> interp_cnf E (add_prelude cs) ->
   enc_bits E lrs ((QFBV.eunop_denote op) bs).
 Proof.
-  case op => [ | | i j | n | n | n | n ] /=;
+  case op => [ | | i j | n | n | n | n | n | n | n ] /=;
     [ exact: bit_blast_not_correct |
       exact: bit_blast_neg_correct |
       exact: bit_blast_extract_correct |
       exact: bit_blast_high_correct |
       exact: bit_blast_low_correct |
       exact: bit_blast_zeroextend_correct |
-      exact: bit_blast_signextend_correct ].
+      exact: bit_blast_signextend_correct |
+      exact: bit_blast_repeat_correct |
+      exact: bit_blast_rotateleft_correct |
+      exact: bit_blast_rotateright_correct ].
 Qed.
 
 Lemma bit_blast_ebinop_correct op g bs1 bs2 E ls1 ls2 g' cs ls :

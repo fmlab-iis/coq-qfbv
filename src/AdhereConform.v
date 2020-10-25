@@ -61,6 +61,12 @@ Section Conform .
         rewrite -(IH Hwf Hcf) /zext size_cat size_zeros // .
       + move => n e0 IH Hwf Hcf .
         rewrite -(IH Hwf Hcf) /sext size_cat size_copy // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_repeat // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_rolB // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_rorB // .
     - elim; rewrite /=;
        move => e0 IH0 e1 IH1
                   /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hsize]

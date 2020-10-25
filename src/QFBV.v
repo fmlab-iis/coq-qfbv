@@ -29,7 +29,10 @@ Module MakeQFBV
   | Uhigh : nat -> eunop
   | Ulow : nat -> eunop
   | Uzext : nat -> eunop
-  | Usext : nat -> eunop.
+  | Usext : nat -> eunop
+  | Urepeat : nat -> eunop
+  | Urotl : nat -> eunop
+  | Urotr : nat -> eunop.
 
   Inductive ebinop : Set :=
   | Band
@@ -90,7 +93,10 @@ Module MakeQFBV
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
-    | Usext n1, Usext n2 => n1 == n2
+    | Usext n1, Usext n2 
+    | Urepeat n1, Urepeat n2
+    | Urotl n1, Urotl n2
+    | Urotr n1, Urotr n2 => n1 == n2
     | _, _ => false
     end.
 
@@ -106,8 +112,14 @@ Module MakeQFBV
     - move=> n1 n2. move/eqP=> -> //.
     - move=> n1 n2. move/eqP=> -> //.
     - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
+    - move=> n1 n2. move/eqP=> -> //.
     - move=> n1 n2 n3 n4. case=> -> ->. by rewrite !eqxx.
     (* - move=> n1 n2 n3 n4 n5 n6. case=> -> -> ->. by rewrite !eqxx. *)
+    - move=> n1 n2. case=> ->. by rewrite !eqxx.
+    - move=> n1 n2. case=> ->. by rewrite !eqxx.
+    - move=> n1 n2. case=> ->. by rewrite !eqxx.
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
     - move=> n1 n2. case=> ->. by rewrite !eqxx.
@@ -325,6 +337,9 @@ Module MakeQFBV
     | Ulow n => low n
     | Uzext n => zext n
     | Usext n => sext n
+    | Urepeat n => repeat n
+    | Urotl n => rolB n
+    | Urotr n => rorB n
     end.
 
   Definition ebinop_denote (o : ebinop) : bits -> bits -> bits :=
@@ -428,6 +443,9 @@ Module MakeQFBV
     | Ulow n => 5
     | Uzext n => 6
     | Usext n => 7
+    | Urepeat n => 8
+    | Urotl n => 9
+    | Urotr n => 10
     end.
 
   Definition eunop_ltn (o1 o2 : eunop) : bool :=
@@ -439,7 +457,10 @@ Module MakeQFBV
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
-    | Usext n1, Usext n2 => n1 < n2
+    | Usext n1, Usext n2 
+    | Urepeat n1, Urepeat n2
+    | Urotl n1, Urotl n2
+    | Urotr n1, Urotr n2 => n1 < n2
     | _, _ => id_eunop o1 < id_eunop o2
     end.
 
@@ -470,6 +491,9 @@ Module MakeQFBV
       move: (eqn_ltn_gtn_cases n1 n4) (eqn_ltn_gtn_cases n2 n5)
                                       (eqn_ltn_gtn_cases n3 n6).
       by t_auto. *)
+    - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
+    - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
+    - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
     - move=> n1 n2. move: (eqn_ltn_gtn_cases n1 n2); by t_auto.
@@ -1395,6 +1419,9 @@ Module MakeQFBV
          | Ulow n => n
          | Uzext n => exp_size e te + n
          | Usext n => exp_size e te + n
+         | Urepeat n => n * exp_size e te
+         | Urotl n => exp_size e te
+         | Urotr n => exp_size e te
          end)
       | Ebinop op e1 e2 =>
         (match op with
@@ -1479,6 +1506,12 @@ Module MakeQFBV
           reflexivity.
         + move => n e IH te s Hwf Hcon. rewrite size_sext (IH _ _ Hwf Hcon).
           reflexivity.
+        + move => n e IH te s Hwf Hcon. rewrite size_repeat (IH _ _ Hwf Hcon). 
+          reflexivity.
+        + move => n e IH te s Hwf Hcon. rewrite size_rolB (IH _ _ Hwf Hcon). 
+          reflexivity.
+        + move => n e IH te s Hwf Hcon. rewrite size_rorB (IH _ _ Hwf Hcon). 
+          reflexivity.
       - case => e0 IH0 e1 IH1 te s /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hsize] Hcon /=.
         + rewrite /andB size_lift (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon).
           reflexivity.
@@ -1516,6 +1549,7 @@ Module MakeQFBV
         move: (TE.find_some_vtyp Hfind1) (TE.find_some_vtyp Hfind2) => Hty1 Hty2.
         rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
       - move=> op e IH Hwf. move: (IH Hwf) => {IH} IH. case: op => //=.
+        + move=> n. rewrite IH. reflexivity.
         + move=> n. rewrite IH. reflexivity.
         + move=> n. rewrite IH. reflexivity.
       - move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hs].

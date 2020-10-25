@@ -9,10 +9,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-(* operations on bits, should be moved to coq-nbits *)
-Definition rolB1 (bs : bits) : bits := dropmsb (joinlsb (msb bs) bs).
-Definition rolB (n : nat) (bs : bits) : bits := iter n rolB1 bs.
-
 (* auxiliary definitions and lemmas *)
 
 Definition rotatel1 ls : word := dropmsl (joinlsl (msl ls) ls).
