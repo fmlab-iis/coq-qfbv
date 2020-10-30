@@ -334,7 +334,8 @@ Proof.
       exact: mk_env_shl_preserve |
       exact: mk_env_lshr_preserve |
       exact: mk_env_ashr_preserve |
-      exact: mk_env_concat_preserve ].
+      exact: mk_env_concat_preserve |
+      exact: mk_env_comp_preserve ].
 Qed.
 
 Lemma mk_env_bbinop_preserve op E g ls1 ls2 E' g' cs l :

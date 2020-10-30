@@ -44,7 +44,8 @@ Proof.
       exact: mk_env_shl_newer_gen |
       exact: mk_env_lshr_newer_gen |
       exact: mk_env_ashr_newer_gen |
-      exact: mk_env_concat_newer_gen ].
+      exact: mk_env_concat_newer_gen |
+      exact: mk_env_comp_newer_gen ].
 Qed.
 
 Lemma mk_env_bbinop_newer_gen op E g ls1 ls2 E' g' cs l : 
@@ -791,7 +792,8 @@ Proof.
       apply (mk_env_shl_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_lshr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_ashr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
-      apply (mk_env_concat_newer_res Hmk) ]; 
+      apply (mk_env_concat_newer_res Hmk) |
+      apply (mk_env_comp_newer_res Hmk) ]; 
     done.
 Qed.
 
@@ -857,7 +859,8 @@ Proof.
       apply (mk_env_shl_newer_cnf Hmk) |
       apply (mk_env_lshr_newer_cnf Hmk) |
       apply (mk_env_ashr_newer_cnf Hmk) |
-      apply (mk_env_concat_newer_cnf Hmk) ]; 
+      apply (mk_env_concat_newer_cnf Hmk) |
+      apply (mk_env_comp_newer_cnf Hmk) ]; 
     done.
 Qed.
 

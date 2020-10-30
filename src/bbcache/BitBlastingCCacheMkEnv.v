@@ -53,7 +53,8 @@ Proof.
       rewrite (mk_env_shl_is_bit_blast_shl Hmk) |
       rewrite (mk_env_lshr_is_bit_blast_lshr Hmk) |
       rewrite (mk_env_ashr_is_bit_blast_ashr Hmk) |
-      rewrite (mk_env_concat_is_bit_blast_concat Hmk) ];
+      rewrite (mk_env_concat_is_bit_blast_concat Hmk) |
+      rewrite (mk_env_comp_is_bit_blast_comp Hmk) ];
     done.
 Qed.
 
