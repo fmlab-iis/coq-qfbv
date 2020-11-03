@@ -107,6 +107,37 @@ Definition valid (f : cnf) := forall (E : env), interp_cnf E f.
 
 
 
+Lemma size_joinlsl T l (ls : seq T) :
+  size (joinlsl l ls) = size ls + 1 .
+Proof .
+  rewrite /joinlsl /=. rewrite addn1. reflexivity.
+Qed .
+
+Lemma size_joinmsl T l (ls : seq T) :
+  size (joinmsl ls l) = size ls + 1 .
+Proof .
+  destruct ls => /= .
+  - reflexivity .
+  - by rewrite /joinmsl /= size_rcons addn1 .
+Qed .
+
+Lemma size_droplsl ls :
+  size (droplsl ls) = size ls - 1 .
+Proof .
+  elim : ls => [| l ls Hls] .
+  - done .
+  - by rewrite /droplsl /= subn1 .
+Qed .
+
+Lemma size_dropmsl ls :
+  size (dropmsl ls) = size ls - 1 .
+Proof .
+  destruct ls => /= .
+  - reflexivity .
+  - by rewrite subn1 -pred_Sn size_belast .
+Qed .
+
+
 (* interp_lit *)
 
 Lemma interp_lit_neg_involutive E a :
@@ -1266,6 +1297,849 @@ Definition dimacs_cnf (cs : cnf) : string :=
 Definition dimacs_cnf_with_header (cs : cnf) : string :=
   dimacs_header cs ++ newline ++ dimacs_cnf cs.
 
+
+
+(* Variable reordering *)
+
+From ssrlib Require Import FMaps Tactics.
+
+Module PM := MakeTreeMap(PositiveOrder).
+
+Section Reorder.
+
+  Definition reorder_lit (m : PM.t positive) (g : positive) (l : literal) :=
+    match l with
+    | Pos v => match PM.find v m with
+               | None => (PM.add v g m, (g + 1)%positive, Pos g)
+               | Some v' => (m, g, Pos v')
+               end
+    | Neg v => match PM.find v m with
+               | None => (PM.add v g m, (g + 1)%positive, Neg g)
+               | Some v'=> (m, g, Neg v')
+               end
+    end.
+
+  Fixpoint reorder_clause (m : PM.t positive) (g : positive) (c : clause) :=
+    match c with
+    | [::] => (m, g, [::])
+    | hd::tl =>
+      let '(m1, g1, hd') := reorder_lit m g hd in
+      let '(m2, g2, tl') := reorder_clause m1 g1 tl in
+      (m2, g2, hd'::tl')
+    end.
+
+  Fixpoint reorder_cnf_rec (m : PM.t positive) (g : positive) (cs : cnf) :=
+    match cs with
+    | [::] => (m, g, cs)
+    | hd::tl =>
+      let '(m1, g1, hd') := reorder_clause m g hd in
+      let '(m2, g2, tl') := reorder_cnf_rec m1 g1 tl in
+      (m2, g2, hd'::tl')
+    end.
+
+  Definition reorder_lit_full m rm g l :=
+    match l with
+    | Pos v => match PM.find v m with
+               | None => (PM.add v g m, PM.add g v rm, (g + 1)%positive, Pos g)
+               | Some v' => (m, rm, g, Pos v')
+               end
+    | Neg v => match PM.find v m with
+               | None => (PM.add v g m, PM.add g v rm, (g + 1)%positive, Neg g)
+               | Some v'=> (m, rm, g, Neg v')
+               end
+    end.
+
+  Fixpoint reorder_clause_full m rm g c :=
+    match c with
+    | [::] => (m, rm, g, [::])
+    | hd::tl =>
+      let '(m1, rm1, g1, hd') := reorder_lit_full m rm g hd in
+      let '(m2, rm2, g2, tl') := reorder_clause_full m1 rm1 g1 tl in
+      (m2, rm2, g2, hd'::tl')
+    end.
+
+  Fixpoint reorder_cnf_rec_full m rm g cs :=
+    match cs with
+    | [::] => (m, rm, g, cs)
+    | hd::tl =>
+      let '(m1, rm1, g1, hd') := reorder_clause_full m rm g hd in
+      let '(m2, rm2, g2, tl') := reorder_cnf_rec_full m1 rm1 g1 tl in
+      (m2, rm2, g2, hd'::tl')
+    end.
+
+  Definition reorder_upd_env (E : env) m :=
+    fun v => match PM.find v m with
+             | None => E v
+             | Some v' => E v'
+             end.
+
+  Definition newer_than_values (g : positive) (m : PM.t positive) :=
+    forall v v', PM.find v m = Some v' -> (v' < g)%positive.
+
+  Definition newer_than_keys (g : positive) (m : PM.t positive) :=
+    forall v, PM.mem v m -> (v < g)%positive.
+
+  Definition consistent_vm (m rm : PM.t positive) :=
+    forall v v', PM.find v m = Some v' <->
+                 PM.find v' rm = Some v.
+
+
+  Lemma consistent_vm_newer_than m rm g :
+    consistent_vm m rm ->
+    newer_than_values g m <-> newer_than_keys g rm.
+  Proof.
+    move=> Hcon. split.
+    - move=> Hnv v Hmemv. move: (PM.Lemmas.mem_find_some Hmemv) => [v' Hfv].
+      move/Hcon : Hfv => Hfv'. exact: (Hnv _ _ Hfv').
+    - move=> Hnk v v' Hfv. move/Hcon : Hfv => Hfv'.
+      move: (PM.Lemmas.find_some_mem Hfv') => Hmem. exact: (Hnk _ Hmem).
+  Qed.
+
+
+  Lemma reorder_lit_full_newer_than_values m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    newer_than_values g m -> newer_than_values g' m'.
+  Proof.
+    rewrite /reorder_lit_full. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnew. move=> u u' Hfu. case Huv: (u == v).
+        * rewrite (PM.Lemmas.find_add_eq Huv) in Hfu. case: Hfu => ?; subst.
+          exact: Pos.lt_add_r.
+        * move/negP: Huv=> Huv. rewrite (PM.Lemmas.find_add_neq Huv) in Hfu.
+          move: (Hnew _ _ Hfu) => Hlt. exact: (pos_lt_add_r _ Hlt).
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnew. move=> u u' Hfu. case Huv: (u == v).
+        * rewrite (PM.Lemmas.find_add_eq Huv) in Hfu. case: Hfu => ?; subst.
+          exact: Pos.lt_add_r.
+        * move/negP: Huv=> Huv. rewrite (PM.Lemmas.find_add_neq Huv) in Hfu.
+          move: (Hnew _ _ Hfu) => Hlt. exact: (pos_lt_add_r _ Hlt).
+  Qed.
+
+  Lemma reorder_clause_full_newer_than_values m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    newer_than_values g m -> newer_than_values g' m'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. by apply.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnew. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      exact: (reorder_lit_full_newer_than_values Hro_l Hnew).
+  Qed.
+
+  Lemma reorder_cnf_rec_full_newer_than_values m rm g c m' rm' g' c' :
+    reorder_cnf_rec_full m rm g c = (m', rm', g', c') ->
+    newer_than_values g m -> newer_than_values g' m'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. by apply.
+    - dcase (reorder_clause_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnew. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      exact: (reorder_clause_full_newer_than_values Hro_l Hnew).
+  Qed.
+
+
+  Lemma reorder_lit_full_newer_than_keys m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    newer_than_keys g rm -> newer_than_keys g' rm'.
+  Proof.
+    rewrite /reorder_lit_full. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnew. move=> u Hmemu.
+        rewrite PM.Lemmas.add_b in Hmemu. case/orP: Hmemu => Hmemu.
+        * rewrite /PM.Lemmas.eqb in Hmemu. move: Hmemu.
+          case: (PM.M.E.eq_dec g u) => //=.
+          move/eqP => -> _. exact: Pos.lt_add_r.
+        * move: (Hnew _ Hmemu) => Hlt. exact: (pos_lt_add_r _ Hlt).
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnew. move=> u Hmemu.
+        rewrite PM.Lemmas.add_b in Hmemu. case/orP: Hmemu => Hmemu.
+        * rewrite /PM.Lemmas.eqb in Hmemu. move: Hmemu.
+          case: (PM.M.E.eq_dec g u) => //=.
+          move/eqP => -> _. exact: Pos.lt_add_r.
+        * move: (Hnew _ Hmemu) => Hlt. exact: (pos_lt_add_r _ Hlt).
+  Qed.
+
+  Lemma reorder_clause_full_newer_than_keys m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    newer_than_keys g rm -> newer_than_keys g' rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. by apply.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnew. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      exact: (reorder_lit_full_newer_than_keys Hro_l Hnew).
+  Qed.
+
+  Lemma reorder_cnf_rec_full_newer_than_keys m rm g c m' rm' g' c' :
+    reorder_cnf_rec_full m rm g c = (m', rm', g', c') ->
+    newer_than_keys g rm -> newer_than_keys g' rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. by apply.
+    - dcase (reorder_clause_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnew. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      exact: (reorder_clause_full_newer_than_keys Hro_l Hnew).
+  Qed.
+
+
+  Lemma reorder_lit_full_consistent m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    newer_than_values g m ->
+    consistent_vm m rm -> consistent_vm m' rm'.
+  Proof.
+    rewrite /reorder_lit_full /consistent_vm. case l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. move=> Hnv. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnv H u u'. split.
+        * case Huv: (u == v).
+          -- rewrite (PM.Lemmas.find_add_eq Huv). case => ->.
+             rewrite (PM.Lemmas.find_add_eq (eqxx u')). by rewrite (eqP Huv).
+          -- move/negP: Huv => Hne. rewrite (PM.Lemmas.find_add_neq Hne).
+             move=> Hfu. move: (Hnv _ _ Hfu) => Hlt.
+             have Hne': ~ u' == g.
+             { move=> Heq. rewrite (eqP Heq) in Hlt. exact: (Pos.lt_irrefl _ Hlt). }
+             rewrite (PM.Lemmas.find_add_neq Hne'). apply/(H _ _). exact: Hfu.
+        * case Hu'g: (u' == g).
+          -- rewrite (PM.Lemmas.find_add_eq Hu'g). case=> ?; subst.
+             rewrite (PM.Lemmas.find_add_eq (eqxx u)). by rewrite (eqP Hu'g).
+          -- move/negP: Hu'g => Hne. rewrite (PM.Lemmas.find_add_neq Hne).
+             move=> Hfu'. case Huv: (u == v).
+             ++ move/(H _ _): Hfu' => Hfu. rewrite (eqP Huv) Hfv in Hfu.
+                discriminate.
+             ++ move/negP: Huv => Huv. rewrite (PM.Lemmas.find_add_neq Huv).
+                apply/(H _ _). exact: Hfu'.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. move=> Hnv. by apply.
+      + case=> ? ? ? ?; subst. move=> Hnv H u u'. split.
+        * case Huv: (u == v).
+          -- rewrite (PM.Lemmas.find_add_eq Huv). case => ->.
+             rewrite (PM.Lemmas.find_add_eq (eqxx u')). by rewrite (eqP Huv).
+          -- move/negP: Huv => Hne. rewrite (PM.Lemmas.find_add_neq Hne).
+             move=> Hfu. move: (Hnv _ _ Hfu) => Hlt.
+             have Hne': ~ u' == g.
+             { move=> Heq. rewrite (eqP Heq) in Hlt. exact: (Pos.lt_irrefl _ Hlt). }
+             rewrite (PM.Lemmas.find_add_neq Hne'). apply/(H _ _). exact: Hfu.
+        * case Hu'g: (u' == g).
+          -- rewrite (PM.Lemmas.find_add_eq Hu'g). case=> ?; subst.
+             rewrite (PM.Lemmas.find_add_eq (eqxx u)). by rewrite (eqP Hu'g).
+          -- move/negP: Hu'g => Hne. rewrite (PM.Lemmas.find_add_neq Hne).
+             move=> Hfu'. case Huv: (u == v).
+             ++ move/(H _ _): Hfu' => Hfu. rewrite (eqP Huv) Hfv in Hfu.
+                discriminate.
+             ++ move/negP: Huv => Huv. rewrite (PM.Lemmas.find_add_neq Huv).
+                apply/(H _ _). exact: Hfu'.
+  Qed.
+
+  Lemma reorder_clause_full_consistent m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    newer_than_values g m ->
+    consistent_vm m rm -> consistent_vm m' rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. move=> _. by apply.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnv Hcon. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      + exact: (reorder_lit_full_newer_than_values Hro_l Hnv).
+      + exact: (reorder_lit_full_consistent Hro_l Hnv Hcon).
+  Qed.
+
+  Lemma reorder_cnf_rec_full_consistent m rm g c m' rm' g' c' :
+    reorder_cnf_rec_full m rm g c = (m', rm', g', c') ->
+    newer_than_values g m ->
+    consistent_vm m rm -> consistent_vm m' rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. move=> _. by apply.
+    - dcase (reorder_clause_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> Hnv Hcon. apply: (IH _ _ _ _ _ _ _ Hro_c).
+      + exact: (reorder_clause_full_newer_than_values Hro_l Hnv).
+      + exact: (reorder_clause_full_consistent Hro_l Hnv Hcon).
+  Qed.
+
+
+  Definition vm_preserve (m1 m2 : PM.t positive) :=
+    PM.Lemmas.submap m1 m2.
+
+  Lemma vm_preserve_mem m1 m2 v :
+    vm_preserve m1 m2 -> PM.mem v m1 -> PM.mem v m2.
+  Proof.
+    move=> Hpre Hmem1. move: (PM.Lemmas.mem_find_some Hmem1) => [v' Hfv].
+    move: (Hpre _ _ Hfv) => Hfv2. exact: (PM.Lemmas.find_some_mem Hfv2).
+  Qed.
+
+  Lemma newer_than_keys_vm_preserve m g v :
+    newer_than_keys g m -> vm_preserve m (PM.add g v m).
+  Proof.
+    move=> Hnk x y Hfx. move: (PM.Lemmas.find_some_mem Hfx) => Hmem.
+    move: (Hnk _ Hmem) => Hlt. have Hne: ~ x == g.
+    { move=> Heq. rewrite (eqP Heq) in Hlt. exact: (Pos.lt_irrefl _ Hlt). }
+    rewrite (PM.Lemmas.find_add_neq Hne). assumption.
+  Qed.
+
+  Lemma vm_preserve_interp_lit E m1 m2 l :
+    vm_preserve m1 m2 -> PM.mem (var_of_lit l) m1 ->
+    interp_lit (reorder_upd_env E m1) l = interp_lit (reorder_upd_env E m2) l.
+  Proof.
+    rewrite /interp_lit /reorder_upd_env. move=> Hpre Hmem.
+    move: (PM.Lemmas.mem_find_some Hmem) => {Hmem} [v' Hfv].
+    case: l Hfv => /= v Hfv.
+    - rewrite Hfv. rewrite (Hpre v _ Hfv). reflexivity.
+    - rewrite Hfv. rewrite (Hpre v _ Hfv). reflexivity.
+  Qed.
+
+  Lemma vm_preserve_interp_clause E m1 m2 c :
+    vm_preserve m1 m2 ->
+    (forall l : lit_eqType, l \in c -> PM.mem (var_of_lit l) m1) ->
+    interp_clause (reorder_upd_env E m1) c = interp_clause (reorder_upd_env E m2) c.
+  Proof.
+    move=> Hpre. elim: c => [| l c IH] //=. move=> Hmem.
+    have Hin: (l \in l :: c) by rewrite in_cons eqxx orTb.
+    rewrite (vm_preserve_interp_lit E Hpre (Hmem l Hin)).
+    have Hmemc: forall l0 : literal, l0 \in c -> PM.mem (var_of_lit l0) m1.
+    { move=> x Hinx. apply: Hmem. by rewrite in_cons Hinx orbT. }
+    rewrite (IH Hmemc). reflexivity.
+  Qed.
+
+  Lemma reorder_lit_full_preserve m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    vm_preserve m m'.
+  Proof.
+    rewrite /reorder_lit_full. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+      + case=> ? ? ? ?; subst. apply: (PM.Lemmas.submap_none_add _ _ Hfv).
+        exact: PM.Lemmas.submap_refl.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+      + case=> ? ? ? ?; subst. apply: (PM.Lemmas.submap_none_add _ _ Hfv).
+        exact: PM.Lemmas.submap_refl.
+  Qed.
+
+  Lemma reorder_clause_full_preserve m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    vm_preserve m m'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' /=.
+    - case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst.
+      apply: (PM.Lemmas.submap_trans _ (IH _ _ _ _ _ _ _ Hro_c)).
+      exact: (reorder_lit_full_preserve Hro_l).
+  Qed.
+
+  Lemma reorder_cnf_rec_full_preserve m rm g c m' rm' g' c' :
+    reorder_cnf_rec_full m rm g c = (m', rm', g', c') ->
+    vm_preserve m m'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+    - dcase (reorder_clause_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst.
+      apply: (PM.Lemmas.submap_trans _ (IH _ _ _ _ _ _ _ Hro_c)).
+      exact: (reorder_clause_full_preserve Hro_l).
+  Qed.
+
+  Lemma reorder_lit_full_preserver m rm g l m' rm' g' l' :
+    newer_than_keys g rm ->
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    vm_preserve rm rm'.
+  Proof.
+    rewrite /reorder_lit_full. move=> Hnk. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+      + case=> ? ? ? ?; subst. exact: (newer_than_keys_vm_preserve _ Hnk).
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+      + case=> ? ? ? ?; subst. exact: (newer_than_keys_vm_preserve _ Hnk).
+  Qed.
+
+  Lemma reorder_clause_full_preserver m rm g c m' rm' g' c' :
+    newer_than_keys g rm ->
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    vm_preserve rm rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' /= Hnk.
+    - case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst.
+      move: (reorder_lit_full_newer_than_keys Hro_l Hnk) => Hnk1.
+      apply: (PM.Lemmas.submap_trans _ (IH m1 rm1 _ _ _ _ _ Hnk1 Hro_c)).
+      exact: (reorder_lit_full_preserver Hnk Hro_l).
+  Qed.
+
+  Lemma reorder_cnf_rec_full_preserver m rm g c m' rm' g' c' :
+    newer_than_keys g rm ->
+    reorder_cnf_rec_full m rm g c = (m', rm', g', c') ->
+    vm_preserve rm rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //= Hnk.
+    - case=> ? ? ? ?; subst. exact: PM.Lemmas.submap_refl.
+    - dcase (reorder_clause_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst.
+      move: (reorder_clause_full_newer_than_keys Hro_l Hnk) => Hnk1.
+      apply: (PM.Lemmas.submap_trans _ (IH _ _ _ _ _ _ _ Hnk1 Hro_c)).
+      exact: (reorder_clause_full_preserver Hnk Hro_l).
+  Qed.
+
+
+  Lemma reorder_lit_full_mem m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    PM.mem (var_of_lit l) m'.
+  Proof.
+    rewrite /reorder_lit_full /var_of_lit. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact (PM.Lemmas.find_some_mem Hfv).
+      + case=> ? ? ? ?; subst. exact: (PM.Lemmas.mem_add_eq (eqxx v)).
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. exact (PM.Lemmas.find_some_mem Hfv).
+      + case=> ? ? ? ?; subst. exact: (PM.Lemmas.mem_add_eq (eqxx v)).
+  Qed.
+
+  Lemma reorder_clause_full_mem m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    forall l, l \in c -> PM.mem (var_of_lit l) m'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+    dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+    case=> ? ? ? ?; subst. move=> l' Hin'. rewrite in_cons in Hin'. case/orP: Hin'.
+    - move/eqP => ->. move: (reorder_lit_full_mem Hro_l) => Hmem1.
+      move: (reorder_clause_full_preserve Hro_c) => Hpre.
+      exact: (vm_preserve_mem Hpre Hmem1).
+    - move=> Hin. exact: (IH _ _ _ _ _ _ _ Hro_c _ Hin).
+  Qed.
+
+  Lemma reorder_cn_full_mem m rm g cs m' rm' g' cs' :
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    forall c l, c \in cs -> l \in c -> PM.mem (var_of_lit l) m'.
+  Proof.
+    elim: cs m rm g m' rm' g' cs' => [| c cs IH] m rm g m' rm' g' cs' //=.
+    dcase (reorder_clause_full m rm g c) => [[[[m1 rm1] g1] c_ro] Hc_ro].
+    dcase (reorder_cnf_rec_full m1 rm1 g1 cs) => [[[[m2 rm2] g2] cs_ro] Hcs_ro].
+    case=> ? ? ? ?; subst. move=> c' l' Hc' Hl'.
+    rewrite in_cons in Hc'. case/orP: Hc' => Hc'.
+    - move/eqP: Hc' => Hc'. subst.
+      move: (reorder_clause_full_mem Hc_ro Hl') => Hmem1.
+      move: (reorder_cnf_rec_full_preserve Hcs_ro) => Hpre.
+      exact: (vm_preserve_mem Hpre Hmem1).
+    - exact: (IH _ _ _ _ _ _ _ Hcs_ro _ _ Hc' Hl').
+  Qed.
+
+
+  Lemma reorder_lit_full_memr m rm g l m' rm' g' l' :
+    consistent_vm m rm ->
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    PM.mem (var_of_lit l') rm'.
+  Proof.
+    rewrite /reorder_lit_full /var_of_lit. move=> Hcon. case: l => v.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. move/Hcon: Hfv => Hfv.
+        exact (PM.Lemmas.find_some_mem Hfv).
+      + case=> ? ? ? ?; subst. exact: (PM.Lemmas.mem_add_eq (eqxx g)).
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. move/Hcon: Hfv => Hfv.
+        exact (PM.Lemmas.find_some_mem Hfv).
+      + case=> ? ? ? ?; subst. exact: (PM.Lemmas.mem_add_eq (eqxx g)).
+  Qed.
+
+  Lemma reorder_clause_full_memr m rm g c m' rm' g' c' :
+    consistent_vm m rm -> newer_than_values g m ->
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    forall l, l \in c' -> PM.mem (var_of_lit l) rm'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //= Hcon Hnv.
+    - case=> ? ? ? ?; subst. discriminate.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. move=> l' Hin'. rewrite in_cons in Hin'. case/orP: Hin'.
+      + move/eqP => ->. move: (reorder_lit_full_memr Hcon Hro_l) => Hmem1.
+        move/(consistent_vm_newer_than _ Hcon): Hnv => Hnk.
+        move: (reorder_lit_full_newer_than_keys Hro_l Hnk) => Hnk1.
+        move: (reorder_clause_full_preserver Hnk1 Hro_c) => Hpre.
+        exact: (vm_preserve_mem Hpre Hmem1).
+      + move=> Hin.
+        move: (reorder_lit_full_consistent Hro_l Hnv Hcon) => Hcon1.
+        move: (reorder_lit_full_newer_than_values Hro_l Hnv) => Hnv1.
+        exact: (IH _ _ _ _ _ _ _ Hcon1 Hnv1 Hro_c _ Hin).
+  Qed.
+
+  Lemma reorder_cn_full_memr m rm g cs m' rm' g' cs' :
+    consistent_vm m rm -> newer_than_values g m ->
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    forall c l, c \in cs' -> l \in c -> PM.mem (var_of_lit l) rm'.
+  Proof.
+    elim: cs m rm g m' rm' g' cs' => [| c cs IH] m rm g m' rm' g' cs' //= Hcon Hnv.
+    - case=> ? ? ? ?; subst. discriminate.
+    - dcase (reorder_clause_full m rm g c) => [[[[m1 rm1] g1] c_ro] Hc_ro].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 cs) => [[[[m2 rm2] g2] cs_ro] Hcs_ro].
+      case=> ? ? ? ?; subst. move=> c' l' Hc' Hl'.
+      rewrite in_cons in Hc'. case/orP: Hc' => Hc'.
+      + move/eqP: Hc' => Hc'. subst.
+        move: (reorder_clause_full_memr Hcon Hnv Hc_ro Hl') => Hmem1.
+        move/(consistent_vm_newer_than _ Hcon): Hnv => Hnk.
+        move: (reorder_clause_full_newer_than_keys Hc_ro Hnk) => Hnk1.
+        move: (reorder_cnf_rec_full_preserver Hnk1 Hcs_ro) => Hpre.
+        exact: (vm_preserve_mem Hpre Hmem1).
+      + move: (reorder_clause_full_consistent Hc_ro Hnv Hcon) => Hcon1.
+        move: (reorder_clause_full_newer_than_values Hc_ro Hnv) => Hnv1.
+        exact: (IH _ _ _ _ _ _ _ Hcon1 Hnv1 Hcs_ro _ _ Hc' Hl').
+  Qed.
+
+
+  Lemma reorder_lit_full_update_sat E m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    interp_lit (reorder_upd_env E m') l = interp_lit E l'.
+  Proof.
+    rewrite /reorder_lit_full /interp_lit /reorder_upd_env.
+    case: l => v /=.
+    - case Hfind: (PM.find v m).
+      + case=> ? ? ? ?; subst. rewrite Hfind. reflexivity.
+      + case=> ? ? ? ?; subst. rewrite (PM.Lemmas.find_add_eq (eqxx v)). reflexivity.
+    - case Hfind: (PM.find v m).
+      + case=> ? ? ? ?; subst. rewrite Hfind. reflexivity.
+      + case=> ? ? ? ?; subst. rewrite (PM.Lemmas.find_add_eq (eqxx v)). reflexivity.
+  Qed.
+
+  Lemma reorder_clause_full_update_sat E m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    interp_clause (reorder_upd_env E m') c = interp_clause E c'.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. rewrite interp_clause_cons.
+      move: (reorder_lit_full_mem Hro_l) => Hmem.
+      move: (reorder_clause_full_preserve Hro_c) => Hpre.
+      rewrite -(vm_preserve_interp_lit _ Hpre Hmem).
+      rewrite (IH _ _ _ _ _ _ _ Hro_c).
+      rewrite (reorder_lit_full_update_sat E Hro_l). reflexivity.
+  Qed.
+
+  Lemma reorder_cnf_rec_full_update_sat E m rm g cs m' rm' g' cs' :
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    interp_cnf (reorder_upd_env E m') cs = interp_cnf E cs'.
+  Proof.
+    elim: cs m rm g m' rm' g' cs' => [| c cs IH] m rm g m' rm' g' cs' //=.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_clause_full m rm g c) => [[[[m1 rm1] g1] c_ro] Hro_c].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 cs) => [[[[m2 rm2] g2] cs_ro] Hro_cs].
+      case=> ? ? ? ?; subst. rewrite interp_cnf_cons.
+      move: (reorder_clause_full_mem Hro_c) => Hmem.
+      move: (reorder_cnf_rec_full_preserve Hro_cs) => Hpre.
+      rewrite -(vm_preserve_interp_clause E Hpre Hmem).
+      rewrite (reorder_clause_full_update_sat E Hro_c).
+      rewrite (IH _ _ _ _ _ _ _ Hro_cs). reflexivity.
+  Qed.
+
+
+  Lemma reorder_lit_full_satr E m rm g l m' rm' g' l' :
+    consistent_vm m rm ->
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    interp_lit (reorder_upd_env E rm') l' = interp_lit E l.
+  Proof.
+    rewrite /reorder_lit_full /interp_lit /reorder_upd_env.
+    move=> Hcon. case: l => v /=.
+    - case Hfind: (PM.find v m).
+      + case=> ? ? ? ?; subst. move/Hcon: Hfind => Hfind.
+        rewrite Hfind. reflexivity.
+      + case=> ? ? ? ?; subst. rewrite (PM.Lemmas.find_add_eq (eqxx g)).
+        reflexivity.
+    - case Hfind: (PM.find v m).
+      + case=> ? ? ? ?; subst. move/Hcon: Hfind => Hfind.
+        rewrite Hfind. reflexivity.
+      + case=> ? ? ? ?; subst. rewrite (PM.Lemmas.find_add_eq (eqxx g)).
+        reflexivity.
+  Qed.
+
+  Lemma reorder_clause_full_satr E m rm g c m' rm' g' c' :
+    consistent_vm m rm -> newer_than_values g m ->
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    interp_clause (reorder_upd_env E rm') c' = interp_clause E c.
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //= Hcon Hnv.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst. rewrite interp_clause_cons.
+      move: (reorder_lit_full_memr Hcon Hro_l) => Hmem.
+      move: (reorder_lit_full_consistent Hro_l Hnv Hcon) => Hcon1.
+      move: (reorder_lit_full_newer_than_values Hro_l Hnv) => Hnv1.
+      move/(consistent_vm_newer_than _ Hcon1): (Hnv1) => Hnk1.
+      move: (reorder_clause_full_preserver Hnk1 Hro_c) => Hpre.
+      rewrite -(vm_preserve_interp_lit _ Hpre Hmem).
+      rewrite (IH _ _ _ _ _ _ _ Hcon1 Hnv1 Hro_c).
+      rewrite (reorder_lit_full_satr E Hcon Hro_l). reflexivity.
+  Qed.
+
+  Lemma reorder_cnf_rec_full_satr E m rm g cs m' rm' g' cs' :
+    consistent_vm m rm -> newer_than_values g m ->
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    interp_cnf (reorder_upd_env E rm') cs' = interp_cnf E cs.
+  Proof.
+    elim: cs m rm g m' rm' g' cs' => [| c cs IH] m rm g m' rm' g' cs' //= Hcon Hnv.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_clause_full m rm g c) => [[[[m1 rm1] g1] c_ro] Hro_c].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 cs) => [[[[m2 rm2] g2] cs_ro] Hro_cs].
+      case=> ? ? ? ?; subst. rewrite interp_cnf_cons.
+      move: (reorder_clause_full_memr Hcon Hnv Hro_c) => Hmem.
+      move: (reorder_clause_full_consistent Hro_c Hnv Hcon) => Hcon1.
+      move: (reorder_clause_full_newer_than_values Hro_c Hnv) => Hnv1.
+      move/(consistent_vm_newer_than _ Hcon1): (Hnv1) => Hnk1.
+      move: (reorder_cnf_rec_full_preserver Hnk1 Hro_cs) => Hpre.
+      rewrite -(vm_preserve_interp_clause _ Hpre Hmem).
+      rewrite (IH _ _ _ _ _ _ _ Hcon1 Hnv1 Hro_cs).
+      rewrite (reorder_clause_full_satr E Hcon Hnv Hro_c). reflexivity.
+  Qed.
+
+
+  Lemma reorder_cnf_rec_full_sound E' m rm g cs m' rm' g' cs' :
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    interp_cnf E' cs' -> exists E, interp_cnf E cs.
+  Proof.
+    move=> Hro Hcnf. exists (reorder_upd_env E' m').
+    rewrite (reorder_cnf_rec_full_update_sat E' Hro). assumption.
+  Qed.
+
+  Lemma reorder_cnf_rec_full_complete E m rm g cs m' rm' g' cs' :
+    consistent_vm m rm -> newer_than_values g m ->
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    interp_cnf E cs -> exists E', interp_cnf E' cs'.
+  Proof.
+    move=> Hcon Hnv Hro Hcnf. exists (reorder_upd_env E rm').
+    rewrite (reorder_cnf_rec_full_satr E Hcon Hnv Hro). assumption.
+  Qed.
+
+
+  Lemma reorder_lit_full_partial m rm g l m' rm' g' l' :
+    reorder_lit_full m rm g l = (m', rm', g', l') ->
+    reorder_lit m g l = (m', g', l').
+  Proof.
+    rewrite /reorder_lit_full /reorder_lit. case: l => v //=.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. reflexivity.
+      + case=> ? ? ? ?; subst. reflexivity.
+    - case Hfv: (PM.find v m).
+      + case=> ? ? ? ?; subst. reflexivity.
+      + case=> ? ? ? ?; subst. reflexivity.
+  Qed.
+
+  Lemma reorder_clause_full_partial m rm g c m' rm' g' c' :
+    reorder_clause_full m rm g c = (m', rm', g', c') ->
+    reorder_clause m g c = (m', g', c').
+  Proof.
+    elim: c m rm g m' rm' g' c' => [| l c IH] m rm g m' rm' g' c' //=.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_lit_full m rm g l) => [[[[m1 rm1] g1] l_ro] Hro_l].
+      dcase (reorder_clause_full m1 rm1 g1 c) => [[[[m2 rm2] g2] c_ro] Hro_c].
+      case=> ? ? ? ?; subst.
+      dcase (reorder_lit m g l) => [[[m1' g1'] l_ro'] Hro_l'].
+      dcase (reorder_clause m1' g1' c) => [[[m2' g2'] c_ro'] Hro_c'].
+      move: (reorder_lit_full_partial Hro_l) => Hro_l''.
+      rewrite Hro_l' in Hro_l''. case: Hro_l'' => ? ? ?; subst.
+      move: (IH _ _ _ _ _ _ _ Hro_c) => Hro_c''. rewrite Hro_c' in Hro_c''.
+      case: Hro_c'' => ? ? ?; subst. reflexivity.
+  Qed.
+
+  Lemma reorder_cnf_rec_full_partial m rm g cs m' rm' g' cs' :
+    reorder_cnf_rec_full m rm g cs = (m', rm', g', cs') ->
+    reorder_cnf_rec m g cs = (m', g', cs').
+  Proof.
+    elim: cs m rm g m' rm' g' cs' => [| c cs IH] m rm g m' rm' g' cs' //=.
+    - case=> ? ? ? ?; subst. reflexivity.
+    - dcase (reorder_clause_full m rm g c) => [[[[m1 rm1] g1] c_ro] Hro_c].
+      dcase (reorder_cnf_rec_full m1 rm1 g1 cs) => [[[[m2 rm2] g2] cs_ro] Hro_cs].
+      case=> ? ? ? ?; subst.
+      dcase (reorder_clause m g c) => [[[m1' g1'] c_ro'] Hro_c'].
+      dcase (reorder_cnf_rec m1' g1' cs) => [[[m2' g2'] cs_ro'] Hro_cs'].
+      move: (reorder_clause_full_partial Hro_c) => Hro_c''.
+      rewrite Hro_c' in Hro_c''. case: Hro_c'' => ? ? ?; subst.
+      move: (IH _ _ _ _ _ _ _ Hro_cs) => Hro_cs''. rewrite Hro_cs' in Hro_cs''.
+      case: Hro_cs'' => ? ? ?; subst. reflexivity.
+  Qed.
+
+  Definition init_m := PM.empty positive.
+  Definition init_g := 1%positive.
+
+  Definition reorder_cnf cs :=
+    let '(_, _, cs') := reorder_cnf_rec init_m init_g cs in
+    cs'.
+
+  Theorem reorder_cnf_sound E' cs :
+    interp_cnf E' (reorder_cnf cs) -> exists E, interp_cnf E cs.
+  Proof.
+    rewrite /reorder_cnf.
+    dcase (reorder_cnf_rec init_m init_g cs) => [[[m' g'] cs'] Hro].
+    dcase (reorder_cnf_rec_full init_m init_m init_g cs) =>
+    [[[[m'' rm''] g''] cs''] Hro'].
+    rewrite (reorder_cnf_rec_full_partial Hro') in Hro. case: Hro => ? ? ?; subst.
+    exact: (reorder_cnf_rec_full_sound Hro').
+  Qed.
+
+  Theorem reorder_cnf_complete E cs :
+    interp_cnf E cs -> exists E', interp_cnf E' (reorder_cnf cs).
+  Proof.
+    rewrite /reorder_cnf.
+    dcase (reorder_cnf_rec init_m init_g cs) => [[[m' g'] cs'] Hro].
+    dcase (reorder_cnf_rec_full init_m init_m init_g cs) =>
+    [[[[m'' rm''] g''] cs''] Hro'].
+    rewrite (reorder_cnf_rec_full_partial Hro') in Hro. case: Hro => ? ? ?; subst.
+    by apply: (reorder_cnf_rec_full_complete _ _ Hro').
+  Qed.
+
+  Corollary reorder_cnf_eqsat cs : sat cs <-> sat (reorder_cnf cs).
+  Proof.
+    split.
+    - move=> [E Hs]. exact: (reorder_cnf_complete Hs).
+    - move=> [E Hs]. exact: (reorder_cnf_sound Hs).
+  Qed.
+
+
+  Lemma interp_cnf_rev_eqsat E cs :
+    interp_cnf E (rev cs) = interp_cnf E cs.
+  Proof.
+    elim: cs => [| c cs IH] //=. rewrite rev_cons. rewrite interp_cnf_rcons_cons.
+    rewrite interp_cnf_cons. rewrite IH. reflexivity.
+  Qed.
+
+  Lemma rev_cnf_eqsat cs : sat cs <-> sat (rev cs).
+  Proof.
+    split.
+    - move=> [E Hs]. exists E. rewrite interp_cnf_rev_eqsat. assumption.
+    - move=> [E Hs]. exists E. rewrite -interp_cnf_rev_eqsat. assumption.
+  Qed.
+
+End Reorder.
+
+
+Section EqSat.
+
+  Definition clause_eqsat (cs1 cs2 : clause) : Prop :=
+    forall E, interp_clause E cs1 = interp_clause E cs2.
+
+  Definition clause_eqsat_refl cs : clause_eqsat cs cs.
+  Proof. move=> E. reflexivity. Qed.
+
+  Definition clause_eqsat_sym cs1 cs2 :
+    clause_eqsat cs1 cs2 -> clause_eqsat cs2 cs1.
+  Proof. move=> H12 E. rewrite (H12 E). reflexivity. Qed.
+
+  Definition clause_eqsat_trans cs1 cs2 cs3 :
+    clause_eqsat cs1 cs2 -> clause_eqsat cs2 cs3 -> clause_eqsat cs1 cs3.
+  Proof. move=> H12 H23 E. rewrite (H12 E) (H23 E). reflexivity. Qed.
+
+  Instance clause_eqsat_equivalence : Equivalence clause_eqsat :=
+    { Equivalence_Reflexive := clause_eqsat_refl;
+      Equivalence_Symmetric := clause_eqsat_sym;
+      Equivalence_Transitive := clause_eqsat_trans }.
+
+
+  Definition cnf_eqsat (cs1 cs2 : cnf) : Prop :=
+    forall E, interp_cnf E cs1 = interp_cnf E cs2.
+
+  Definition cnf_eqsat_refl cs : cnf_eqsat cs cs.
+  Proof. move=> E. reflexivity. Qed.
+
+  Definition cnf_eqsat_sym cs1 cs2 : cnf_eqsat cs1 cs2 -> cnf_eqsat cs2 cs1.
+  Proof. move=> H12 E. rewrite (H12 E). reflexivity. Qed.
+
+  Definition cnf_eqsat_trans cs1 cs2 cs3 :
+    cnf_eqsat cs1 cs2 -> cnf_eqsat cs2 cs3 -> cnf_eqsat cs1 cs3.
+  Proof. move=> H12 H23 E. rewrite (H12 E) (H23 E). reflexivity. Qed.
+
+  Instance cnf_eqsat_equivalence : Equivalence cnf_eqsat :=
+    { Equivalence_Reflexive := cnf_eqsat_refl;
+      Equivalence_Symmetric := cnf_eqsat_sym;
+      Equivalence_Transitive := cnf_eqsat_trans }.
+
+  Lemma cnf_eqsat_cons c1 cs1 c2 cs2 :
+    clause_eqsat c1 c2 -> cnf_eqsat cs1 cs2 ->
+    cnf_eqsat (c1::cs1) (c2::cs2).
+  Proof. move=> Hc Hcs E /=. rewrite (Hc E) (Hcs E). reflexivity. Qed.
+
+  Lemma cnf_eqsat_add_prelude_interp_cnf E cs1 cs2 :
+    cnf_eqsat cs1 cs2 ->
+    interp_cnf E (add_prelude cs1) = interp_cnf E (add_prelude cs2).
+  Proof.
+    move=> Heqs. rewrite !add_prelude_expand. rewrite (Heqs E). reflexivity.
+  Qed.
+
+  Lemma cnf_eqsat_add_prelude_sat cs1 cs2 :
+    cnf_eqsat cs1 cs2 ->
+    sat (add_prelude cs1) <-> sat (add_prelude cs2).
+  Proof.
+    move=> Heqs. split; move=> [E Hs]; exists E.
+    - rewrite -(cnf_eqsat_add_prelude_interp_cnf _ Heqs). assumption.
+    - rewrite (cnf_eqsat_add_prelude_interp_cnf _ Heqs). assumption.
+  Qed.
+
+
+  Lemma eq_mem_cnf_eqsat cs1 cs2 :
+    cs1 =i cs2 -> cnf_eqsat cs1 cs2.
+  Proof.
+    move=> H E. rewrite /interp_cnf. case H2: (all (interp_clause E) cs2).
+    - apply/allP => c Hin. move/allP: H2=> H2.
+      rewrite H in Hin. exact: (H2 c Hin).
+    - apply/negP=> H1. move/negP: H2; apply. apply/allP => c Hin. move/allP: H1=> H1.
+      rewrite -H in Hin. exact: (H1 c Hin).
+  Qed.
+
+  Lemma cnf_eqsat_rev cs : cnf_eqsat (rev cs) cs.
+  Proof. apply: eq_mem_cnf_eqsat. exact: mem_rev. Qed.
+
+  Lemma interp_cnf_tflatten_cons E c cs :
+    interp_cnf E (tflatten (c::cs)) = interp_cnf E c && interp_cnf E (tflatten cs).
+  Proof.
+    rewrite /tflatten /=. rewrite -/(rev c). rewrite tflatten_rec_expand.
+    rewrite interp_cnf_cat. rewrite interp_cnf_rev_eqsat. rewrite andbC.
+    reflexivity.
+  Qed.
+
+  Lemma interp_cnf_tflatten_catrev E cs1 cs2 :
+    interp_cnf E (tflatten (catrev cs1 cs2)) = interp_cnf E (tflatten cs1) &&
+                                               interp_cnf E (tflatten cs2).
+  Proof.
+    elim: cs1 cs2 => [| c1 cs1 IH] cs2 //=.
+    rewrite IH. rewrite !interp_cnf_tflatten_cons. case: (interp_cnf E c1) => //=.
+    rewrite andbF. reflexivity.
+  Qed.
+
+  Lemma tflatten_singleton_eqsat cs :
+    cnf_eqsat (tflatten [:: cs]) cs.
+  Proof. rewrite /tflatten /=. rewrite -/(rev cs). exact: cnf_eqsat_rev. Qed.
+
+  Lemma tflatten_catrev_eqsat ecs1 ecs2 cs1 cs2 :
+    cnf_eqsat (tflatten ecs1) cs1 ->
+    cnf_eqsat (tflatten ecs2) cs2 ->
+    cnf_eqsat (tflatten (catrev ecs1 ecs2)) (catrev cs1 cs2).
+  Proof.
+    move=> H1 H2 E. rewrite interp_cnf_catrev. rewrite interp_cnf_tflatten_catrev.
+    rewrite (H1 E) (H2 E). reflexivity.
+  Qed.
+
+  Lemma tflatten_cons_catrev_eqsat ec ecs c cs :
+    cnf_eqsat ec c -> cnf_eqsat (tflatten ecs) cs ->
+    cnf_eqsat (tflatten (ec :: ecs)) (catrev c cs).
+  Proof.
+    move=> Hc Hcs. move=> E. rewrite interp_cnf_tflatten_cons.
+    rewrite interp_cnf_catrev. rewrite (Hc E) (Hcs E). reflexivity.
+  Qed.
+
+End EqSat.
 
 
 Global Opaque add_prelude.

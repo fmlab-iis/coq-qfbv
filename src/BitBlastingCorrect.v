@@ -121,7 +121,7 @@ Proof.
   move: (vm_preserve_consistent (bit_blast_exp_preserve He2) Hcons2) => Hcons1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve He1) Hcons1) => Hcons0.
   rewrite !add_prelude_cat. move/andP=> [Hic1 /andP [Hic2 Hicr]] .
-  move => /andP [/andP [Hwf1 Hwf2] _] .
+  move => /andP [/andP [/andP [Hwf1 Hwf2] _] _] .
   apply: (bit_blast_and_correct Hr _ _ Hicr).
   - exact: (IH1 _ _ _ _ _ _ _ _ _ He1 Hcf1 Hcons1 Hic1 Hwf1).
   - exact: (IH2 _ _ _ _ _ _ _ _ _ He2 Hcf2 Hcons2 Hic2 Hwf2).
@@ -162,7 +162,7 @@ Proof.
   dcase (bit_blast_exp te m1 g1 e1) => [[[[m2 g2] cs2] rs2] Hexp1] .
   dcase (bit_blast_or g2 rs1 rs2) => [[[g'0 cs0] rs] Hor] .
   case => <- _ <- <- .
-  move => /andP [Hcf0 Hcf1] Hcon Hprelude /andP [/andP [Hwf0 Hwf1] _] .
+  move => /andP [Hcf0 Hcf1] Hcon Hprelude /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   rewrite !add_prelude_cat in Hprelude.
   move: Hprelude => /andP [Hcs0 /andP [Hcs1 Hcs2]] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
@@ -210,7 +210,7 @@ Proof.
   move: (vm_preserve_consistent (bit_blast_exp_preserve He2) Hcons2) => Hcons1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve He1) Hcons1) => Hcons0.
   rewrite !add_prelude_cat.
-  move/andP=> [Hic1 /andP [Hic2 Hicr]] /andP [/andP [Hwf1 Hwf2] _].
+  move/andP=> [Hic1 /andP [Hic2 Hicr]] /andP [/andP [/andP [Hwf1 Hwf2] _] _].
   apply: (bit_blast_xor_correct Hr _ _ Hicr).
   - exact: (IH1 _ _ _ _ _ _ _ _ _ He1 Hcf1 Hcons1 Hic1 Hwf1).
   - exact: (IH2 _ _ _ _ _ _ _ _ _ He2 Hcf2 Hcons2 Hic2 Hwf2).
@@ -282,7 +282,7 @@ Proof.
   dcase (bit_blast_exp te m1 g1 e1) => [[[[m2 g2] cs2] rs2] Hexp1] .
   dcase (bit_blast_add g2 rs1 rs2) => [[[g'0 cs0] rs] Hadd] .
   case => <- _ <- <- .
-  move => /andP [Hcf0 Hcf1] Hcon Hprelude /andP [/andP [Hwf0 Hwf1] Hsize] .
+  move => /andP [Hcf0 Hcf1] Hcon Hprelude /andP [/andP [/andP [Hwf0 Hwf1] _] Hsize] .
   rewrite !add_prelude_cat in Hprelude.
   move: Hprelude => /andP [Hcs0 /andP [Hcs1 Hcs2]] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
@@ -330,7 +330,7 @@ Proof.
   dcase (bit_blast_sub g2 rs1 rs2) => [[[g'0 cs0] rs] Hsub] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [Hwf0 Hwf1] Hsize] .
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] _] Hsize] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.
@@ -376,7 +376,7 @@ Proof.
   dcase (bit_blast_mul g2 rs1 rs2) => [[[g'0 cs0] rs] Hmul] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [Hwf0 Hwf1] Hsize] .
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] _] Hsize] .
   move : (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hconm0.
   move : (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hconm0) => Hconm.
   move : (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hconm0 Hcs0 Hwf0) => Hence0.
@@ -461,12 +461,28 @@ Proof.
   dcase (bit_blast_shl g2 rs1 rs2) => [[[g'0 cs0] rs] Hshl] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [Hwf0 Hwf1] _] .
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hszeq] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.
   move: (IHe1 _ _ _ _ _ _ _ _ _ Hexp1 Hcf1 Hcon Hcs1 Hwf1) => Hencls1.
-  apply : (bit_blast_shl_correct Hshl Hencls0 Hencls1 Hcs2) .
+  have : size rs1 > 0 .
+  {
+    move : (enc_bits_size Hencls0) .
+    rewrite (eval_conform_exp_size Hwf0 Hcf0) => Hszrs1 .
+    by rewrite -Hszrs1 in Hszgt0 .
+  }
+  move => {Hszgt0} Hszrs1gt0 .
+  have : size rs1 = size rs2 .
+  { 
+    move : (enc_bits_size Hencls0) (enc_bits_size Hencls1) .
+    case => -> -> .
+    rewrite (eval_conform_exp_size Hwf0 Hcf0)
+            (eval_conform_exp_size Hwf1 Hcf1) .
+    by rewrite (eqP Hszeq) .
+  }
+  move => {Hszeq} Hszrs1rs2 .
+  exact : (bit_blast_shl_correct Hszrs1gt0 Hszrs1rs2 Hshl Hencls0 Hencls1 Hcs2) .
 Qed .
 
 Lemma bit_blast_exp_lshr :
@@ -504,7 +520,7 @@ Proof.
   dcase (bit_blast_lshr g2 rs1 rs2) => [[[g'0 cs0] rs] Hlshr] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [Hwf0 Hwf1] _] .
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.
@@ -550,7 +566,7 @@ Proof.
   dcase (bit_blast_ashr g2 rs1 rs2) => [[[g'0 cs0] rs] Hashr] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [Hwf0 Hwf1] _].
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] _] _].
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.
@@ -592,7 +608,7 @@ Proof.
   dcase (bit_blast_exp te m1 g1 e1) => [[[[m2 g2] cs2] rs2] Hexp1] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 _]] /andP [/andP [Hwf0 Hwf1] _].
+  move => /andP [Hcs0 /andP [Hcs1 _]] /andP [/andP [/andP [Hwf0 Hwf1] _] _].
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.

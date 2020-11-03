@@ -19,14 +19,17 @@ Lemma mk_env_eunop_sat :
     newer_than_lit g lit_tt -> newer_than_lits g ls -> interp_cnf E' cs.
 Proof.
   move=> op E g ls E' g' cs lrs Hmk Hgtt Hgls; move: Hmk.
-  case op=> [ | | i j | n | n | n | n ]; rewrite /mk_env_eunop => Hmk;
+  case op=> [ | | i j | n | n | n | n | n | n | n ]; rewrite /mk_env_eunop => Hmk;
     [ apply (mk_env_not_sat Hmk) |
       apply (mk_env_neg_sat Hmk) |
       apply (mk_env_extract_sat Hmk) |
       apply (mk_env_high_sat Hmk) |
       apply (mk_env_low_sat Hmk) |
       apply (mk_env_zeroextend_sat Hmk) |
-      apply (mk_env_signextend_sat Hmk) ];
+      apply (mk_env_signextend_sat Hmk) |
+      apply (mk_env_repeat_sat Hmk) |
+      apply (mk_env_rotateleft_sat Hmk) |
+      apply (mk_env_rotateright_sat Hmk) ];
     done.
 Qed.
 
@@ -44,15 +47,15 @@ Proof.
       apply (mk_env_add_sat Hmk) |
       apply (mk_env_sub_sat Hmk) |
       apply (mk_env_mul_sat Hmk) |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_umod_sat Hmk) |
+      apply (mk_env_srem_sat Hmk) |
+      apply (mk_env_smod_sat Hmk) |
       apply (mk_env_shl_sat Hmk) |
       apply (mk_env_lshr_sat Hmk) |
       apply (mk_env_ashr_sat Hmk) |
       apply (mk_env_concat_sat Hmk) ];
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_sat :
   forall op E g ls1 ls2 E' g' cs l,

@@ -21,6 +21,8 @@ End ZValueType.
 
 Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
 
+  Module Lemmas := FMapLemmas TE.
+
   Local Notation var := V.t.
   Local Notation value := bits.
 
@@ -58,6 +60,9 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
   Parameter acc_Upd2_neq :
     forall x y1 v1 y2 v2 s1 s2,
       x != y1 -> x != y2 -> Upd2 y1 v1 y2 v2 s1 s2 -> acc x s2 = acc x s1.
+  Parameter Equal_def :
+    forall s1 s2,
+      Equal s1 s2 <-> (forall v, acc v s1 = acc v s2).
   Parameter Equal_refl : forall s, Equal s s.
   Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
   Parameter Equal_trans : forall s1 s2 s3, Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
@@ -73,6 +78,10 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
     forall v e s1 s2 s, Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
 
   Parameter conform : t -> TE.env -> Prop.
+  Parameter conform_def :
+    forall (s : t) (E : TE.env),
+      (forall (v : V.t), TE.mem v E -> TE.vsize v E = size (acc v s)) ->
+      conform s E.
   Parameter conform_mem :
     forall v s te, conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
   Parameter conform_Upd :
@@ -92,7 +101,18 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
       x1 != x2 -> sizeof_typ ty1 = size v1 -> sizeof_typ ty2 = size v2 ->
       conform s te ->
       conform (upd2 x2 v2 x1 v1 s) (TE.add x1 ty1 (TE.add x2 ty2 te)).
-
+  Parameter conform_add_not_mem :
+    forall E s x ty,
+      conform s (TE.add x ty E) -> ~~ TE.mem x E -> conform s E.
+  Parameter conform_submap :
+    forall E1 E2 s,
+      Lemmas.submap E1 E2 -> conform s E2 -> conform s E1.
+  Parameter conform_equal :
+    forall E1 E2 s,
+      TE.Equal E1 E2 -> conform s E1 <-> conform s E2.
+  Parameter equal_conform :
+    forall E s1 s2,
+      Equal s1 s2 -> conform s1 E <-> conform s2 E.
 End BitsStore.
 
 Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
@@ -107,6 +127,12 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   Definition conform (s : t) (te : TE.env) : Prop :=
     forall (v : V.t),
       TE.mem v te -> TE.vsize v te = size (acc v s).
+
+  Lemma conform_def :
+    forall (s : t) (E : TE.env),
+      (forall (v : V.t), TE.mem v E -> TE.vsize v E = size (acc v s)) ->
+      conform s E.
+  Proof. move=> s E H. assumption. Qed.
 
   Lemma conform_mem v s te :
     conform s te -> TE.mem v te -> TE.vsize v te = size (acc v s).
@@ -156,6 +182,47 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   Proof.
     move=> Hne Hs1 Hs2 Hcon.
     exact: (conform_Upd2 Hne Hs1 Hs2 (Upd2_upd2 x2 v2 x1 v1 s) Hcon).
+  Qed.
+
+  Lemma conform_add_not_mem E s x ty :
+    conform s (TE.add x ty E) -> ~~ TE.mem x E -> conform s E.
+  Proof.
+    move=> Hco Hmem y Hmemy. move: (Hco y). rewrite Lemmas.OP.P.F.add_b Hmemy orbT.
+    move=> <-; last by exact: is_true_true. case Hyx: (y == x).
+    - rewrite (eqP Hyx) in Hmemy. rewrite Hmemy in Hmem. discriminate.
+    - move/idP/negP: Hyx => Hyx. rewrite (TE.vsize_add_neq Hyx). reflexivity.
+  Qed.
+
+  Lemma conform_submap E1 E2 s :
+    Lemmas.submap E1 E2 -> conform s E2 -> conform s E1.
+  Proof.
+    move=> Hsubm Hco x Hmem1. move: (Lemmas.submap_mem Hsubm Hmem1) => Hmem2.
+    move: (Lemmas.mem_find_some Hmem1) => [ty Hfind1].
+    move: (Hsubm x ty Hfind1) => Hfind2. move: (TE.find_some_vtyp Hfind1) => Hty1.
+     move: (TE.find_some_vtyp Hfind2) => Hty2. rewrite -(Hco _ Hmem2).
+    rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
+  Qed.
+
+  Lemma conform_equal E1 E2 s :
+    TE.Equal E1 E2 -> conform s E1 <-> conform s E2.
+  Proof.
+    move=> Heq. move: (Lemmas.Equal_submap Heq) => H12.
+    move: (Lemmas.Equal_sym Heq) => {Heq} Heq.
+    move: (Lemmas.Equal_submap Heq) => H21. split.
+    - exact: (conform_submap H21).
+    - exact: (conform_submap H12).
+  Qed.
+
+  Lemma equal_conform E s1 s2 :
+    Equal s1 s2 -> conform s1 E <-> conform s2 E.
+  Proof.
+    move=> Heq. split.
+    - move=> H1. apply: conform_def. move=> v Hmem.
+      rewrite (conform_mem H1 Hmem). rewrite /acc. rewrite (Heq v).
+      reflexivity.
+    - move=> H2. apply: conform_def. move=> v Hmem.
+      rewrite (conform_mem H2 Hmem). rewrite /acc. rewrite (Heq v).
+      reflexivity.
   Qed.
 
 End MakeBitsStore.

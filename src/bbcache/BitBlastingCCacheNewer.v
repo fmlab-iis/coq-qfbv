@@ -15,14 +15,17 @@ Import Prenex Implicits.
 Lemma mk_env_eunop_newer_gen op E g ls1 E' g' cs ls : 
   mk_env_eunop op E g ls1 = (E', g', cs, ls) -> (g <=? g')%positive.
 Proof. 
-  case op => [ | | i j | n | n | n | n ];
+  case op => [ | | i j | n | n | n | n | n | n | n ];
     [ exact: mk_env_not_newer_gen |
       exact: mk_env_neg_newer_gen |
       exact: mk_env_extract_newer_gen |
       exact: mk_env_high_newer_gen |
       exact: mk_env_low_newer_gen |
       exact: mk_env_zeroextend_newer_gen |
-      exact: mk_env_signextend_newer_gen ].
+      exact: mk_env_signextend_newer_gen |
+      exact: mk_env_repeat_newer_gen |
+      exact: mk_env_rotateleft_newer_gen |
+      exact: mk_env_rotateright_newer_gen ].
 Qed.
 
 Lemma mk_env_ebinop_newer_gen op E g ls1 ls2 E' g' cs ls : 
@@ -35,14 +38,14 @@ Proof.
       exact: mk_env_add_newer_gen |
       exact: mk_env_sub_newer_gen |
       exact: mk_env_mul_newer_gen |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      exact: mk_env_umod_newer_gen |
+      exact: mk_env_srem_newer_gen |
+      exact: mk_env_smod_newer_gen |
       exact: mk_env_shl_newer_gen |
       exact: mk_env_lshr_newer_gen |
       exact: mk_env_ashr_newer_gen |
       exact: mk_env_concat_newer_gen ].
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_gen op E g ls1 ls2 E' g' cs l : 
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) -> (g <=? g')%positive.
@@ -755,14 +758,18 @@ Lemma mk_env_eunop_newer_res op E g ls1 E' g' cs ls :
   newer_than_lit g lit_tt -> newer_than_lits g ls1 -> 
   newer_than_lits g' ls.
 Proof. 
-  move=> Hmk Hgtt Hgls1; move: Hmk; case op => [ | | i j | n | n | n | n ] Hmk;
+  move=> Hmk Hgtt Hgls1; move: Hmk; 
+    case op => [ | | i j | n | n | n | n | n | n | n ] Hmk;
     [ apply (mk_env_not_newer_res Hmk) |
       apply (mk_env_neg_newer_res Hmk) |
       apply (mk_env_extract_newer_res Hmk) |
       apply (mk_env_high_newer_res Hmk) |
       apply (mk_env_low_newer_res Hmk) |
       apply (mk_env_zeroextend_newer_res Hmk) |
-      apply (mk_env_signextend_newer_res Hmk) ]; 
+      apply (mk_env_signextend_newer_res Hmk) |
+      apply (mk_env_repeat_newer_res Hmk) |
+      apply (mk_env_rotateleft_newer_res Hmk) |
+      apply (mk_env_rotateright_newer_res Hmk) ]; 
     done.
 Qed.
 
@@ -778,15 +785,15 @@ Proof.
       apply (mk_env_add_newer_res Hmk) |
       apply (mk_env_sub_newer_res Hmk) |
       apply (mk_env_mul_newer_res Hmk) |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_umod_newer_res Hmk) |
+      apply (mk_env_srem_newer_res Hmk) |
+      apply (mk_env_smod_newer_res Hmk) |
       apply (mk_env_shl_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_lshr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_ashr_newer_res Hgtt Hgls1 Hgls2 Hmk) |
       apply (mk_env_concat_newer_res Hmk) ]; 
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_res op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) ->
@@ -817,14 +824,18 @@ Lemma mk_env_eunop_newer_cnf op E g ls1 E' g' cs ls :
   newer_than_lit g lit_tt -> newer_than_lits g ls1 -> 
   newer_than_cnf g' cs.
 Proof. 
-  move=> Hmk Hgtt Hgls1; move: Hmk; case op => [ | | i j | n | n | n | n ] Hmk;
+  move=> Hmk Hgtt Hgls1; move: Hmk; 
+    case op => [ | | i j | n | n | n | n | n | n | n ] Hmk;
     [ apply (mk_env_not_newer_cnf Hmk) |
       apply (mk_env_neg_newer_cnf Hmk) |
       apply (mk_env_extract_newer_cnf Hmk) |
       apply (mk_env_high_newer_cnf Hmk) |
       apply (mk_env_low_newer_cnf Hmk) |
       apply (mk_env_zeroextend_newer_cnf Hmk) |
-      apply (mk_env_signextend_newer_cnf Hmk) ]; 
+      apply (mk_env_signextend_newer_cnf Hmk) |
+      apply (mk_env_repeat_newer_cnf Hmk) |
+      apply (mk_env_rotateleft_newer_cnf Hmk) |
+      apply (mk_env_rotateright_newer_cnf Hmk) ]; 
     done.
 Qed.
 
@@ -840,15 +851,15 @@ Proof.
       apply (mk_env_add_newer_cnf Hmk) |
       apply (mk_env_sub_newer_cnf Hmk) |
       apply (mk_env_mul_newer_cnf Hmk) |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      apply (mk_env_umod_newer_cnf Hmk) |
+      apply (mk_env_srem_newer_cnf Hmk) |
+      apply (mk_env_smod_newer_cnf Hmk) |
       apply (mk_env_shl_newer_cnf Hmk) |
       apply (mk_env_lshr_newer_cnf Hmk) |
       apply (mk_env_ashr_newer_cnf Hmk) |
       apply (mk_env_concat_newer_cnf Hmk) ]; 
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_newer_cnf op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) ->

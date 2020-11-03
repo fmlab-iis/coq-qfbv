@@ -94,7 +94,7 @@ Lemma mk_env_exp_is_bit_blast_exp_and :
         mk_env_exp m s E g (QFBV.Ebinop QFBV.Band e1 e2) = (m', E', g', cs, lrs) ->
         bit_blast_exp te m g (QFBV.Ebinop QFBV.Band e1 e2) = (m', g', cs, lrs).
 Proof.
-  move=> e1 IH1 e2 IH2 te m E g s m' E' g' cs lrs /andP [Hcf1 Hcf2] /= /andP [/andP [Hwf1 Hwf2] Hsize] .
+  move=> e1 IH1 e2 IH2 te m E g s m' E' g' cs lrs /andP [Hcf1 Hcf2] /= /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize] .
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_and E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -129,7 +129,7 @@ Lemma mk_env_exp_is_bit_blast_exp_or :
       mk_env_exp m s E g (QFBV.Ebinop QFBV.Bor e0 e1) = (m', E', g', cs, lrs) ->
       bit_blast_exp te m g (QFBV.Ebinop QFBV.Bor e0 e1) = (m', g', cs, lrs).
 Proof.
-  move => e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /andP [Hcf0 Hcf1] /= /andP [/andP [Hwf0 Hwf1] _] .
+  move => e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /andP [Hcf0 Hcf1] /= /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1] .
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2] .
   case Hmkr  : (mk_env_or E2 g2 ls1 ls2) => [[[E'0 g'0] cs0] ls] .
@@ -164,7 +164,7 @@ Lemma mk_env_exp_is_bit_blast_exp_xor :
         mk_env_exp m s E g (QFBV.Ebinop QFBV.Bxor e1 e2) = (m', E', g', cs, lrs) ->
         bit_blast_exp te m g (QFBV.Ebinop QFBV.Bxor e1 e2) = (m', g', cs, lrs).
 Proof.
-  move=> e1 IH1 e2 IH2 te m E g s m' E' g' cs lrs /andP [Hcf1 Hcf2] /= /andP [/andP [Hwf1 Hwf2] _] .
+  move=> e1 IH1 e2 IH2 te m E g s m' E' g' cs lrs /andP [Hcf1 Hcf2] /= /andP [/andP [/andP [Hwf1 Hwf2] _] _] .
   case Hmke1 : (mk_env_exp m s E g e1) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke2 : (mk_env_exp m1 s E1 g1 e2) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_xor E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -223,7 +223,7 @@ Lemma mk_env_exp_is_bit_blast_exp_add :
         mk_env_exp m s E g (QFBV.Ebinop QFBV.Badd e e0) = (m', E', g', cs, lrs) ->
         bit_blast_exp te m g (QFBV.Ebinop QFBV.Badd e e0) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_add E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -258,7 +258,7 @@ Lemma mk_env_exp_is_bit_blast_exp_sub :
         mk_env_exp m s E g (QFBV.Ebinop QFBV.Bsub e e0) = (m', E', g', cs, lrs) ->
         bit_blast_exp te m g (QFBV.Ebinop QFBV.Bsub e e0) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_sub E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -293,7 +293,7 @@ Lemma mk_env_exp_is_bit_blast_exp_mul :
         mk_env_exp m s E g (QFBV.Ebinop QFBV.Bmul e e0) = (m', E', g', cs, lrs) ->
         bit_blast_exp te m g (QFBV.Ebinop QFBV.Bmul e e0) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_mul E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -409,7 +409,7 @@ Lemma mk_env_exp_is_bit_blast_exp_shl :
       mk_env_exp m s E g (QFBV.Ebinop QFBV.Bshl e0 e1) = (m', E', g', cs, lrs) ->
       bit_blast_exp te m g (QFBV.Ebinop QFBV.Bshl e0 e1) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_shl E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -444,7 +444,7 @@ Lemma mk_env_exp_is_bit_blast_exp_lshr :
       mk_env_exp m s E g (QFBV.Ebinop QFBV.Blshr e0 e1) = (m', E', g', cs, lrs) ->
       bit_blast_exp te m g (QFBV.Ebinop QFBV.Blshr e0 e1) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_lshr E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -479,7 +479,7 @@ Lemma mk_env_exp_is_bit_blast_exp_ashr :
       mk_env_exp m s E g (QFBV.Ebinop QFBV.Bashr e0 e1) = (m', E', g', cs, lrs) ->
       bit_blast_exp te m g (QFBV.Ebinop QFBV.Bashr e0 e1) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _].
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case Hmkr : (mk_env_ashr E2 g2 ls1 ls2) => [[[Er gr] csr] lsr].
@@ -513,7 +513,7 @@ Lemma mk_env_exp_is_bit_blast_exp_concat :
     mk_env_exp m s E g (QFBV.Ebinop QFBV.Bconcat e0 e1) = (m', E', g', cs, lrs) ->
     bit_blast_exp te m g (QFBV.Ebinop QFBV.Bconcat e0 e1) = (m', g', cs, lrs).
 Proof.
-  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [Hwf0 Hwf1] _] .
+  move=> e0 IH0 e1 IH1 te m E g s m' E' g' cs lrs /= /andP [Hcf0 Hcf1] /andP [/andP [/andP [Hwf0 Hwf1] _] _].
   case Hmke0 : (mk_env_exp m s E g e0) => [[[[m1 E1] g1] cs1] ls1].
   case Hmke1 : (mk_env_exp m1 s E1 g1 e1) => [[[[m2 E2] g2] cs2] ls2].
   case=> <- _ <- <- <-.

@@ -19,7 +19,7 @@ Lemma mk_env_eunop_is_bit_blast_eunop :
     bit_blast_eunop op g ls = (g', cs, lrs).
 Proof.
   move=> op E g ls E' g' cs lrs.
-  case op => [ | | i j | n | n | n | n ]; 
+  case op => [ | | i j | n | n | n | n | n | n | n ]; 
     rewrite /mk_env_eunop /bit_blast_eunop => Hmk;
     [ rewrite (mk_env_not_is_bit_blast_not Hmk) |
       rewrite (mk_env_neg_is_bit_blast_neg Hmk) |
@@ -27,7 +27,10 @@ Proof.
       rewrite (mk_env_high_is_bit_blast_high Hmk) |
       rewrite (mk_env_low_is_bit_blast_low Hmk) |
       rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmk) |
-      rewrite (mk_env_signextend_is_bit_blast_signextend Hmk) ];
+      rewrite (mk_env_signextend_is_bit_blast_signextend Hmk) |
+      rewrite (mk_env_repeat_is_bit_blast_repeat Hmk) |
+      rewrite (mk_env_rotateleft_is_bit_blast_rotateleft Hmk) |
+      rewrite (mk_env_rotateright_is_bit_blast_rotateright Hmk) ];
     done.
 Qed.
 
@@ -44,15 +47,15 @@ Proof.
       rewrite (mk_env_add_is_bit_blast_add Hmk) |
       rewrite (mk_env_sub_is_bit_blast_sub Hmk) |
       rewrite (mk_env_mul_is_bit_blast_mul Hmk) |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      rewrite (mk_env_umod_is_bit_blast_umod Hmk) |
+      rewrite (mk_env_srem_is_bit_blast_srem Hmk) |
+      rewrite (mk_env_smod_is_bit_blast_smod Hmk) |
       rewrite (mk_env_shl_is_bit_blast_shl Hmk) |
       rewrite (mk_env_lshr_is_bit_blast_lshr Hmk) |
       rewrite (mk_env_ashr_is_bit_blast_ashr Hmk) |
       rewrite (mk_env_concat_is_bit_blast_concat Hmk) ];
     done.
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_is_bit_blast_bbinop :
   forall op E g ls1 ls2 E' g' cs l,
@@ -174,7 +177,7 @@ Lemma mk_env_exp_ccache_is_bit_blast_exp_ccache_nocet_binop :
         bit_blast_exp_ccache te m c g (QFBV.Ebinop op e1 e2) = (m', c', g', cs, ls).
 Proof.
   move=> op e1 IH1 e2 IH2 te m c s E g m' c' E' g' cs ls /= /andP [Hcf1 Hcf2]
-           /andP [/andP [Hwf1 Hwf2] Hsize] Hfcet. 
+           /andP [/andP [/andP [Hwf1 Hwf2] Hszgt0] Hsize] Hfcet. 
   rewrite Hfcet /=.  
   case Hmke1 : (mk_env_exp_ccache m c s E g e1) => [[[[[m1 c1] E1] g1] cs1] ls1].
   move: (IH1 _ _ _ _ _ _ _ _ _ _ _ _ Hcf1 Hwf1 Hmke1) => Hbbe1.

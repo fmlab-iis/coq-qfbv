@@ -61,41 +61,42 @@ Section Conform .
         rewrite -(IH Hwf Hcf) /zext size_cat size_zeros // .
       + move => n e0 IH Hwf Hcf .
         rewrite -(IH Hwf Hcf) /sext size_cat size_copy // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_repeat // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_rolB // .
+      + move => n e0 IH Hwf Hcf .
+        rewrite -(IH Hwf Hcf) size_rorB // .
     - elim; rewrite /=;
        move => e0 IH0 e1 IH1
-                  /andP [/andP [Hwf0 Hwf1] Hsize]
+                  /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hsize]
                   /andP [Hcf0 Hcf1] .
       + rewrite /andB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite /orB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite /xorB size_lift (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent maxnE subnKC // .
+        reflexivity.
       + rewrite size_addB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent minnE subKn // .
+        reflexivity.
       + rewrite size_subB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
-        rewrite Max.max_idempotent minnE subKn // .
-      + rewrite size_mulB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + (* TODO *)
-        rewrite (IH0 Hwf0 Hcf0) (eqP Hsize) Max.max_idempotent // .
-      + rewrite size_shlB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_shrB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
-      + rewrite size_sarB -(eqP Hsize) (IH0 Hwf0 Hcf0) .
-        rewrite Max.max_idempotent // .
+        reflexivity.
+      + rewrite size_mulB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_uremB (IH0 Hwf0 Hcf0). reflexivity.
+      + rewrite size_sremB (IH0 Hwf0 Hcf0). reflexivity.
+      + rewrite size_smodB_ss.
+        * rewrite (IH0 Hwf0 Hcf0). reflexivity.
+        * rewrite (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1). exact: (eqP Hsize).
+      + rewrite size_shlB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_shrB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_sarB (IH0 Hwf0 Hcf0) . reflexivity.
       + rewrite size_cat (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) addnC // .
     - move => b e0 IH0 e1 IH1
                 /andP [/andP [/andP [Hwfb Hwf0] Hwf1] Hsize]
                 /andP [/andP [Hcfb Hcf0] Hcf1] .
       case (QFBV.eval_bexp b s) .
-      * rewrite -(eqP Hsize) (IH0 Hwf0 Hcf0) Max.max_idempotent // .
-      * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) Max.max_idempotent // .
+      * rewrite -(eqP Hsize) (IH0 Hwf0 Hcf0) maxnn. reflexivity.
+      * rewrite (eqP Hsize) (IH1 Hwf1 Hcf1) maxnn. reflexivity.
   Qed .
 
 
@@ -104,6 +105,47 @@ Section Conform .
     | [::] => true
     | b :: bs' => conform_bexp b s te && conform_bexps bs' s te
     end.
+
+
+  Lemma conform_exp_mem E e s v :
+    conform_exp e s E ->
+    SSAVS.mem v (QFBV.vars_exp e) ->
+    size (SSAStore.acc v s) = SSATE.vsize v E
+  with conform_bexp_mem E e s v :
+    conform_bexp e s E ->
+    SSAVS.mem v (QFBV.vars_bexp e) ->
+    size (SSAStore.acc v s) = SSATE.vsize v E.
+  Proof.
+    (* conform_exp_mem *)
+    case: e => //=.
+    - move=> x /eqP Hs Hmem. move: (SSAVS.Lemmas.mem_singleton1 Hmem) => Heq.
+      rewrite (eqP Heq) Hs. reflexivity.
+    - move=> _ e Hco Hmem. exact: (conform_exp_mem _ _ _ _ Hco Hmem).
+    - move=> _ e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    - move=> b e1 e2 /andP [/andP [Hco_b Hco1] Hco2].
+      rewrite !SSAVS.Lemmas.mem_union. (case/orP; last case/orP) => Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco_b Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    (* conform_bexp_mem *)
+    case: e => //=.
+    - move=> _ e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_exp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_exp_mem _ _ _ _ Hco2 Hmem).
+    - move=> e Hco Hmem. exact: (conform_bexp_mem _ _ _ _ Hco Hmem).
+    - move=> e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_bexp_mem _ _ _ _ Hco2 Hmem).
+    - move=> e1 e2 /andP [Hco1 Hco2]. rewrite SSAVS.Lemmas.mem_union.
+      case/orP=> Hmem.
+      + exact: (conform_bexp_mem _ _ _ _ Hco1 Hmem).
+      + exact: (conform_bexp_mem _ _ _ _ Hco2 Hmem).
+  Qed.
 
 End Conform .
 

@@ -21,6 +21,9 @@ Definition bit_blast_eunop (op : QFBV.eunop) :=
   | QFBV.Ulow n => (fun g ls => bit_blast_low g n ls)
   | QFBV.Uzext n => bit_blast_zeroextend n
   | QFBV.Usext n => bit_blast_signextend n
+  | QFBV.Urepeat n => (fun g ls => bit_blast_repeat g n ls)
+  | QFBV.Urotl n => (fun g ls => bit_blast_rotateleft g n ls)
+  | QFBV.Urotr n => (fun g ls => bit_blast_rotateright g n ls)
   end .
 
 Definition bit_blast_ebinop (op : QFBV.ebinop) :=
@@ -31,9 +34,9 @@ Definition bit_blast_ebinop (op : QFBV.ebinop) :=
   | QFBV.Badd => bit_blast_add 
   | QFBV.Bsub => bit_blast_sub 
   | QFBV.Bmul => bit_blast_mul 
-  | QFBV.Bmod => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
-  | QFBV.Bsrem => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
-  | QFBV.Bsmod => (fun g ls1 ls2 => (g, [::], ls1)) (* TODO *)
+  | QFBV.Bmod => bit_blast_umod
+  | QFBV.Bsrem => bit_blast_srem
+  | QFBV.Bsmod => bit_blast_smod
   | QFBV.Bshl => bit_blast_shl 
   | QFBV.Blshr => bit_blast_lshr 
   | QFBV.Bashr => bit_blast_ashr 
@@ -312,6 +315,9 @@ Definition mk_env_eunop (op : QFBV.eunop) :=
   | QFBV.Ulow n => (fun E g ls => mk_env_low E g n ls)
   | QFBV.Uzext n => mk_env_zeroextend n
   | QFBV.Usext n => mk_env_signextend n
+  | QFBV.Urepeat n => (fun E g ls => mk_env_repeat E g n ls)
+  | QFBV.Urotl n => (fun E g ls => mk_env_rotateleft E g n ls)
+  | QFBV.Urotr n => (fun E g ls => mk_env_rotateright E g n ls)
   end .
 
 Definition mk_env_ebinop (op : QFBV.ebinop) :=
@@ -322,9 +328,9 @@ Definition mk_env_ebinop (op : QFBV.ebinop) :=
   | QFBV.Badd => mk_env_add 
   | QFBV.Bsub => mk_env_sub 
   | QFBV.Bmul => mk_env_mul 
-  | QFBV.Bmod => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
-  | QFBV.Bsrem => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
-  | QFBV.Bsmod => (fun E g ls1 ls2 => (E, g, [::], ls1)) (* TODO *)
+  | QFBV.Bmod => mk_env_umod
+  | QFBV.Bsrem => mk_env_srem
+  | QFBV.Bsmod => mk_env_smod
   | QFBV.Bshl => mk_env_shl 
   | QFBV.Blshr => mk_env_lshr 
   | QFBV.Bashr => mk_env_ashr 

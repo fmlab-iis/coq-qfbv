@@ -305,14 +305,17 @@ Qed.
 Lemma mk_env_eunop_preserve op E g ls1 E' g' cs ls :
   mk_env_eunop op E g ls1 = (E', g', cs, ls) -> env_preserve E E' g.
 Proof.
-  case op => [ | | i j | n | n | n | n ] /=;
+  case op => [ | | i j | n | n | n | n | n | n | n ] /=;
     [ exact: mk_env_not_preserve |
       exact: mk_env_neg_preserve |
       exact: mk_env_extract_preserve |
       exact: mk_env_high_preserve |
       exact: mk_env_low_preserve |
       exact: mk_env_zeroextend_preserve |
-      exact: mk_env_signextend_preserve ].
+      exact: mk_env_signextend_preserve |
+      exact: mk_env_repeat_preserve |
+      exact: mk_env_rotateleft_preserve |
+      exact: mk_env_rotateright_preserve ].
 Qed.
 
 Lemma mk_env_ebinop_preserve op E g ls1 ls2 E' g' cs ls :
@@ -325,14 +328,14 @@ Proof.
       exact: mk_env_add_preserve |
       exact: mk_env_sub_preserve |
       exact: mk_env_mul_preserve |
-      admit (* TODO: mod *) |
-      admit (* TODO: srem *) |
-      admit (* TODO: smod *) |
+      exact: mk_env_umod_preserve |
+      exact: mk_env_srem_preserve |
+      exact: mk_env_smod_preserve |
       exact: mk_env_shl_preserve |
       exact: mk_env_lshr_preserve |
       exact: mk_env_ashr_preserve |
       exact: mk_env_concat_preserve ].
-Admitted.
+Qed.
 
 Lemma mk_env_bbinop_preserve op E g ls1 ls2 E' g' cs l :
   mk_env_bbinop op E g ls1 ls2 = (E', g', cs, l) -> env_preserve E E' g.
