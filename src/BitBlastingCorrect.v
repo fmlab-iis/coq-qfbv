@@ -461,12 +461,28 @@ Proof.
   dcase (bit_blast_shl g2 rs1 rs2) => [[[g'0 cs0] rs] Hshl] .
   case => <- _ <- <- /andP [Hcf0 Hcf1] Hcon .
   rewrite !add_prelude_cat .
-  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] _] _] .
+  move => /andP [Hcs0 /andP [Hcs1 Hcs2]] /andP [/andP [/andP [Hwf0 Hwf1] Hszgt0] Hszeq] .
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp1) Hcon) => Hcon1.
   move: (vm_preserve_consistent (bit_blast_exp_preserve Hexp0) Hcon1) => Hcon0.
   move: (IHe0 _ _ _ _ _ _ _ _ _ Hexp0 Hcf0 Hcon1 Hcs0 Hwf0) => Hencls0.
   move: (IHe1 _ _ _ _ _ _ _ _ _ Hexp1 Hcf1 Hcon Hcs1 Hwf1) => Hencls1.
-  apply : (bit_blast_shl_correct Hshl Hencls0 Hencls1 Hcs2) .
+  have : size rs1 > 0 .
+  {
+    move : (enc_bits_size Hencls0) .
+    rewrite (eval_conform_exp_size Hwf0 Hcf0) => Hszrs1 .
+    by rewrite -Hszrs1 in Hszgt0 .
+  }
+  move => {Hszgt0} Hszrs1gt0 .
+  have : size rs1 = size rs2 .
+  { 
+    move : (enc_bits_size Hencls0) (enc_bits_size Hencls1) .
+    case => -> -> .
+    rewrite (eval_conform_exp_size Hwf0 Hcf0)
+            (eval_conform_exp_size Hwf1 Hcf1) .
+    by rewrite (eqP Hszeq) .
+  }
+  move => {Hszeq} Hszrs1rs2 .
+  exact : (bit_blast_shl_correct Hszrs1gt0 Hszrs1rs2 Hshl Hencls0 Hencls1 Hcs2) .
 Qed .
 
 Lemma bit_blast_exp_lshr :
