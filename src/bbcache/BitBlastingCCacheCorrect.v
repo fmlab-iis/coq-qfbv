@@ -63,7 +63,6 @@ Proof.
       apply (bit_blast_shl_correct Hszgt0 Hsize Hbb) |
       apply (bit_blast_lshr_correct Hszgt0 Hsize Hbb) |
       apply (bit_blast_ashr_correct Hszgt0 Hsize Hbb) |
-      apply (bit_blast_ashr_correct Hbb) |
       apply (bit_blast_concat_correct Hbb) |
       apply (bit_blast_comp_correct Hbb) ];
     done.
