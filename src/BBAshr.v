@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith List Recdef.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
-From BitBlasting Require Import QFBV CNF BBCommon BBIte BBLshr.
+From BitBlasting Require Import QFBV CNF BBCommon BBConst BBExtract BBRepeat BBEq BBIte BBShl BBLshr .
 From ssrlib Require Import ZAriths Seqs Tactics.
 From nbits Require Import NBits.
 
@@ -212,7 +212,31 @@ Fixpoint bit_blast_ashr_rec g ls ns (i : N) : generator * cnf * word :=
   end.
 
 Definition bit_blast_ashr g ls ns : generator * cnf * word :=
-  bit_blast_ashr_rec g ls ns 1%num.
+  if size ls > 1 then
+    let 'log2szls := Z.to_nat (Z.log2_up (Z.of_nat (size ls))) in
+    let '(g_zero_hi, cs_zero_hi, zero_hi) :=
+        bit_blast_const g (from_nat (size ns - log2szls) 0) in
+    let '(g_msb, cs_msb, msb) :=
+        bit_blast_extract g_zero_hi (size ls).-1 (size ls).-1 ls in
+    let '(g_msbs, cs_msbs, msbs) :=
+        bit_blast_repeat g_msb (size ls) msb in
+    let '(g_hi, cs_hi, ns_hi) :=
+        bit_blast_extract g_msbs (size ns).-1 log2szls ns in
+    let '(g_lo, cs_lo, ns_lo) := bit_blast_extract g_hi log2szls.-1 0 ns in
+    let '(g_eq, cs_eq, l_eq) := bit_blast_eq g_lo ns_hi zero_hi in
+    let '(g_shr, cs_shr, ls_shr) := bit_blast_ashr_rec g_eq ls ns_lo 1%num in
+    let '(g_ite, cs_ite, ls_ite) := bit_blast_ite g_shr l_eq ls_shr msbs in
+    (g_ite,
+     catrev cs_zero_hi
+            (catrev cs_msb
+                    (catrev cs_msbs
+                            (catrev cs_hi
+                                    (catrev cs_lo
+                                            (catrev cs_eq
+                                                    (catrev cs_shr cs_ite)))))),
+     ls_ite)
+  else
+    bit_blast_ashr_rec g ls ns 1%num .
 
 Lemma bit_blast_ashr_rec_correct g bs ns i E ls lns g' cs lrs :
   bit_blast_ashr_rec g ls lns i = (g', cs, lrs) ->
@@ -269,17 +293,168 @@ Proof .
           by rewrite -[(false + (to_nat ns_tl).*2) * i]/((to_nat ns_tl).*2 *i) .
 Qed .
 
-Corollary bit_blast_ashr_correct g bs ns E ls lns g' cs lrs :
-    bit_blast_ashr g ls lns = (g', cs, lrs) ->
-    enc_bits E ls bs ->
-    enc_bits E lns ns ->
-    interp_cnf E (add_prelude cs) ->
-    enc_bits E lrs (sarB (to_nat ns) bs) .
+Lemma ashrB_log2 bs ns :
+  size bs > 1 ->
+  size ns = size bs ->
+  sarB (to_nat ns) bs =
+  let log2szbs := Z.to_nat (Z.log2_up (Z.of_nat (size bs))) in
+  if extract (size ns).-1 log2szbs ns == from_nat (size ns - log2szbs) 0
+  then sarB (to_nat (extract log2szbs.-1 0 ns) * 1%num) bs
+  else repeat (size bs) (extract (size bs).-1 (size bs).-1 bs) .
 Proof .
-  move => Hshl Hlsbs Hlnsns Hcnf .
-  rewrite -(muln1 (to_nat ns)) .
-  exact : (bit_blast_ashr_rec_correct Hshl Hlsbs Hlnsns Hcnf) .
-Qed .
+  rewrite /= => Hszbsgt1 Hszeq .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size bs)))) as log2szbs .
+  rewrite muln1 .
+  have : (1 < Z.of_nat (size bs))%Z .
+  {
+    rewrite -[1%Z]/(Z.of_nat 1) .
+    apply inj_lt .
+    apply Nats.ltn_lt => // .
+  }
+  move => Hszbsgt1Z .
+  move : (Z.lt_trans _ _ _ Z.lt_0_1 Hszbsgt1Z) => Hszbsgt0Z .
+  have : log2szbs < size bs .
+  {
+    rewrite Heqlog2szbs .
+    rewrite -{2}(Nat2Z.id (size bs)) .
+    apply Nats.lt_ltn .
+    apply Z2Nat.inj_lt; trivial .
+    - apply Z.log2_up_nonneg .
+    - apply Nat2Z.is_nonneg .
+    - by apply Z.log2_up_lt_lin .
+  }
+  rewrite -{1}Hszeq => Hszlt .
+  have : 0 < log2szbs .
+  {
+    rewrite Heqlog2szbs .
+    apply Nats.lt_ltn .
+    rewrite -[0]/(Z.to_nat 0) .
+    apply Z2Nat.inj_lt .
+    + done .
+    + apply Z.log2_up_nonneg .
+    + apply (Z.log2_up_pos _ Hszbsgt1Z) .
+  }
+  move => Hlog2szbsgt0 .
+  have : log2szbs.-1.+1 = log2szbs .
+  {
+    rewrite Nat.succ_pred_pos; trivial .
+      by apply Nats.ltn_lt .
+  }
+  move => Hlog2szbsprednaddn1 .
+  dcase (extract (size ns).-1 log2szbs ns == (size ns - log2szbs) -bits of (0)%bits); case => /eqP Hcon .
+  - rewrite -to_nat_bounded_high_zeros; trivial .
+    + by rewrite Hlog2szbsprednaddn1 . 
+    + by rewrite Hlog2szbsprednaddn1 Hcon .
+  - rewrite extract_high;
+      last by rewrite -{2}(ltn_predK Hszbsgt1); apply ltnSn .
+    rewrite -{2}(ltn_predK Hszbsgt1) subSnn high1_msb .
+    have : repeat (size bs) [:: msb bs] = copy (size bs) (msb bs) .
+    {
+      elim : (size bs); first done .
+      by move => n IH /=; rewrite IH .
+    }       
+    case => -> .
+    apply sarB_oversize .
+    move : (@to_nat_bounded_high_nonzeros log2szbs.-1 ns) .
+    rewrite Hlog2szbsprednaddn1 => Hhinonzero .
+    move : Hcon => /eqP Hcon .
+    move : (Hhinonzero Hszlt Hcon) => {Hhinonzero} .
+    apply leq_trans .
+    rewrite Heqlog2szbs .
+    elim : (Z.log2_up_spec _ Hszbsgt1Z) => _ Hexplog2 .
+    move: (Z2Nat.inj_le _ _ (Z.lt_le_incl _ _ Hszbsgt0Z)
+           (Z.pow_nonneg _ (Z.log2_up (Z.of_nat (size bs))) Z.le_0_2)) .
+    elim => Honlyif _ .
+    move : (Honlyif Hexplog2) .
+    rewrite Nat2Z.id => {Honlyif Hexplog2} Hexplog2 .
+    rewrite -(Nat2Z.id 2) .
+    rewrite -Z2Nat_expn .
+  - by apply Nats.le_leq .
+  - done .
+  - by apply Z.log2_up_nonneg .
+Qed .        
+
+Corollary bit_blast_ashr_correct g bs ns E ls lns g' cs lrs :
+  size ls > 0 ->
+  size ls = size lns ->
+  bit_blast_ashr g ls lns = (g', cs, lrs) ->
+  enc_bits E ls bs ->
+  enc_bits E lns ns ->
+  interp_cnf E (add_prelude cs) ->
+  enc_bits E lrs (sarB (to_nat ns) bs) .
+Proof .
+  move => Hszgt0 Hszeq Hlshr Hlsbs Hlnsns Hcnf.
+  rewrite -(muln1 (to_nat ns)).
+  move : Hlshr; rewrite /bit_blast_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP Hcon .
+  - dcase (bit_blast_const g (from_nat (size lns - log2szls) 0)) =>
+    [[[g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    dcase (bit_blast_extract g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[g_msb cs_msb] ls_msb]] Hmsb .
+    dcase (bit_blast_repeat g_msb (size ls) ls_msb) =>
+    [[[g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    dcase (bit_blast_extract g_msbs (size lns).-1 log2szls lns) =>
+    [[[g_hi cs_hi] ns_hi]] Hhi .
+    dcase (bit_blast_extract g_hi log2szls.-1 0 lns) =>
+    [[[g_lo cs_lo] ns_lo]] Hlo .
+    dcase (bit_blast_eq g_lo ns_hi zero_hi) =>
+    [[[g_eq cs_eq] l_eq]] Heq .
+    dcase (bit_blast_ashr_rec g_eq ls ns_lo 1) =>
+    [[[g_shr cs_shr] ls_shr]] Hshr .
+    dcase (bit_blast_ite g_shr l_eq ls_shr ls_msbs) =>
+    [[[g_ite cs_ite] ls_ite]] Hite .
+    move => Hret .
+    move : Hret Hcnf .
+    case => _ <- <- .
+    rewrite !add_prelude_catrev .
+    move => /andP [Hcnf_zero_hi /andP  [Hcnf_msb /andP  [Hcnf_msbs
+            /andP [Hcnf_hi /andP [Hcnf_lo /andP  [Hcnf_eq /andP
+            [Hcnf_shr Hcnf_ite]]]]]]] .
+    move : (bit_blast_const_correct Hzero_hi Hcnf_zero_hi)
+    => {Hzero_hi Hcnf_zero_hi cs_zero_hi} Henc_zero_hi .
+    move : (bit_blast_extract_correct Hmsb Hlsbs Hcnf_msb)
+    => {Hmsb Hcnf_msb cs_msb} Henc_msb .
+    move : (bit_blast_repeat_correct Hmsbs Henc_msb Hcnf_msbs)
+    => {Hmsbs Hcnf_msbs cs_msbs} Henc_msbs .
+    move : (bit_blast_extract_correct Hhi Hlnsns Hcnf_hi)
+    => {Hhi Hcnf_hi cs_hi} Henc_hi .
+    move : (bit_blast_extract_correct Hlo Hlnsns Hcnf_lo)
+    => {g_hi Hlo Hcnf_lo cs_lo} Henc_lo .
+    have : size ns_hi = size zero_hi .
+    {
+      rewrite (enc_bits_size Henc_zero_hi) (enc_bits_size Henc_hi)
+              size_extract size_from_nat .
+      rewrite -mypredn_sub addn1 -S_pred_pos // .
+      rewrite Heqlog2szls -Hszeq .
+      apply Nats.ltn_lt .
+      rewrite subn_gt0 .
+      by  apply log2_lt_lin_nat .
+    }
+    move => Hszhi .
+    move : (bit_blast_eq_correct Heq Hszhi Henc_hi Henc_zero_hi Hcnf_eq)
+    => {g_lo Hszhi Henc_hi Henc_zero_hi Heq Hcnf_eq cs_eq} Henc_eq .
+    move : (bit_blast_ashr_rec_correct Hshr Hlsbs Henc_lo Hcnf_shr)
+    => {g_eq Hshr Henc_lo Hcnf_shr cs_shr} Henc_shr .
+    have : size ls_shr == size ls_msbs .
+    {
+      by rewrite (enc_bits_size Henc_shr) (enc_bits_size Henc_msbs)
+                 size_sarB size_repeat size_extract subnn addn1 muln1
+                 (enc_bits_size Hlsbs) .
+    }
+    move => Hszshrlsmsbs .
+    move : (bit_blast_ite_correct Hszshrlsmsbs Hite Henc_eq
+                                  Henc_shr Henc_msbs Hcnf_ite)
+    => {g_shr g_ite l_eq Hszshrlsmsbs Hite Henc_eq
+              Henc_shr Henc_msbs Hcnf_ite cs_ite} .
+    rewrite muln1 ashrB_log2 .
+    + by rewrite Heqlog2szls
+                 !(enc_bits_size Hlnsns) !(enc_bits_size Hlsbs) /= .
+    + rewrite -(enc_bits_size Hlsbs) . by apply Nats.lt_ltn .
+    + by rewrite -(enc_bits_size Hlnsns) -Hszeq (enc_bits_size Hlsbs) .
+  - move => Hbitblast .
+    by apply (bit_blast_ashr_rec_correct Hbitblast Hlsbs Hlnsns Hcnf) .
+Qed.
 
 Lemma mk_env_ashr_int1_is_bit_blast_ashr_int1 E g ls E' g' cs lrs :
     mk_env_ashr_int1 E g ls = (E', g', cs, lrs) ->
@@ -344,7 +519,34 @@ Fixpoint mk_env_ashr_rec E g ls ns (i : N) : env * generator * cnf * word :=
   end .
 
 Definition mk_env_ashr E g ls ns : env * generator * cnf * word :=
-  mk_env_ashr_rec E g ls ns 1%num.
+  if size ls > 1 then
+    let 'log2szls := Z.to_nat (Z.log2_up (Z.of_nat (size ls))) in
+    let '(E_zero_hi, g_zero_hi, cs_zero_hi, zero_hi) :=
+        mk_env_const E g (from_nat (size ns - log2szls) 0) in
+    let '(E_msb, g_msb, cs_msb, ls_msb) :=
+        mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls in
+    let '(E_msbs, g_msbs, cs_msbs, ls_msbs) :=
+        mk_env_repeat E_msb g_msb (size ls) ls_msb in
+    let '(E_hi, g_hi, cs_hi, ns_hi) :=
+        mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns in
+    let '(E_lo, g_lo, cs_lo, ns_lo) :=
+        mk_env_extract E_hi g_hi log2szls.-1 0 ns in
+    let '(E_eq, g_eq, cs_eq, l_eq) := mk_env_eq E_lo g_lo ns_hi zero_hi in
+    let '(E_shr, g_shr, cs_shr, ls_shr) :=
+        mk_env_ashr_rec E_eq g_eq ls ns_lo 1%num in
+    let '(E_ite, g_ite, cs_ite, ls_ite) :=
+        mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs in
+    (E_ite, g_ite,
+     catrev cs_zero_hi
+            (catrev cs_msb
+                    (catrev cs_msbs
+                            (catrev cs_hi
+                                    (catrev cs_lo
+                                            (catrev cs_eq
+                                                    (catrev cs_shr cs_ite)))))),
+     ls_ite)
+  else
+  mk_env_ashr_rec E g ls ns 1%num .
 
 Lemma mk_env_ashr_rec_is_bit_blast_ashr_rec E g ls ns i E' g' cs lrs :
     mk_env_ashr_rec E g ls ns i = (E', g', cs, lrs) ->
@@ -369,7 +571,42 @@ Lemma mk_env_ashr_is_bit_blast_ashr E g ls ns E' g' cs lrs :
     mk_env_ashr E g ls ns = (E', g', cs, lrs) ->
     bit_blast_ashr g ls ns = (g', cs, lrs) .
 Proof .
-  apply mk_env_ashr_rec_is_bit_blast_ashr_rec .
+  rewrite /mk_env_ashr /bit_blast_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP Hcon .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    rewrite (mk_env_const_is_bit_blast_const Hzero_hi) {Hzero_hi} .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] ls_msb]] Hmsb .
+    rewrite (mk_env_extract_is_bit_blast_extract Hmsb)
+            {Hmsb} .
+    dcase (mk_env_repeat E_msb g_msb (size ls) ls_msb) =>
+    [[[[E_msbs] g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    rewrite (mk_env_repeat_is_bit_blast_repeat Hmsbs)
+            {Hmsbs E_msb g_msb} .
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    rewrite (mk_env_extract_is_bit_blast_extract Hhi)
+            {E_msbs g_msbs Hhi} .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    rewrite (mk_env_extract_is_bit_blast_extract Hlo)
+            {E_hi g_hi Hlo} .
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    rewrite (mk_env_eq_is_bit_blast_eq Heq)
+            {E_lo g_lo Heq} .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    rewrite (mk_env_ashr_rec_is_bit_blast_ashr_rec Hshr)
+            {E_eq g_eq Hshr} .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+    rewrite (mk_env_ite_is_bit_blast_ite Hite)
+            {E_shr g_shr Hite} .
+    by case => _ <- <- <- .
+  - apply mk_env_ashr_rec_is_bit_blast_ashr_rec .
 Qed .
 
 Lemma mk_env_ashr_int_newer_gen E g ls n E' g' cs lrs :
@@ -410,7 +647,56 @@ Lemma mk_env_ashr_newer_gen E g ls ns E' g' cs lrs :
   mk_env_ashr E g ls ns = (E', g', cs, lrs) ->
   (g <=? g')%positive .
 Proof .
-  exact : mk_env_ashr_rec_newer_gen .
+  rewrite /mk_env_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP Hcon .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    move : (mk_env_const_newer_gen Hzero_hi)
+    => {Hzero_hi} Hg_gzerohi .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] ls_msb]] Hmsb .
+    move : (mk_env_extract_newer_gen Hmsb)
+    => {Hmsb} Hgzerohi_gmsb .
+    dcase (mk_env_repeat E_msb g_msb (size ls) ls_msb) =>
+    [[[[E_msbs] g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    move : (mk_env_repeat_newer_gen Hmsbs)
+    => {Hmsbs E_msb} Hgmsb_gmsbs .
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    move : (mk_env_extract_newer_gen Hhi)
+    => {E_msbs Hhi} Hgmsbs_ghi .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    move : (mk_env_extract_newer_gen Hlo)
+    => {E_hi Hlo} Hghi_glo .
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    move : (mk_env_eq_newer_gen Heq)
+    => {E_lo Heq} Hglo_geq .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    move : (mk_env_ashr_rec_newer_gen Hshr)
+    => {E_eq Hshr} Hgeq_gshr .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+    move : (mk_env_ite_newer_gen Hite)
+    => {E_shr Hite} Hgshr_gite .
+    case => _ <- _ _ { cs_zero_hi cs_msb cs_msbs cs_lo cs_hi cs_shr ns_hi ns_lo } .
+    move : (pos_leb_trans Hg_gzerohi Hgzerohi_gmsb)
+    => {Hg_gzerohi Hgzerohi_gmsb g_zero_hi} => Hg_gmsb .
+    move : (pos_leb_trans Hgmsb_gmsbs Hgmsbs_ghi)
+    => {Hgmsb_gmsbs Hgmsbs_ghi} => Hgmsb_ghi .
+    move : (pos_leb_trans Hgmsb_ghi Hghi_glo)
+    => {Hgmsb_ghi Hghi_glo g_hi} => Hgmsb_glo .
+    move : (pos_leb_trans Hglo_geq Hgeq_gshr)
+    => {Hglo_geq Hgeq_gshr g_eq} => Hglo_gshr .
+    move : (pos_leb_trans Hglo_gshr Hgshr_gite)
+    => {Hglo_gshr Hgshr_gite g_shr} => Hglo_gite .
+    move : (pos_leb_trans Hgmsb_glo Hglo_gite)
+    => {Hgmsb_glo Hglo_gite g_lo} => Hgmsb_gite .
+    by apply (pos_leb_trans Hg_gmsb Hgmsb_gite) .
+  - exact : mk_env_ashr_rec_newer_gen .
 Qed .
 
 Lemma mk_env_ashr_int_newer_res E g n E' g' ls cs lrs :
@@ -462,7 +748,68 @@ Lemma mk_env_ashr_newer_res E g ls ns E' g' cs lrs :
   mk_env_ashr E g ls ns = (E', g', cs, lrs) ->
   newer_than_lits g' lrs .
 Proof .
-  apply mk_env_ashr_rec_newer_res .
+  move => Hgtt Hgls Hgns .
+  rewrite /mk_env_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP Hcon .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    move : (mk_env_const_newer_res Hzero_hi Hgtt) => Hgzerohi .
+    move : (newer_than_lit_le_newer Hgtt (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgls (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgns (mk_env_const_newer_gen Hzero_hi))
+    => {Hzero_hi} Hgzerohitt Hgzerohils Hgzerohins .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] ls_msb]] Hmsb .
+    move : (mk_env_extract_newer_res Hmsb Hgzerohitt Hgzerohils) => Hgmsb .
+    move : (newer_than_lit_le_newer Hgzerohitt (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohils (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohins (mk_env_extract_newer_gen Hmsb))
+    => {E_zero_hi Hgzerohitt Hgzerohils Hgzerohins Hmsb}
+         Hgmsbtt Hgmsbls Hgmsbns .
+    dcase (mk_env_repeat E_msb g_msb (size ls) ls_msb) =>
+    [[[[E_msbs] g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    move : (mk_env_repeat_newer_res Hmsbs Hgmsb) => Hgmsbs .
+    move : (newer_than_lit_le_newer Hgmsbtt (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbls (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbns (mk_env_repeat_newer_gen Hmsbs))
+    => {E_msb Hgmsbtt Hgmsbls Hgmsbns Hmsbs}
+         Hgmsbstt Hgmsbsls Hgmsbsns .
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    move : (mk_env_extract_newer_res Hhi Hgmsbstt Hgmsbsns) => Hghi .
+    move : (newer_than_lit_le_newer Hgmsbstt (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsls (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsns (mk_env_extract_newer_gen Hhi))
+    => {E_msbs Hgmsbstt Hgmsbsls Hgmsbsns Hhi} Hghitt Hghils Hghins .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    move : (mk_env_extract_newer_res Hlo Hghitt Hghins) => Hglo .
+    move : (newer_than_lit_le_newer Hghitt (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghils (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghins (mk_env_extract_newer_gen Hlo))
+    => {E_hi Hghitt Hghils Hghins Hlo} Hglott Hglols Hglons .
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    move : (mk_env_eq_newer_res Heq) => Hgeq .
+    move : (newer_than_lit_le_newer Hglott (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglols (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglons (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglo (mk_env_eq_newer_gen Heq))
+    => {E_lo Hglott Hglols Hglons Heq} Hgeqtt Hgeqls Hgeqns Hgeqnslo .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    move : (mk_env_ashr_rec_newer_res Hgeqtt Hgeqls Hgeqnslo Hshr) => Hgshr .
+    move : (newer_than_lit_le_newer Hgeqtt (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqls (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqns (mk_env_ashr_rec_newer_gen Hshr))
+    => {E_eq Hgeqtt Hgeqls Hgeqns Hshr} Hgshrtt Hgshrls Hgshrns .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+    move : (mk_env_ite_newer_res Hite)
+    => {E_shr Hgshrtt Hgshrls Hgshrns Hite} Hgshr_gite .
+    by case => _ <- _ <- { cs_zero_hi cs_msb cs_msbs cs_lo cs_hi cs_shr } .
+  - by apply mk_env_ashr_rec_newer_res .
 Qed .
 
 Lemma mk_env_ashr_int_newer_cnf E g ls n E' g' cs lr :
@@ -521,8 +868,137 @@ Lemma mk_env_ashr_newer_cnf E g ls ns E' g' cs lrs :
   newer_than_lits g ls -> newer_than_lits g ns ->
   newer_than_cnf g' cs .
 Proof .
-  rewrite /mk_env_ashr .
-  exact : mk_env_ashr_rec_newer_cnf .
+  move => Henv Hgtt Hgls Hgns .
+  move : Henv; rewrite /mk_env_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP _ .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    move : (mk_env_const_newer_cnf Hzero_hi Hgtt)
+           (mk_env_const_newer_res Hzero_hi Hgtt)
+    => Hgzerohi Hgzerohizerohi .
+    move : (newer_than_lit_le_newer Hgtt (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgls (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgns (mk_env_const_newer_gen Hzero_hi))
+    => {Hzero_hi} Hgzerohitt Hgzerohils Hgzerohins .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] ls_msb]] Hmsb .
+    move : (mk_env_extract_newer_cnf Hmsb Hgzerohitt Hgzerohils)
+           (mk_env_extract_newer_res Hmsb Hgzerohitt Hgzerohils)
+    => Hgmsb Hgmsblsmsb .
+    move : (newer_than_lit_le_newer Hgzerohitt (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohils (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohins (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohizerohi (mk_env_extract_newer_gen Hmsb))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_extract_newer_gen Hmsb))
+    => {Hgzerohi Hgzerohizerohi E_zero_hi Hgzerohitt Hgzerohils Hgzerohins Hmsb}
+         Hgmsbtt Hgmsbls Hgmsbns Hgmsbzerohi Hgzerohi .
+    dcase (mk_env_repeat E_msb g_msb (size ls) ls_msb) =>
+    [[[[E_msbs] g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    move : (mk_env_repeat_newer_cnf Hmsbs)
+           (mk_env_repeat_newer_res Hmsbs Hgmsblsmsb)
+    => Hgmsbs Hgmsbslsmsbs .
+    move : (newer_than_lit_le_newer Hgmsbtt (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbls (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbns (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbzerohi (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_cnf_le_newer Hgmsb (mk_env_repeat_newer_gen Hmsbs))
+    => {Hgmsb Hgmsblsmsb E_msb Hgmsbtt Hgmsbls Hgmsbns Hmsbs Hgmsbzerohi Hgzerohi}
+         Hgmsbstt Hgmsbsls Hgmsbsns Hgmsbszerohi Hgzerohi Hgmsb.
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    move : (mk_env_extract_newer_cnf Hhi Hgmsbstt Hgmsbsns)
+           (mk_env_extract_newer_res Hhi Hgmsbstt Hgmsbsns)
+    => Hghi Hghinshi .
+    move : (newer_than_lit_le_newer Hgmsbstt (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsls (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsns (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbszerohi (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbslsmsbs (mk_env_extract_newer_gen Hhi))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_extract_newer_gen Hhi))
+           (newer_than_cnf_le_newer Hgmsb (mk_env_extract_newer_gen Hhi))
+           (newer_than_cnf_le_newer Hgmsbs (mk_env_extract_newer_gen Hhi))
+    => {E_msbs Hgmsbstt Hgmsbsls Hgmsbsns Hgmsbslsmsbs Hhi Hgmsbs Hgmsbszerohi Hgzerohi Hgmsb}
+         Hghitt Hghils Hghins Hghizerohi Hghilsmsbs Hgzerohi Hgmsb Hgmsbs .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    move : (mk_env_extract_newer_cnf Hlo Hghitt Hghins)
+           (mk_env_extract_newer_res Hlo Hghitt Hghins)
+    => Hglo Hglonslo .
+    move : (newer_than_lit_le_newer Hghitt (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghils (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghins (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghizerohi (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghilsmsbs (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghinshi (mk_env_extract_newer_gen Hlo))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_extract_newer_gen Hlo))
+           (newer_than_cnf_le_newer Hgmsb (mk_env_extract_newer_gen Hlo))
+           (newer_than_cnf_le_newer Hgmsbs (mk_env_extract_newer_gen Hlo))
+           (newer_than_cnf_le_newer Hghi (mk_env_extract_newer_gen Hlo))
+    => {Hghi Hghinshi E_hi Hghitt Hghils Hghins Hgzerohi Hghizerohi Hghilsmsbs
+             Hgmsb Hgmsbs Hlo}
+         Hglott Hglols Hglons Hglozerohi Hglolsmsbs Hglonshi Hgzerohi
+         Hgmsb Hgmsbs Hghi.
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    move : (mk_env_eq_newer_cnf Heq Hglott Hglonshi Hglozerohi)
+           (mk_env_eq_newer_res Heq)
+    => {Hglonshi} Hgeq Hgeqleq .
+    move : (newer_than_lit_le_newer Hglott (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglols (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglons (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglolsmsbs (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglonslo (mk_env_eq_newer_gen Heq))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_eq_newer_gen Heq))
+           (newer_than_cnf_le_newer Hgmsb (mk_env_eq_newer_gen Heq))
+           (newer_than_cnf_le_newer Hgmsbs (mk_env_eq_newer_gen Heq))
+           (newer_than_cnf_le_newer Hghi (mk_env_eq_newer_gen Heq))
+           (newer_than_cnf_le_newer Hglo (mk_env_eq_newer_gen Heq))
+    => {Hglo Hghi Hgzerohi E_lo Hglott Hglols Hglons Heq Hglonslo
+        Hglozerohi Hglolsmsbs Hgmsb Hgmsbs}
+         Hgeqtt Hgeqls Hgeqns Hgeqlsmsbs Hgeqnslo Hgzerohi Hgmsb Hgmsbs
+         Hghi Hglo .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    move : (mk_env_ashr_rec_newer_cnf Hshr Hgeqtt Hgeqls Hgeqnslo)
+           (mk_env_ashr_rec_newer_res Hgeqtt Hgeqls Hgeqnslo Hshr)
+    => Hgshr Hgshrlsshr .
+    move : (newer_than_lit_le_newer Hgeqtt (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqls (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqns (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqlsmsbs (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lit_le_newer Hgeqleq (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hgzerohi (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hgmsb (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hgmsbs (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hghi (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hglo (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_cnf_le_newer Hgeq (mk_env_ashr_rec_newer_gen Hshr))
+    => {Hgeq Hglo Hghi Hgmsbs Hgzerohi Hgmsb
+             Hgeqtt Hgeqls Hgeqns Hgeqlsmsbs Hshr Hgeqnslo Hgeqleq}
+         Hgshrtt Hgshrls Hgshrns Hgshrlsmsbs Hgshrleq Hgzerohi
+         Hgmsb Hgmsbs Hghi Hglo Hgeq .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+   move : (mk_env_ite_newer_res Hite)
+   => Hgshr_gite .
+   move : (mk_env_ite_newer_cnf Hite Hgshrtt Hgshrleq Hgshrlsshr Hgshrlsmsbs)
+          (newer_than_cnf_le_newer Hgzerohi (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hgmsb (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hgmsbs (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hghi (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hglo (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hgeq (mk_env_ite_newer_gen Hite))
+          (newer_than_cnf_le_newer Hgshr (mk_env_ite_newer_gen Hite))
+   => {Hgshr Hgeq Hglo Hghi Hgzerohi Hgmsb Hgmsbs
+       Hite Hgshrlsshr Hgshrtt Hgshrls Hgshrns Hgshrlsmsbs Hgshrleq}
+       Hgite Hgzerohi Hgmsb Hgmsbs Hghi Hglo Hgeq Hgshr .
+   case => _ <- <- _ .
+   by rewrite !newer_than_cnf_catrev Hgzerohi Hgmsb Hgmsbs
+              Hghi Hglo Hgeq Hgite Hgshr .
+  - move => Henv .
+    by apply (mk_env_ashr_rec_newer_cnf Henv Hgtt Hgls Hgns) .
 Qed .
 
 Lemma mk_env_ashr_int_preserve E g ls n E' g' cs lrs :
@@ -563,7 +1039,115 @@ Lemma mk_env_ashr_preserve E g ls ns E' g' cs lrs :
   mk_env_ashr E g ls ns = (E', g', cs, lrs) ->
   env_preserve E E' g .
 Proof .
-  rewrite /mk_env_ashr. exact : mk_env_ashr_rec_preserve .
+  rewrite /mk_env_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP _ .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    move : (mk_env_const_newer_gen Hzero_hi)
+           (mk_env_const_preserve Hzero_hi)
+    => {Hzero_hi} Hggzerohi HEEzerohi .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] lsmsb]] Hmsb .
+    move : (mk_env_extract_newer_gen Hmsb)
+           (mk_env_extract_preserve Hmsb)
+    => {Hmsb} Hgzerohigmsb HEzerohiEmsb .
+    move : (env_preserve_le HEzerohiEmsb Hggzerohi)
+    => {HEzerohiEmsb} HEzerohiEmsb .
+    dcase (mk_env_repeat E_msb g_msb (size ls) lsmsb) =>
+    [[[[E_msbs] g_msbs cs_msbs] lsmsbs]] Hmsbs .
+    move : (mk_env_repeat_newer_gen Hmsbs)
+           (mk_env_repeat_preserve Hmsbs)
+    => {Hmsbs} Hgmsbgmsbs HEmsbEmsbs .
+    move : (env_preserve_le
+              (env_preserve_le HEmsbEmsbs Hgzerohigmsb) Hggzerohi) 
+    => {HEmsbEmsbs} HEmsbEmsbs .
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    move : (mk_env_extract_newer_gen Hhi)
+           (mk_env_extract_preserve Hhi)
+    => {Hhi} Hgmsbsghi HEmsbsEhi .
+    move : (env_preserve_le
+              (env_preserve_le
+                 (env_preserve_le HEmsbsEhi Hgmsbgmsbs) Hgzerohigmsb)
+                 Hggzerohi)
+    => {HEmsbsEhi} HEmsbsEhi .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    move : (mk_env_extract_newer_gen Hlo)
+           (mk_env_extract_preserve Hlo)
+    => {Hlo} Hghiglo HEhiElo .
+    move : (env_preserve_le
+              (env_preserve_le
+                 (env_preserve_le
+                    (env_preserve_le HEhiElo Hgmsbsghi) Hgmsbgmsbs)
+                 Hgzerohigmsb)
+              Hggzerohi)
+    => {HEhiElo} HEhiElo .
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    move : (mk_env_eq_newer_gen Heq)
+           (mk_env_eq_preserve Heq)
+    => {Heq} Hglogeq HEloEeq .
+    move : (env_preserve_le
+              (env_preserve_le
+                 (env_preserve_le
+                    (env_preserve_le
+                       (env_preserve_le HEloEeq Hghiglo) Hgmsbsghi)
+                    Hgmsbgmsbs)
+                 Hgzerohigmsb)
+              Hggzerohi)
+    => {HEloEeq} HEloEeq .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    move : (mk_env_ashr_rec_newer_gen Hshr)
+           (mk_env_ashr_rec_preserve Hshr)
+    => {Hshr} Hgeqgshr HEeqEshr .
+    move : (env_preserve_le
+              (env_preserve_le
+                 (env_preserve_le
+                    (env_preserve_le
+                       (env_preserve_le
+                          (env_preserve_le HEeqEshr Hglogeq)
+                          Hghiglo)
+                       Hgmsbsghi)
+                    Hgmsbgmsbs)
+                 Hgzerohigmsb)
+              Hggzerohi)
+    => {HEeqEshr} HEeqEshr .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr lsmsbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+    move : (mk_env_ite_newer_gen Hite)
+           (mk_env_ite_preserve Hite)
+    => {Hite} Hgshrgite HEshrEite .
+    move : (env_preserve_le
+              (env_preserve_le
+                 (env_preserve_le
+                    (env_preserve_le
+                       (env_preserve_le
+                          (env_preserve_le
+                             (env_preserve_le HEshrEite Hgeqgshr)
+                             Hglogeq)
+                          Hghiglo)
+                       Hgmsbsghi)
+                    Hgmsbgmsbs)
+                 Hgzerohigmsb)
+              Hggzerohi)
+    => {Hggzerohi Hgzerohigmsb Hgmsbgmsbs Hgmsbsghi Hghiglo Hglogeq Hgeqgshr
+                  Hgshrgite HEshrEite}
+         HEshrEite .
+    case => <- _ _ _ { g_zero_hi cs_zero_hi g_msb cs_msb g_msbs cs_msbs
+                       g_lo cs_lo ns_lo g_hi cs_hi ns_hi
+                       g_eq cs_eq g_shr cs_shr
+                       g_ite cs_ite } .
+    apply env_preserve_trans with E_shr; trivial => {HEshrEite} .
+    apply env_preserve_trans with E_eq; trivial => {HEeqEshr} .
+    apply env_preserve_trans with E_lo; trivial => {HEloEeq} .
+    apply env_preserve_trans with E_hi; trivial => {HEhiElo} .
+    apply env_preserve_trans with E_msbs; trivial => {HEmsbsEhi} .
+    apply env_preserve_trans with E_msb; trivial => {HEmsbEmsbs} .
+    by apply env_preserve_trans with E_zero_hi; trivial => {HEzerohiElo} .
+  - exact : mk_env_ashr_rec_preserve .
 Qed .
 
 Lemma mk_env_ashr_int_sat E g ls n E' g' cs lrs :
@@ -625,5 +1209,147 @@ Lemma mk_env_ashr_sat E g ls ns E' g' cs lrs :
   newer_than_lits g ls -> newer_than_lits g ns ->
   interp_cnf E' cs.
 Proof .
-  rewrite /mk_env_ashr; exact : mk_env_ashr_rec_sat .
+  move => Henv Hgtt Hgls Hgns .
+  move : Henv; rewrite /mk_env_ashr .
+  remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .
+  dcase (1 < size ls); case => /ltP Hcon .
+  - dcase (mk_env_const E g (from_nat (size ns - log2szls) 0)) =>
+    [[[[E_zero_hi] g_zero_hi] cs_zero_hi] zero_hi] Hzero_hi .
+    move : (mk_env_const_sat Hzero_hi)
+           (mk_env_const_newer_res Hzero_hi Hgtt)
+           (mk_env_const_newer_cnf Hzero_hi Hgtt)
+    => Hzerohisat Hgzerohizerohi Hgzerohicszerohi .
+    move : (newer_than_lit_le_newer Hgtt (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgls (mk_env_const_newer_gen Hzero_hi))
+           (newer_than_lits_le_newer Hgns (mk_env_const_newer_gen Hzero_hi))
+    => {Hzero_hi} Hgzerohitt Hgzerohils Hgzerohins .
+    dcase (mk_env_extract E_zero_hi g_zero_hi (size ls).-1 (size ls).-1 ls) =>
+    [[[[E_msb] g_msb cs_msb] ls_msb]] Hmsb .
+    move : (mk_env_extract_sat Hmsb Hgzerohitt Hgzerohils)
+           (mk_env_extract_newer_res Hmsb Hgzerohitt Hgzerohils)
+           (mk_env_extract_newer_cnf Hmsb Hgzerohitt Hgzerohils)
+           (mk_env_extract_preserve Hmsb)
+           (mk_env_extract_newer_gen Hmsb)
+    => Hmsbsat Hgmsblsmsb Hgmsbcsmsb HEzerohiEmsb Hgzerohigmsb .
+    move : (newer_than_lit_le_newer Hgzerohitt (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohils (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohins (mk_env_extract_newer_gen Hmsb))
+           (newer_than_lits_le_newer Hgzerohizerohi (mk_env_extract_newer_gen Hmsb))
+    => {Hgzerohitt Hgzerohils Hgzerohins Hmsb Hgzerohizerohi}
+         Hgmsbtt Hgmsbls Hgmsbns Hgmsbzerohi .
+    dcase (mk_env_repeat E_msb g_msb (size ls) ls_msb) =>
+    [[[[E_msbs] g_msbs cs_msbs] ls_msbs]] Hmsbs .
+    move : (mk_env_repeat_sat Hmsbs)
+           (mk_env_repeat_newer_res Hmsbs Hgmsblsmsb)
+           (mk_env_repeat_newer_cnf Hmsbs)
+           (mk_env_repeat_preserve Hmsbs)
+           (mk_env_repeat_newer_gen Hmsbs)
+    => Hmsbssat Hgmsbslsmsbs Hgmsbscsmsbs HEmsbsEmsb Hgmsbgmsbs .
+    move : (newer_than_lit_le_newer Hgmsbtt (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbls (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbns (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsbzerohi (mk_env_repeat_newer_gen Hmsbs))
+           (newer_than_lits_le_newer Hgmsblsmsb (mk_env_repeat_newer_gen Hmsbs))
+    => {Hgmsbtt Hgmsbls Hgmsbns Hmsbs Hgmsbzerohi Hgmsblsmsb}
+         Hgmsbstt Hgmsbsls Hgmsbsns Hgmsbszerohi Hgmsbslsmsb .
+    dcase (mk_env_extract E_msbs g_msbs (size ns).-1 log2szls ns) =>
+    [[[[E_hi] g_hi cs_hi] ns_hi]] Hhi .
+    move : (mk_env_extract_sat Hhi Hgmsbstt Hgmsbsns)
+           (mk_env_extract_newer_res Hhi Hgmsbstt Hgmsbsns)
+           (mk_env_extract_newer_cnf Hhi Hgmsbstt Hgmsbsns)
+           (mk_env_extract_preserve Hhi)
+           (mk_env_extract_newer_gen Hhi)
+    => Hhisat Hghinshi Hghicshi HEmsbsEhi Hgmsbsghi .
+    move : (newer_than_lit_le_newer Hgmsbstt (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsls (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbsns (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbszerohi (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbslsmsb (mk_env_extract_newer_gen Hhi))
+           (newer_than_lits_le_newer Hgmsbslsmsbs (mk_env_extract_newer_gen Hhi))
+    => {Hgmsbstt Hgmsbsls Hgmsbsns Hgmsbszerohi Hgmsbslsmsb Hgmsbslsmsbs Hhi}
+         Hghitt Hghils Hghins Hghizerohi Hghilsmsb Hghilsmsbs .
+    dcase (mk_env_extract E_hi g_hi log2szls.-1 0 ns) =>
+    [[[[E_lo] g_lo cs_lo] ns_lo]] Hlo .
+    move : (mk_env_extract_sat Hlo Hghitt Hghins)
+           (mk_env_extract_newer_res Hlo Hghitt Hghins)
+           (mk_env_extract_newer_cnf Hlo Hghitt Hghins)
+           (mk_env_extract_preserve Hlo)
+           (mk_env_extract_newer_gen Hlo)
+    => Hlosat Hglonslo Hglocslo HEhiElo Hghiglo .
+    move : (newer_than_lit_le_newer Hghitt (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghils (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghins (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghinshi (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghizerohi (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghilsmsb (mk_env_extract_newer_gen Hlo))
+           (newer_than_lits_le_newer Hghilsmsbs (mk_env_extract_newer_gen Hlo))
+    => {Hghitt Hghils Hghins Hghinshi Hlo Hghizerohi Hghilsmsb Hghilsmsbs}
+         Hglott Hglols Hglons Hglonshi Hglozerohi Hglolsmsb Hglolsmsbs .
+    dcase (mk_env_eq E_lo g_lo ns_hi zero_hi) =>
+    [[[[E_eq] g_eq cs_eq] l_eq]] Heq .
+    move : (mk_env_eq_sat Heq Hglott Hglonshi Hglozerohi)
+           (mk_env_eq_newer_res Heq)
+           (mk_env_eq_newer_cnf Heq Hglott Hglonshi Hglozerohi)
+           (mk_env_eq_preserve Heq)
+           (mk_env_eq_newer_gen Heq)
+    => {Hglonshi Hglozerohi} Heqsat Hgeqleq Hgeqcseq HEloEeq Hglogeq .
+    move : (newer_than_lit_le_newer Hglott (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglols (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglons (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglonslo (mk_env_eq_newer_gen Heq))
+           (newer_than_lits_le_newer Hglolsmsbs (mk_env_eq_newer_gen Heq))
+    => {Hglott Hglols Hglons Hglonslo Heq Hglolsmsbs}
+         Hgeqtt Hgeqls Hgeqns Hgeqnslo Hgeqlsmsbs .
+    dcase (mk_env_ashr_rec E_eq g_eq ls ns_lo 1) =>
+    [[[[E_shr] g_shr cs_shr] ls_shr]] Hshr .
+    move : (mk_env_ashr_rec_sat Hshr Hgeqtt Hgeqls Hgeqnslo)
+           (mk_env_ashr_rec_newer_res Hgeqtt Hgeqls Hgeqnslo Hshr)
+           (mk_env_ashr_rec_newer_cnf Hshr Hgeqtt Hgeqls Hgeqnslo)
+           (mk_env_ashr_rec_preserve Hshr)
+           (mk_env_ashr_rec_newer_gen Hshr) 
+    => {Hgeqnslo} Hshrsat Hgshrlsshr Hgshrcsshr HEeqEshr Hgeqgshr .
+    move : (newer_than_lit_le_newer Hgeqtt (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lit_le_newer Hgeqleq (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqls (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqns (mk_env_ashr_rec_newer_gen Hshr))
+           (newer_than_lits_le_newer Hgeqlsmsbs (mk_env_ashr_rec_newer_gen Hshr))
+    => {Hgeqtt Hgeqleq Hgeqls Hgeqns Hshr Hgeqlsmsbs}
+         Hgshrtt Hgshrleq Hgshrls Hgshrns Hgshrlsmsbs .
+    dcase (mk_env_ite E_shr g_shr l_eq ls_shr ls_msbs) =>
+    [[[[E_ite] g_ite cs_ite] ls_ite]] Hite .
+    move : (mk_env_ite_sat Hite Hgshrtt Hgshrleq Hgshrlsshr Hgshrlsmsbs)
+           (mk_env_ite_preserve Hite)
+    => {Hite Hgshrls Hgshrns Hgshrtt Hgshrleq Hgshrlsshr Hgshrlsmsbs}
+         Hitesat HEshrEite .
+    case => <- _ <- _ {ls_shr ls_ite l_eq Hgtt Hgls Hgns} .
+    rewrite !interp_cnf_catrev .
+    rewrite Hitesat {Hitesat cs_ite g_ite} .
+    rewrite (env_preserve_cnf HEshrEite Hgshrcsshr) Hshrsat {Hshrsat} .
+    move : (env_preserve_trans HEeqEshr
+                               (env_preserve_le HEshrEite Hgeqgshr))
+    => {HEeqEshr HEshrEite Hgeqgshr Hgshrcsshr cs_shr g_shr} HEeqEite .
+    rewrite (env_preserve_cnf HEeqEite Hgeqcseq) Heqsat
+            {Heqsat Hgeqcseq cs_eq} .
+    move : (env_preserve_trans HEloEeq (env_preserve_le HEeqEite Hglogeq))
+    => {HEloEeq HEeqEite Hglogeq E_eq E_shr g_eq} HEloEite .
+    rewrite (env_preserve_cnf HEloEite Hglocslo) Hlosat
+            {Hlosat Hglocslo cs_lo ns_lo} .
+    move : (env_preserve_trans HEhiElo (env_preserve_le HEloEite Hghiglo))
+    => {HEhiElo HEloEite Hghiglo E_lo} HEhiEite .
+    rewrite (env_preserve_cnf HEhiEite Hghicshi) Hhisat
+            {Hhisat Hghicshi cs_hi ns_hi} .
+    move : (env_preserve_trans HEmsbsEhi (env_preserve_le HEhiEite Hgmsbsghi))
+    => {HEmsbsEhi HEhiEite Hgmsbsghi E_hi g_hi} HEmsbsEite .
+    rewrite (env_preserve_cnf HEmsbsEite Hgmsbscsmsbs) Hmsbssat
+            {Hmsbssat Hgmsbscsmsbs cs_msbs} .
+    move : (env_preserve_trans HEmsbsEmsb (env_preserve_le HEmsbsEite Hgmsbgmsbs))
+    => {HEmsbsEmsb HEmsbsEite Hgmsbgmsbs E_msbs g_msbs} HEmsbEite .
+    rewrite (env_preserve_cnf HEmsbEite Hgmsbcsmsb) Hmsbsat
+            {Hmsbsat Hgmsbcsmsb cs_msb} .
+    move : (env_preserve_trans HEzerohiEmsb
+                               (env_preserve_le HEmsbEite Hgzerohigmsb))
+    => {HEzerohiEmsb HEmsbEite Hgzerohigmsb E_msb g_msb} HEzerohiEite .
+    by rewrite (env_preserve_cnf HEzerohiEite Hgzerohicszerohi) Hzerohisat .
+  - move => Henv .
+    exact : (mk_env_ashr_rec_sat Henv Hgtt Hgls Hgns) .
 Qed .
