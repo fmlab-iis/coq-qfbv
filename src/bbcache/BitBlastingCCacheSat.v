@@ -55,7 +55,8 @@ Proof.
       apply (mk_env_shl_sat Hmk) |
       apply (mk_env_lshr_sat Hmk) |
       apply (mk_env_ashr_sat Hmk) |
-      apply (mk_env_concat_sat Hmk) ];
+      apply (mk_env_concat_sat Hmk) |
+      apply (mk_env_comp_sat Hmk) ];
     done.
 Qed.
 

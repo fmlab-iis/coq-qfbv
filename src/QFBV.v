@@ -50,7 +50,8 @@ Module MakeQFBV
   | Bshl
   | Blshr
   | Bashr
-  | Bconcat. (* Bconcat high_bits low_bits *)
+  | Bconcat (* Bconcat high_bits low_bits *)
+  | Bcomp.
 
   Inductive bbinop : Set :=
   | Beq
@@ -158,7 +159,8 @@ Module MakeQFBV
     | Bshl, Bshl
     | Blshr, Blshr
     | Bashr, Bashr
-    | Bconcat, Bconcat => true
+    | Bconcat, Bconcat 
+    | Bcomp, Bcomp => true
     | _, _ => false
     end.
 
@@ -364,6 +366,7 @@ Module MakeQFBV
     | Blshr => fun b1 b2 => shrB (to_nat b2) b1
     | Bashr => fun b1 b2 => sarB (to_nat b2) b1
     | Bconcat => fun b1 b2 => cat b2 b1
+    | Bcomp => fun b1 b2 => [:: eq_op b1 b2]
     end.
 
   Definition bbinop_denote (o : bbinop) : bits -> bits -> bool :=
@@ -524,6 +527,7 @@ Module MakeQFBV
     | Blshr => 12
     | Bashr => 13
     | Bconcat => 14
+    | Bcomp => 15
     end.
 
   Definition ebinop_ltn (o1 o2 : ebinop) : bool := id_ebinop o1 < id_ebinop o2.
@@ -1444,6 +1448,7 @@ Module MakeQFBV
          | Bsmod => exp_size e1 te (* TODO: size_smodB is not fixed *)
          | Bshl | Blshr | Bashr => exp_size e1 te
          | Bconcat => exp_size e1 te + exp_size e2 te
+         | Bcomp => 1
          end)
       | Eite b e1 e2 => maxn (exp_size e1 te) (exp_size e2 te)
       end.
@@ -1546,6 +1551,7 @@ Module MakeQFBV
         + rewrite size_sarB (IH0 _ _ Hwf0 Hcon). reflexivity.
         + rewrite size_cat (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). rewrite addnC.
           reflexivity.
+        + reflexivity.
       - move => c e0 IH0 e1 IH1 te s /andP
                   [/andP [/andP [Hwfc Hwf0] Hwf1] Hsize] Hcon.
         rewrite (eqP Hsize) maxnn. case: (eval_bexp c s).

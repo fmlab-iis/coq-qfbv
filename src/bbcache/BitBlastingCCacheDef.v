@@ -43,6 +43,7 @@ Definition bit_blast_ebinop (op : QFBV.ebinop) :=
   | QFBV.Blshr => bit_blast_lshr 
   | QFBV.Bashr => bit_blast_ashr 
   | QFBV.Bconcat => bit_blast_concat 
+  | QFBV.Bcomp => bit_blast_comp
   end .
 
 Definition bit_blast_bbinop (op : QFBV.bbinop) :=
@@ -339,6 +340,7 @@ Definition mk_env_ebinop (op : QFBV.ebinop) :=
   | QFBV.Blshr => mk_env_lshr 
   | QFBV.Bashr => mk_env_ashr 
   | QFBV.Bconcat => mk_env_concat 
+  | QFBV.Bcomp => mk_env_comp
   end .
 
 Definition mk_env_bbinop (op : QFBV.bbinop) :=

@@ -93,6 +93,7 @@ Section Conform .
       + rewrite size_shrB (IH0 Hwf0 Hcf0) . reflexivity.
       + rewrite size_sarB (IH0 Hwf0 Hcf0) . reflexivity.
       + rewrite size_cat (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) addnC // .
+      + reflexivity.
     - move => b e0 IH0 e1 IH1
                 /andP [/andP [/andP [Hwfb Hwf0] Hwf1] Hsize]
                 /andP [/andP [Hcfb Hcf0] Hcf1] .

@@ -29,6 +29,7 @@ src/BBRepeat.v
 src/BBRotateLeft.v
 src/BBRotateRight.v
 src/BBEq.v
+src/BBComp.v
 src/BBConj.v
 src/BBDisj.v
 src/BBUlt.v
