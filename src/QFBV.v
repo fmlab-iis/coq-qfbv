@@ -41,7 +41,10 @@ Module MakeQFBV
   | Badd
   | Bsub
   | Bmul
+  (*div*)
+  | Bdiv
   | Bmod
+  | Bsdiv 
   | Bsrem
   | Bsmod
   | Bshl
@@ -147,7 +150,9 @@ Module MakeQFBV
     | Badd, Badd
     | Bsub, Bsub
     | Bmul, Bmul
+    | Bdiv, Bdiv 
     | Bmod, Bmod
+    | Bsdiv, Bsdiv
     | Bsrem, Bsrem
     | Bsmod, Bsmod
     | Bshl, Bshl
@@ -350,7 +355,9 @@ Module MakeQFBV
     | Badd => addB
     | Bsub => subB
     | Bmul => mulB
+    | Bdiv => udivB'
     | Bmod => uremB
+    | Bsdiv => sdivB'
     | Bsrem => sremB
     | Bsmod => smodB
     | Bshl => fun b1 b2 => shlB (to_nat b2) b1
@@ -508,13 +515,15 @@ Module MakeQFBV
     | Badd => 3
     | Bsub => 4
     | Bmul => 5
-    | Bmod => 6
-    | Bsrem => 7
-    | Bsmod => 8
-    | Bshl => 9
-    | Blshr => 10
-    | Bashr => 11
-    | Bconcat => 12
+    | Bdiv => 6
+    | Bmod => 7
+    | Bsdiv => 8
+    | Bsrem => 9
+    | Bsmod => 10
+    | Bshl => 11
+    | Blshr => 12
+    | Bashr => 13
+    | Bconcat => 14
     end.
 
   Definition ebinop_ltn (o1 o2 : ebinop) : bool := id_ebinop o1 < id_ebinop o2.
@@ -1428,7 +1437,9 @@ Module MakeQFBV
          | Band | Bor | Bxor => maxn (exp_size e1 te) (exp_size e2 te)
          | Badd | Bsub => minn (exp_size e1 te) (exp_size e2 te)
          | Bmul => exp_size e1 te
+         | Bdiv => exp_size e1 te
          | Bmod => exp_size e1 te
+         | Bsdiv => exp_size e1 te
          | Bsrem => exp_size e1 te
          | Bsmod => exp_size e1 te (* TODO: size_smodB is not fixed *)
          | Bshl | Blshr | Bashr => exp_size e1 te
@@ -1523,7 +1534,9 @@ Module MakeQFBV
         + rewrite size_addB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). reflexivity.
         + rewrite size_subB (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). reflexivity.
         + rewrite size_mulB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_udivB (IH0 _ _ Hwf0 Hcon). reflexivity.
         + rewrite size_uremB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite size_sdivB (IH0 _ _ Hwf0 Hcon). reflexivity.
         + rewrite size_sremB (IH0 _ _ Hwf0 Hcon). reflexivity.
         + rewrite size_smodB_ss.
           * rewrite (IH0 _ _ Hwf0 Hcon). reflexivity.

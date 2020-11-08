@@ -57,7 +57,9 @@ Proof.
       apply (bit_blast_add_correct Hbb Henc1 Henc2) |
       apply (bit_blast_sub_correct Hbb) |
       apply (bit_blast_mul_correct Hbb) |
+      apply (bit_blast_udiv_correct' Hbb) |
       apply (bit_blast_umod_correct Hbb) |
+      apply (bit_blast_sdiv_correct Hbb) |
       apply (bit_blast_srem_correct Hbb) |
       apply (bit_blast_smod_correct Hbb) |
       apply (bit_blast_shl_correct Hszgt0 Hsize Hbb) |

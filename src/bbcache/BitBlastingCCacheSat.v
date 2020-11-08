@@ -47,7 +47,9 @@ Proof.
       apply (mk_env_add_sat Hmk) |
       apply (mk_env_sub_sat Hmk) |
       apply (mk_env_mul_sat Hmk) |
+      apply (mk_env_udiv_sat' Hmk) |
       apply (mk_env_umod_sat Hmk) |
+      apply (mk_env_sdiv_sat Hmk) |
       apply (mk_env_srem_sat Hmk) |
       apply (mk_env_smod_sat Hmk) |
       apply (mk_env_shl_sat Hmk) |

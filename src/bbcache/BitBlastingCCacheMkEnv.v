@@ -47,7 +47,9 @@ Proof.
       rewrite (mk_env_add_is_bit_blast_add Hmk) |
       rewrite (mk_env_sub_is_bit_blast_sub Hmk) |
       rewrite (mk_env_mul_is_bit_blast_mul Hmk) |
+      rewrite (mk_env_udiv_is_bit_blast_udiv' Hmk) |
       rewrite (mk_env_umod_is_bit_blast_umod Hmk) |
+      rewrite (mk_env_sdiv_is_bit_blast_sdiv Hmk) |
       rewrite (mk_env_srem_is_bit_blast_srem Hmk) |
       rewrite (mk_env_smod_is_bit_blast_smod Hmk) |
       rewrite (mk_env_shl_is_bit_blast_shl Hmk) |

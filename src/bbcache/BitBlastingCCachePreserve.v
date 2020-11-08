@@ -328,7 +328,9 @@ Proof.
       exact: mk_env_add_preserve |
       exact: mk_env_sub_preserve |
       exact: mk_env_mul_preserve |
+      exact: mk_env_udiv_preserve' |
       exact: mk_env_umod_preserve |
+      exact: mk_env_sdiv_preserve |
       exact: mk_env_srem_preserve |
       exact: mk_env_smod_preserve |
       exact: mk_env_shl_preserve |

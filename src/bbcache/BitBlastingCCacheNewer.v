@@ -38,7 +38,9 @@ Proof.
       exact: mk_env_add_newer_gen |
       exact: mk_env_sub_newer_gen |
       exact: mk_env_mul_newer_gen |
+      exact: mk_env_udiv_newer_gen' |
       exact: mk_env_umod_newer_gen |
+      exact: mk_env_sdiv_newer_gen |
       exact: mk_env_srem_newer_gen |
       exact: mk_env_smod_newer_gen |
       exact: mk_env_shl_newer_gen |
@@ -785,7 +787,9 @@ Proof.
       apply (mk_env_add_newer_res Hmk) |
       apply (mk_env_sub_newer_res Hmk) |
       apply (mk_env_mul_newer_res Hmk) |
+      apply (mk_env_udiv_newer_res' Hmk) |
       apply (mk_env_umod_newer_res Hmk) |
+      apply (mk_env_sdiv_newer_res Hmk) |
       apply (mk_env_srem_newer_res Hmk) |
       apply (mk_env_smod_newer_res Hmk) |
       apply (mk_env_shl_newer_res Hgtt Hgls1 Hgls2 Hmk) |
@@ -851,7 +855,9 @@ Proof.
       apply (mk_env_add_newer_cnf Hmk) |
       apply (mk_env_sub_newer_cnf Hmk) |
       apply (mk_env_mul_newer_cnf Hmk) |
+      apply (mk_env_udiv_newer_cnf' Hmk) |
       apply (mk_env_umod_newer_cnf Hmk) |
+      apply (mk_env_sdiv_newer_cnf Hmk) |
       apply (mk_env_srem_newer_cnf Hmk) |
       apply (mk_env_smod_newer_cnf Hmk) |
       apply (mk_env_shl_newer_cnf Hmk) |

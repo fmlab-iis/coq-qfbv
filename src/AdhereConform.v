@@ -82,7 +82,9 @@ Section Conform .
       + rewrite size_subB (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) (eqP Hsize) .
         reflexivity.
       + rewrite size_mulB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite size_udivB (IH0 Hwf0 Hcf0). reflexivity.
       + rewrite size_uremB (IH0 Hwf0 Hcf0). reflexivity.
+      + rewrite size_sdivB (IH0 Hwf0 Hcf0). reflexivity.
       + rewrite size_sremB (IH0 Hwf0 Hcf0). reflexivity.
       + rewrite size_smodB_ss.
         * rewrite (IH0 Hwf0 Hcf0). reflexivity.
