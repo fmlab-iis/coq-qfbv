@@ -359,7 +359,7 @@ Module MakeQFBV
     | Bmul => mulB
     | Bdiv => udivB'
     | Bmod => uremB
-    | Bsdiv => sdivB'
+    | Bsdiv => sdivB
     | Bsrem => sremB
     | Bsmod => smodB
     | Bshl => fun b1 b2 => shlB (to_nat b2) b1
