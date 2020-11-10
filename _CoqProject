@@ -95,3 +95,4 @@ src/bbcache/SimpTableHash.v
 src/bbcache/CacheHash.v
 src/bbcache/BitBlastingCacheHash.v
 src/Extract.v
+src/SMTLIBSemantics.v
