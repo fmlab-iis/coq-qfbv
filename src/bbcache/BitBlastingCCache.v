@@ -4,8 +4,8 @@ From nbits Require Import NBits.
 From ssrlib Require Import Types SsrOrder Var Nats ZAriths Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport AdhereConform.
 From BBCache Require Import CompCache BitBlastingCCacheDef BitBlastingInit
-     BitBlastingCCachePreserve BitBlastingCCacheCorrect BitBlastingCCacheAdhere 
-     BitBlastingCCacheBound BitBlastingCCacheMkEnv BitBlastingCCacheConsistent 
+     BitBlastingCCachePreserve BitBlastingCCacheCorrect BitBlastingCCacheAdhere
+     BitBlastingCCacheBound BitBlastingCCacheMkEnv BitBlastingCCacheConsistent
      BitBlastingCCacheSat.
 
 Set Implicit Arguments.
@@ -16,7 +16,7 @@ Import Prenex Implicits.
 (* ===== mk_env ===== *)
 
 Definition mk_env (s : SSAStore.t) (e : QFBV.bexp) : env :=
-  let '(m, c, E, g, cs, l) := 
+  let '(m, c, E, g, cs, l) :=
       mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e in
   E.
 
@@ -28,9 +28,9 @@ Lemma mk_env_consistent :
     consistent m (mk_env s e) s.
 Proof.
   move=> s e te m c g cs l Hbb Hcf Hwf. rewrite /mk_env.
-  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e) 
+  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e)
   => [[[[[m' c'] E'] g'] cs'] l'].
-  move: (mk_env_bexp_ccache_is_bit_blast_bexp_ccache Hcf Hwf Henv). 
+  move: (mk_env_bexp_ccache_is_bit_blast_bexp_ccache Hcf Hwf Henv).
   rewrite Hbb. case=> -> _ _ _ _.
   apply: (mk_env_bexp_ccache_consistent Henv init_newer_than_vm).
   exact: init_consistent.
@@ -40,11 +40,11 @@ Lemma mk_env_tt :
   forall s e, interp_lit (mk_env s e) lit_tt.
 Proof.
   move=> s e. rewrite /mk_env.
-  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e) 
+  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e)
   => [[[[[m c] E] g] cs] l].
   rewrite (env_preserve_lit (mk_env_bexp_ccache_preserve Henv) init_newer_than_tt).
   exact: init_tt.
-Qed. 
+Qed.
 
 Lemma mk_env_sat :
   forall s e te m c g cs l,
@@ -53,14 +53,14 @@ Lemma mk_env_sat :
     QFBV.well_formed_bexp e te ->
     interp_cnf (mk_env s e) cs.
 Proof.
-  move=> s e te m c g cs l Hbb Hcf Hwf. 
+  move=> s e te m c g cs l Hbb Hcf Hwf.
   move: (mk_env_tt s e). rewrite /mk_env.
-  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e) 
+  case Henv: (mk_env_bexp_ccache init_vm init_ccache s init_env init_gen e)
   => [[[[[m' c'] E'] g'] cs'] l'].
   move: (mk_env_bexp_ccache_is_bit_blast_bexp_ccache Hcf Hwf Henv).
   rewrite Hbb; case=> _ _ _ -> _ Htt.
-  exact: (mk_env_bexp_ccache_sat Henv init_newer_than_vm init_newer_than_tt 
-                                 init_ccache_well_formed init_newer_than_cache 
+  exact: (mk_env_bexp_ccache_sat Henv init_newer_than_vm init_newer_than_tt
+                                 init_ccache_well_formed init_newer_than_cache
                                  init_interp_cache).
 Qed.
 
@@ -105,7 +105,7 @@ Proof.
             (fun v ls s => SSAStore.upd v (lits_as_bits E ls) s)
             init_state
             m).
-  - move=> m0 Hempty x ls Hfind. 
+  - move=> m0 Hempty x ls Hfind.
     rewrite (SSAVM.Lemmas.Empty_find _ Hempty) in Hfind.
     discriminate.
   - move=> x lsx s m' m'' Hmapsto_xm Hin_xm' Hadd IH. move=> y lsy Hfind_y.
@@ -172,7 +172,7 @@ Theorem bit_blast_ccache_sound :
   forall (e : QFBV.bexp) te m c g cs lr,
     bit_blast_bexp_ccache te init_vm init_ccache init_gen e = (m, c, g, cs, lr) ->
     QFBV.well_formed_bexp e te ->
-    ~ (sat (add_prelude ([::neg_lit lr]::cs))) 
+    ~ (sat (add_prelude ([::neg_lit lr]::cs)))
     ->
     (forall s, AdhereConform.conform_bexp e s te ->
                QFBV.eval_bexp e s) .
@@ -180,12 +180,12 @@ Proof.
   move=> e te m c g cs lr Hblast Hwf Hsat s Hcf.
   move: (unsat_implies_valid Hsat) => {Hsat} Hsat.
   move: (Hsat (mk_env s e)) => {Hsat} Hsat.
-  move: (mk_env_sat Hblast Hcf Hwf) => Hcs. 
+  move: (mk_env_sat Hblast Hcf Hwf) => Hcs.
   move: (mk_env_tt s e) => Htt.
   have Hprelude: interp_cnf (mk_env s e) (add_prelude cs)
     by rewrite add_prelude_expand Hcs Htt.
   move: (bit_blast_bexp_ccache_correct Hblast Hcf (mk_env_consistent Hblast Hcf Hwf)
-                                       Hwf init_ccache_well_formed Hprelude 
+                                       Hwf init_ccache_well_formed Hprelude
                                        (init_interp_cache_ct (mk_env s e))
                                        (init_correct init_vm)).
   rewrite /enc_bit. move=> /eqP <-.
@@ -208,12 +208,12 @@ Proof.
   rewrite add_prelude_expand in Hlr. move/andP: Hlr => [Htt Hlr].
   rewrite /= interp_lit_neg_lit in Hlr.
   move : (bit_blast_bexp_ccache_adhere (init_vm_adhere te) Hblast) => Hadm' .
-  move : (bit_blast_bexp_ccache_bound Hblast init_ccache_well_formed 
+  move : (bit_blast_bexp_ccache_bound Hblast init_ccache_well_formed
                                       init_bound_cache) => Hbound .
   move : (mk_state_conform_bexp E Hbound Hadm') => Hcf .
   move : (He (mk_state E m') Hcf) => {He} He .
-  move: (bit_blast_bexp_ccache_correct Hblast Hcf (mk_state_consistent E m') 
-                                       Hwf init_ccache_well_formed Hcs 
+  move: (bit_blast_bexp_ccache_correct Hblast Hcf (mk_state_consistent E m')
+                                       Hwf init_ccache_well_formed Hcs
                                        (init_interp_cache_ct E)
                                        (init_correct init_vm)).
   rewrite /enc_bit => /eqP H. rewrite -H in He.
@@ -223,3 +223,50 @@ Qed.
 Definition bexp_to_cnf_ccache te m c g e :=
   let '(m', c', g', cs, lr) := bit_blast_bexp_ccache te m c g e in
   (m', c', g', add_prelude ([::neg_lit lr]::cs)).
+
+
+(* ===== Satisfiability ===== *)
+
+Theorem bit_blast_ccache_sat_sound TE (e : QFBV.bexp) m c g cs lr :
+  bit_blast_bexp_ccache
+    TE init_vm init_ccache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e TE ->
+  (sat (add_prelude ([::lr]::cs))) ->
+  (exists s, AdhereConform.conform_bexp e s TE /\
+             QFBV.eval_bexp e s).
+Proof.
+  move=> Hbb Hwf [E Hcs]. rewrite add_prelude_cons in Hcs.
+  move/andP: Hcs => [Hlr Hcs].
+  move : (bit_blast_bexp_ccache_adhere (init_vm_adhere TE) Hbb) => Hadm.
+  move : (bit_blast_bexp_ccache_bound Hbb init_ccache_well_formed
+                                      init_bound_cache) => Hbound.
+  move : (mk_state_conform_bexp E Hbound Hadm) => Hcf.
+  move: (mk_state_consistent E m) => Hcon.
+  exists (mk_state E m). split; first exact: Hcf.
+  move: (bit_blast_bexp_ccache_correct
+           Hbb Hcf (mk_state_consistent E m) Hwf init_ccache_well_formed Hcs
+           (init_interp_cache_ct E) (init_correct init_vm)).
+  move/eqP => <-. rewrite add_prelude_singleton /= in Hlr.
+  case/andP: Hlr => _ Hlr. by case/orP: Hlr.
+Qed.
+
+Theorem bit_blast_ccache_sat_complete TE (e : QFBV.bexp) m c g cs lr :
+  bit_blast_bexp_ccache
+    TE init_vm init_ccache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e TE ->
+  (exists s, AdhereConform.conform_bexp e s TE /\
+             QFBV.eval_bexp e s) ->
+  (sat (add_prelude ([::lr]::cs))).
+Proof.
+  move=> Hbb Hwf [s [Hco Hev]]. move: (mk_env_sat Hbb Hco Hwf) => Hcs.
+  move: (mk_env_tt s e) => Htt.
+  have Hprelude: interp_cnf (mk_env s e) (add_prelude cs)
+    by rewrite add_prelude_expand Hcs Htt.
+  move: (bit_blast_bexp_ccache_correct Hbb Hco (mk_env_consistent Hbb Hco Hwf)
+                                       Hwf init_ccache_well_formed Hprelude
+                                       (init_interp_cache_ct (mk_env s e))
+                                       (init_correct init_vm)).
+  rewrite /enc_bit. move/eqP=> Hlr. rewrite -{}Hlr in Hev.
+  exists (mk_env s e). rewrite add_prelude_expand.
+  rewrite Htt /=. by rewrite Hev Hcs.
+Qed.

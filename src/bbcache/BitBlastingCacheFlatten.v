@@ -633,6 +633,42 @@ Proof.
 Qed.
 
 
+Theorem bit_blast_bexp_fcache_sat_sound E e m c g cs lr :
+  bit_blast_bexp_fcache
+    E init_vm init_fcache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e E ->
+  (sat (add_prelude ([::lr]::(tflatten cs)))) ->
+  (exists s, AdhereConform.conform_bexp e s E /\
+             QFBV.eval_bexp e s).
+Proof.
+  move=> Hbbe Hwf Hsat.
+  dcase (bit_blast_bexp_cache E init_vm init_cache init_gen e) =>
+  [[[[[m' c'] g'] cs'] lr'] Hbb].
+  move: (bit_blast_bexp_fcache_valid
+           (init_fcache_compatible) Hbbe Hbb) => [Hm [Hcc [Hg [Heqs Hlr]]]]; subst.
+  apply: (bit_blast_cache_sat_sound Hbb Hwf).
+  move: (cnf_eqsat_cons (clause_eqsat_refl [:: lr']) Heqs) => Heqs'.
+  apply/(cnf_eqsat_add_prelude_sat Heqs'). assumption.
+Qed.
+
+Theorem bit_blast_bexp_fcache_sat_complete E e m c g cs lr :
+  bit_blast_bexp_fcache E init_vm init_fcache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e E ->
+  (exists s, AdhereConform.conform_bexp e s E /\
+             QFBV.eval_bexp e s) ->
+  (sat (add_prelude ([::lr]::(tflatten cs)))).
+Proof.
+  move=> Hbbe Hwf Hev.
+  dcase (bit_blast_bexp_cache E init_vm init_cache init_gen e) =>
+  [[[[[m' c'] g'] cs'] lr'] Hbb].
+  move: (bit_blast_bexp_fcache_valid
+           (init_fcache_compatible) Hbbe Hbb) => [Hm [Hcc [Hg [Heqs Hlr]]]]; subst.
+  move: (cnf_eqsat_cons (clause_eqsat_refl [:: lr']) Heqs) => Heqs'.
+  apply/(cnf_eqsat_add_prelude_sat Heqs').
+  exact: (bit_blast_cache_sat_complete Hbb Hwf Hev).
+Qed.
+
+
 (* ==== general case ==== *)
 
 (* = bit-blasting multiple bexps = *)
