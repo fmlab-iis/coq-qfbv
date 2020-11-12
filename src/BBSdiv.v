@@ -10,7 +10,7 @@ Import Prenex Implicits.
 
 
 
-(* ===== bit_blast_sdiv ===== *)
+(* ===== bit_blast_abs ===== *)
 
 Definition bit_blast_abs g ls : generator * cnf * word :=
   let (ls_tl, ls_sign) := eta_expand (splitmsl ls) in
@@ -181,14 +181,13 @@ Qed.
 (*        else if (msb bs1' != msb bs2') && negb (msb bs1') then (negB (udivB bs1 bs2).1, (udivB bs1 bs2).2) *)
 (*             else (negB (udivB bs1 bs2).1, negB (udivB bs1 bs2).2). *)
 
-
 Definition bit_blast_sdiv g ls1 ls2 : generator * cnf * word :=
   let (ls1_tl, ls1_sign) := eta_expand (splitmsl ls1) in
   let (ls2_tl, ls2_sign) := eta_expand (splitmsl ls2) in
   let ws1 := copy (size ls1) ls1_sign in
   let '(g_abs1, cs_abs1, lrs_abs1) := bit_blast_abs g ls1 in
   let '(g_abs2, cs_abs2, lrs_abs2) := bit_blast_abs g_abs1 ls2 in
-  let '(g_udiv, cs_udiv, qs_udiv, rs_udiv) := bit_blast_udiv g_abs2 lrs_abs1 lrs_abs2 in
+  let '(g_udiv, cs_udiv, qs_udiv) := bit_blast_udiv' g_abs2 lrs_abs1 lrs_abs2 in
   if (((ls1_sign == lit_ff) && (ls2_sign == lit_ff)) || ((ls1_sign == lit_tt) && (ls2_sign == lit_tt))) then
     (g_udiv, catrev (catrev cs_abs1 cs_abs2) cs_udiv, qs_udiv)
   else if (((ls1_sign == lit_ff) && (ls2_sign == lit_tt)) || ((ls1_sign == lit_tt) && (ls2_sign == lit_ff))) then
@@ -240,7 +239,7 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word :=
   let ws1 := copy (size ls1) ls1_sign in
   let '(E_abs1, g_abs1, cs_abs1, lrs_abs1) := mk_env_abs E g ls1 in
   let '(E_abs2, g_abs2, cs_abs2, lrs_abs2) := mk_env_abs E_abs1 g_abs1 ls2 in
-  let '(E_udiv, g_udiv, cs_udiv, qs_udiv, rs_udiv) := mk_env_udiv E_abs2 g_abs2 lrs_abs1 lrs_abs2 in
+  let '(E_udiv, g_udiv, cs_udiv, qs_udiv) := mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2 in
   if (((ls1_sign == lit_ff) && (ls2_sign == lit_ff)) || ((ls1_sign == lit_tt) && (ls2_sign == lit_tt))) then
     (E_udiv, g_udiv, (catrev (catrev cs_abs1 cs_abs2) cs_udiv), qs_udiv)
   else if (((ls1_sign == lit_ff) && (ls2_sign == lit_tt)) || ((ls1_sign == lit_tt) && (ls2_sign == lit_ff))) then
@@ -347,11 +346,11 @@ Proof.
     case Hls2mb1 :((splitmsl ls2).2 == lit_tt); case Hls2mb0 : ((splitmsl ls2).2 == lit_ff);
     try (rewrite (eqP Hls1mb1) in Hls1mb0; discriminate); try (rewrite (eqP Hls2mb1) in Hls2mb0; discriminate).
   - dcase (bit_blast_neg g_neg1 ls2) => [[[g_neg2 cs_neg2] lrs_neg2] Hbbneg2].
-    dcase (bit_blast_udiv g_neg2 lrs_neg1 lrs_neg2) => [[[[g_udiv cs_udiv] lqs_udiv] lrs_udiv] Hbbudiv].
+    dcase (bit_blast_udiv' g_neg2 lrs_neg1 lrs_neg2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
     dcase (bit_blast_neg g_udiv lqs_udiv) => [[[g_neg cs_neg] lrs_neg] Hbbneg].
     dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
     dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
-    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] xor].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hxor].
     dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
     dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
     case => _ <- <-.
@@ -359,10 +358,28 @@ Proof.
     move => /andP [/andP [Hcsneg1 Hcsneg2] Hcsudiv].
     move : (add_prelude_tt Hcsudiv) => Htt.
     move : (enc_bit_msb Htt Henc1); rewrite/msl (eqP Hls1mb1); move => Hencmsb1.
-    move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1. move => Hmsb1t.
-    move : (enc_bit_msb Htt Henc2). rewrite/msl (eqP Hls2mb1). move => Hencmsb2.
-    move : (add_prelude_enc_bit_true (msb bs2) Hcsudiv). rewrite Hencmsb2. move => Hmsb2t.
-    rewrite /sdivB' /NBitsOp.sdivB /absB -Hmsb1t -Hmsb2t /=.
+    move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1t.
+    move : (enc_bit_msb Htt Henc2). rewrite/msl (eqP Hls2mb1) => Hencmsb2.
+    move : (add_prelude_enc_bit_true (msb bs2) Hcsudiv). rewrite Hencmsb2 => Hmsb2t.
+    rewrite /sdivB /absB -Hmsb1t -Hmsb2t /=.
+    move : (bit_blast_neg_correct Hbbneg1 Henc1 Hcsneg1) => Hencneg1.
+    move : (bit_blast_neg_correct Hbbneg2 Henc2 Hcsneg2) => Hencneg2.
+    have Hszeq : (size lrs_neg1 = size lrs_neg2) by rewrite -(bit_blast_neg_size_ss Hbbneg1) -(bit_blast_neg_size_ss Hbbneg2).
+    exact : (bit_blast_udiv_correct' Hbbudiv Hszeq Hencneg1 Hencneg2 Hcsudiv).
+  - dcase (bit_blast_udiv' g_neg1 lrs_neg1 ls2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
+    dcase (bit_blast_neg g_udiv lqs_udiv) => [[[g_neg cs_neg] lrs_neg] Hbbneg].
+    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
+    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hxor].
+    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
+    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
+    case => _ <- <-.
+    move => Hsz Hgt01 Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [Hcsneg1 _] Hcsneg2] Hcsudiv].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (add_prelude_ff Hcsudiv) => Hff.
+    move : (enc_bit_msb Htt Henc1); rewrite/msl (eqP Hls1mb1); move => Hencmsb1.
+    move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1t.
 Admitted.
 
 Lemma mk_env_sdiv_is_bit_blast_sdiv : forall ls1 E g ls2 g' cs rlrs E',
@@ -380,17 +397,17 @@ Proof.
     case Htt2 : ((splitmsl ls2).2 == lit_tt); case Hff2 : ((splitmsl ls2).2 == lit_ff);
       try rewrite (eqP Htt1)// in Hff1; try rewrite (eqP Htt2)// in Hff2.
   - dcase (mk_env_neg E_neg1 g_neg1 ls2) => [[[[E_abs2] g_abs2] cs_abs2] lrs_abs2] Hmkneg2.
-    dcase (mk_env_udiv E_abs2 g_abs2 rs_neg1 lrs_abs2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
-    rewrite (mk_env_neg_is_bit_blast_neg Hmkneg2) (mk_env_udiv_is_bit_blast_udiv Hmkudiv).
+    dcase (mk_env_udiv' E_abs2 g_abs2 rs_neg1 lrs_abs2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
+    rewrite (mk_env_neg_is_bit_blast_neg Hmkneg2) (mk_env_udiv_is_bit_blast_udiv' Hmkudiv).
     by case => _ <- <- <-. 
-  - dcase (mk_env_udiv E_neg1 g_neg1 rs_neg1 ls2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+  - dcase (mk_env_udiv' E_neg1 g_neg1 rs_neg1 ls2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     by case => _ <- <- <-.
   - dcase (mk_env_xor E_neg1 g_neg1 ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[[E_xor2] g_xor2] cs_xor2] rs_xor2] Hmkxor2.
     dcase (mk_env_zeroextend (size (splitmsl ls2).1) E_xor2 g_xor2 [:: (splitmsl ls2).2]) => [[[[E_ze2] g_ze2] cs_ze2] rs_ze2] Hmkze2.
     dcase (mk_env_add E_ze2 g_ze2 rs_xor2 rs_ze2) => [[[[E_add2] g_add2] cs_add2] rs_add2] Hmkadd2.
-    dcase (mk_env_udiv E_add2 g_add2 rs_neg1 rs_add2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+    dcase (mk_env_udiv' E_add2 g_add2 rs_neg1 rs_add2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
@@ -398,37 +415,37 @@ Proof.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
     rewrite (mk_env_xor_is_bit_blast_xor Hmkxor2) (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze2) (mk_env_add_is_bit_blast_add Hmkadd2).
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg) (mk_env_eq_is_bit_blast_eq Hmkeq).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg) (mk_env_eq_is_bit_blast_eq Hmkeq).
     rewrite (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor) (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze).
     rewrite (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
   - dcase (mk_env_neg E g ls2) => [[[[E_neg2] g_neg2] cs_neg2] lrs_neg2] Hmkneg2.
-    dcase (mk_env_udiv E_neg2 g_neg2 ls1 lrs_neg2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+    dcase (mk_env_udiv' E_neg2 g_neg2 ls1 lrs_neg2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
     dcase (mk_env_xor E_lneg g_lneg lqs_udiv (copy (size ls1) rs_lneg)) => [[[[E_xor] g_xor] cs_xor] rs_xor] Hmkxor.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
-    rewrite (mk_env_neg_is_bit_blast_neg Hmkneg2) (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_neg_is_bit_blast_neg Hmkneg2) (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor).
     rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze) (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
-  - dcase (mk_env_udiv E g ls1 ls2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+  - dcase (mk_env_udiv' E g ls1 ls2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
     dcase (mk_env_xor E_lneg g_lneg lqs_udiv (copy (size ls1) rs_lneg)) => [[[[E_xor] g_xor] cs_xor] rs_xor] Hmkxor.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg) (mk_env_eq_is_bit_blast_eq Hmkeq).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg) (mk_env_eq_is_bit_blast_eq Hmkeq).
     rewrite (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor) (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze).
     rewrite (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
   - dcase (mk_env_xor E g ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[[E_xor2] g_xor2] cs_xor2] rs_xor2] Hmkxor2.
     dcase (mk_env_zeroextend (size (splitmsl ls2).1) E_xor2 g_xor2 [:: (splitmsl ls2).2]) => [[[[E_ze2] g_ze2] cs_ze2] rs_ze2] Hmkze2.
     dcase (mk_env_add E_ze2 g_ze2 rs_xor2 rs_ze2) => [[[[E_add2] g_add2] cs_add2] rs_add2] Hmkadd2.
-    dcase (mk_env_udiv E_add2 g_add2 ls1 rs_add2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+    dcase (mk_env_udiv' E_add2 g_add2 ls1 rs_add2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv] Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
@@ -436,12 +453,12 @@ Proof.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
     rewrite (mk_env_xor_is_bit_blast_xor Hmkxor2) (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze2) (mk_env_add_is_bit_blast_add Hmkadd2).
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor).
     rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze) (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
   - dcase (mk_env_neg E_add g_add ls2) => [[[[E_neg2] g_neg2] cs_neg2] lrs_neg2] Hmkneg2.
-    dcase (mk_env_udiv E_neg2 g_neg2 rs_add lrs_neg2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+    dcase (mk_env_udiv' E_neg2 g_neg2 rs_add lrs_neg2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg. 
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
@@ -449,25 +466,25 @@ Proof.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
     rewrite (mk_env_neg_is_bit_blast_neg Hmkneg2).
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor).
     rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze) (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
-  - dcase (mk_env_udiv E_add g_add rs_add ls2)=> [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+  - dcase (mk_env_udiv' E_add g_add rs_add ls2)=> [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg. 
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
     dcase (mk_env_xor E_lneg g_lneg lqs_udiv (copy (size ls1) rs_lneg)) => [[[[E_xor] g_xor] cs_xor] rs_xor] Hmkxor.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor).
     rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze) (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
   - dcase (mk_env_xor E_add g_add ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[[E_xor2] g_xor2] cs_xor2] rs_xor2] Hmkxor2.
     dcase (mk_env_zeroextend (size (splitmsl ls2).1) E_xor2 g_xor2 [:: (splitmsl ls2).2]) => [[[[E_ze2] g_ze2] cs_ze2] rs_ze2] Hmkze2.
     dcase (mk_env_add E_ze2 g_ze2 rs_xor2 rs_ze2) => [[[[E_add2] g_add2] cs_add2] rs_add2] Hmkadd2.
-    dcase (mk_env_udiv E_add2 g_add2 rs_add rs_add2) => [[[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]lrs_udiv] Hmkudiv.
+    dcase (mk_env_udiv' E_add2 g_add2 rs_add rs_add2) => [[[[E_udiv] g_udiv] cs_udiv] lqs_udiv]Hmkudiv.
     dcase (mk_env_neg E_udiv g_udiv lqs_udiv) => [[[[E_neg] g_neg] cs_neg] lrs_neg] Hmkneg.
     dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq] g_eq] cs_eq] rs_eq] Hmkeq.
     dcase (mk_env_lneg E_eq g_eq rs_eq) => [[[[E_lneg] g_lneg] cs_lneg] rs_lneg] Hmklneg.
@@ -475,7 +492,7 @@ Proof.
     dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: rs_lneg]) => [[[[E_ze] g_ze] cs_ze] rs_ze] Hmkze.
     dcase (mk_env_add E_ze g_ze rs_xor rs_ze) => [[[[E_addr] g_addr] cs_addr] rs_addr] Hmkaddr.
     rewrite (mk_env_xor_is_bit_blast_xor Hmkxor2) (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze2) (mk_env_add_is_bit_blast_add Hmkadd2).
-    rewrite (mk_env_udiv_is_bit_blast_udiv Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
+    rewrite (mk_env_udiv_is_bit_blast_udiv' Hmkudiv) (mk_env_neg_is_bit_blast_neg Hmkneg).
     rewrite (mk_env_eq_is_bit_blast_eq Hmkeq) (mk_env_lneg_is_bit_blast_lneg Hmklneg) (mk_env_xor_is_bit_blast_xor Hmkxor).
     rewrite (mk_env_zeroextend_is_bit_blast_zeroextend Hmkze) (mk_env_add_is_bit_blast_add Hmkaddr).
     by case => _ <- <- <-.
