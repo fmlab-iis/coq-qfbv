@@ -1,0 +1,5 @@
+(library
+  (name            util)
+  (libraries       str)
+  (flags           (:standard -w -3-33-27-39))
+)

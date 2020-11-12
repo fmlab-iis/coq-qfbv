@@ -1,0 +1,5 @@
+(library
+  (name            smtcoq)
+  (libraries       smtlib)
+  (flags           (:standard -w -3-33-27-39))
+)

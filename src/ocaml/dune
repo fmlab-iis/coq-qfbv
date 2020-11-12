@@ -1,0 +1,12 @@
+(env
+  (dev
+    (flags         (:standard -w +42)))
+  (release
+    (flags         (:standard -O3))))
+
+(executables
+ (names            coqbb trans)
+ (libraries        main)
+ (public_names     coqbb trans)
+ (package          coqbb)
+)
