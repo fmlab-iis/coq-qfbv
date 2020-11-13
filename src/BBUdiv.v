@@ -166,13 +166,13 @@ Proof.
   move : (bit_blast_or_size_ss Hbbor Hszaux) => Hszn. rewrite Hszn size_nseq Hszite //.
 Qed.
 
-(*
-Lemma add_prelude_enc_bit_is_true:
-  forall (E : env) (cs : seq (seq literal)) (b : bool_eqType),
-    interp_cnf E (add_prelude cs) -> enc_bit E lit_tt b = (b == true).
+Lemma bit_blast_udiv_size_ss' g ls1 ls2 g' cs qlrs :
+    bit_blast_udiv' g ls1 ls2 = (g', cs, qlrs) -> size ls1 = size ls2->
+    size qlrs = size ls2.
 Proof.
-  intros. case b; rewrite eqb_id; exact :(add_prelude_enc_bit_true _ H).
-Qed.*)
+  rewrite /bit_blast_udiv'. dcase (bit_blast_udiv g ls1 ls2) => [[[[g_u cs_u] q_u] r_u] Hbbu].
+  case => _ _ <- Hsz. by move : (bit_blast_udiv_size_ss Hbbu Hsz) => [H _].
+Qed.
 
 Lemma bit_blast_udiv_rec_correct : forall ls1 g ls2 g' cs' lqs lrs qlrs rlrs E bs1 bs2 bsq bsr,
     bit_blast_udiv_rec g ls1 ls2 lqs lrs = (g', cs', qlrs, rlrs) ->

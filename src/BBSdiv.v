@@ -347,12 +347,6 @@ Proof.
     try (rewrite (eqP Hls1mb1) in Hls1mb0; discriminate); try (rewrite (eqP Hls2mb1) in Hls2mb0; discriminate).
   - dcase (bit_blast_neg g_neg1 ls2) => [[[g_neg2 cs_neg2] lrs_neg2] Hbbneg2].
     dcase (bit_blast_udiv' g_neg2 lrs_neg1 lrs_neg2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
-    dcase (bit_blast_neg g_udiv lqs_udiv) => [[[g_neg cs_neg] lrs_neg] Hbbneg].
-    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
-    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
-    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hxor].
-    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
-    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
     case => _ <- <-.
     move => Hsz Hgt01 Henc1 Henc2. rewrite !add_prelude_catrev.
     move => /andP [/andP [Hcsneg1 Hcsneg2] Hcsudiv].
@@ -368,19 +362,401 @@ Proof.
     exact : (bit_blast_udiv_correct' Hbbudiv Hszeq Hencneg1 Hencneg2 Hcsudiv).
   - dcase (bit_blast_udiv' g_neg1 lrs_neg1 ls2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
     dcase (bit_blast_neg g_udiv lqs_udiv) => [[[g_neg cs_neg] lrs_neg] Hbbneg].
+    case => _ <- <-.
+    move => Hsz Hgt01 Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [Hcsneg1 _] Hcsudiv] Hcsneg].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc1); rewrite /msl (eqP Hls1mb1); move => Hencmsb1.
+    move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1t.
+    move : (enc_bit_msb Htt Henc2); rewrite /msl (eqP Hls2mb0); move => Hencmsb2.
+    move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsudiv); rewrite Hencmsb2 => Hmsb2f; symmetry in Hmsb2f.
+    rewrite -> Bool.negb_true_iff in Hmsb2f; rewrite /sdivB /absB -Hmsb1t Hmsb2f/=.
+    have Hszeq : size lrs_neg1 = size ls2 by rewrite -Hsz (bit_blast_neg_size_ss Hbbneg1).
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq (bit_blast_neg_correct Hbbneg1 Henc1 Hcsneg1) Henc2 Hcsudiv) => Hencudiv.
+    exact : (bit_blast_neg_correct Hbbneg Hencudiv Hcsneg).
+  - dcase (bit_blast_xor g_neg1 ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[g_xor2 cs_xor2] lrs_xor2] Hbbxor2].
+    dcase (bit_blast_zeroextend (size (splitmsl ls2).1) g_xor2 [:: (splitmsl ls2).2]) => [[[g_zext2 cs_zext2] lrs_zext2] Hbbzext2].
+    dcase (bit_blast_add g_zext2 lrs_xor2 lrs_zext2) => [[[g_add2 cs_add2] lrs_add2] Hbbadd2].
+    dcase (bit_blast_udiv' g_add2 lrs_neg1 lrs_add2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
     dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
     dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
-    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hxor].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hbbxor].
     dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
     dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
     case => _ <- <-.
-    move => Hsz Hgt01 Henc1 Henc2. rewrite !add_prelude_catrev.
-    move => /andP [/andP [/andP [Hcsneg1 _] Hcsneg2] Hcsudiv].
+    move => Hsz Hgt Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [/andP [/andP [/andP [/andP [Hcsneg1 [/andP [/andP [Hcsxor2 Hcszext2] Hcsadd2]]] Hcsudiv] Hcseq] Hcslneg] Hcsxor] Hcszext] Hcsadd].
     move : (add_prelude_tt Hcsudiv) => Htt.
-    move : (add_prelude_ff Hcsudiv) => Hff.
-    move : (enc_bit_msb Htt Henc1); rewrite/msl (eqP Hls1mb1); move => Hencmsb1.
+    move : (enc_bit_msb Htt Henc1); rewrite /msl (eqP Hls1mb1); move => Hencmsb1.
     move : (add_prelude_enc_bit_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1t.
-Admitted.
+    move : (enc_bit_msb Htt Henc2) => Hencmsb2.
+    move : (enc_bit_msb Htt Henc1) => Hencmsb1'.
+    move : (bit_blast_xor_correct Hbbxor2 Henc2 (enc_bits_copy (size ls2) Hencmsb2) Hcsxor2) => Hencxor2.
+    rewrite <- enc_bits_seq1 in Hencmsb2. rewrite <- enc_bits_seq1 in Hencmsb1'.
+    move : (bit_blast_zeroextend_correct Hbbzext2 Hencmsb2 Hcszext2) => Henczext2.
+    have Hszeq : size lrs_xor2 = size lrs_zext2.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor2) (bit_blast_zeroextend_size Hbbzext2) size_nseq maxnn size_splitmsl.
+      rewrite addnC subnK// -Hsz//.
+    }
+    move : (enc_bits_size Henc1) => Hszlsbs1.
+    move : (enc_bits_size Henc2) => Hszlsbs2.
+    have Haddr2 : ((bs2 ^# copy (size ls2) (msb bs2) +# (zext (size (splitmsl ls2).1) [:: msb bs2]))%bits
+                  = if (msb bs2) then (-#bs2)%bits else bs2).
+    {
+      rewrite xorBC Hszlsbs2 xorB_copy_case size_splitmsl Hszlsbs2.
+      case Hm2 : (msb bs2). rewrite /negB -addB1 bits_v1_zext_b1// -Hszlsbs2 -Hsz//.
+      rewrite (eqP (zext_zeros_bit (size bs2 - 1) false)) zeros_cons addB0 unzip1_zip// size_zeros -addn1 subnK//
+      -Hszlsbs2 -Hsz//.
+    }
+    move : (bit_blast_add_correct Hbbadd2 Hencxor2 Henczext2 Haddr2 Hcsadd2 Hszeq) => Hencadd2 {Hszeq}.
+    have Hszeq : size lrs_neg1 = size lrs_add2.
+    {
+      rewrite -(bit_blast_neg_size_ss Hbbneg1) -(bit_blast_add_size_ss Hbbadd2);
+      move :(bit_blast_xor_size_max Hbbxor2); rewrite size_nseq maxnn => ->//.
+      rewrite (bit_blast_zeroextend_size Hbbzext2) size_splitmsl/= addnC subnK// -Hsz//.
+    }
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq (bit_blast_neg_correct Hbbneg1 Henc1 Hcsneg1) Hencadd2 Hcsudiv) => Hencudiv {Hszeq}.
+    have Hszeq : size [:: (splitmsl ls1).2] = size [:: (splitmsl ls2).2] by done.
+    move : (bit_blast_eq_correct Hbbeq Hszeq Hencmsb1' Hencmsb2 Hcseq) => Henceq.
+    move : (bit_blast_lneg_correct Hbblneg Henceq Hcslneg) => Henclneg.
+    generalize Henclneg; rewrite <-enc_bits_seq1 => Henclneg1.
+    move : (bit_blast_zeroextend_correct Hbbzext Henclneg1 Hcszext) => Henczext.
+    move : (bit_blast_xor_correct Hbbxor Hencudiv (enc_bits_copy (size ls1) Henclneg) Hcsxor).
+    rewrite /sdivB /absB -Hmsb1t xorBC Hszlsbs1 -size_negB -(size_udivB (-# bs1)%bits (if msb bs2 then (-# bs2)%bits else bs2)) xorB_copy_case.
+    move => Hencxor {Hszeq}.
+    have Hszeq : size lrs_xor = size lrs_zext.
+    {
+      rewrite (bit_blast_zeroextend_size Hbbzext) (bit_blast_xor_size_max Hbbxor).
+      rewrite (bit_blast_udiv_size_ss' Hbbudiv) -(bit_blast_add_size_ss Hbbadd2) (bit_blast_xor_size_max Hbbxor2) !size_nseq -Hsz !maxnn.
+      rewrite size_splitmsl/= addnC subnK//.
+      rewrite (bit_blast_zeroextend_size Hbbzext2) size_splitmsl/= -Hsz addnC subnK//.
+      rewrite (bit_blast_neg_size_ss Hbbneg1)//.
+      rewrite (bit_blast_zeroextend_size Hbbzext2) size_splitmsl/= -Hsz addnC subnK//.
+    }
+    have Haddr : ((if [:: true] != [:: msb bs2]
+                   then (~~# (udivB (-# bs1) (if msb bs2 then -# bs2 else bs2)).1)
+                   else (udivB (-# bs1) (if msb bs2 then (-# bs2) else bs2)).1)
+                    +# (zext (size (splitmsl ls1).1) [:: [:: msb bs1] != [:: msb bs2]])
+                  = if (msb bs2) then (udivB (-# bs1)%bits (if msb bs2 then (-# bs2)%bits else bs2)).1
+                    else (-# (udivB (-# bs1) (if msb bs2 then -# bs2 else bs2)).1))%bits.
+    {
+      case Hms2 : (msb bs2); rewrite -Hmsb1t size_splitmsl /=.
+      rewrite (eqP (zext_zeros_bit (size ls1 - 1) false)) zeros_cons addB0 unzip1_zip//
+              size_udivB size_negB size_zeros -Hszlsbs1 -addn1 subnK//.
+      rewrite Hszlsbs1 bits_v1_zext_b1; last rewrite -Hszlsbs1//.
+      rewrite size_invB -size_negB -(size_udivB (-#bs1)%bits bs2) -size_invB addB1 -/(negB _)//.
+    }
+    move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszeq); done.
+  - dcase (bit_blast_neg g ls2) => [[[g_neg2 cs_neg2] lrs_neg2] Hbbneg2].
+    dcase (bit_blast_udiv' g_neg2 ls1 lrs_neg2) => [[[g_udiv cs_udiv] lrs_udiv] Hbbudiv].
+    dcase (bit_blast_neg g_udiv lrs_udiv) => [[[g_neg cs_neg] lrs_neg] Hbbneg].
+    case => _ <- <- Hsz Hgt Henc1 Henc2.
+    rewrite !add_prelude_catrev => /andP [/andP [Hcsneg2 Hcsudiv] Hcsneg].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc1). rewrite /msl (eqP Hls1mb0); move => Hencmsb1.
+    move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1f; symmetry in Hmsb1f.
+    rewrite -> Bool.negb_true_iff in Hmsb1f.
+    move : (enc_bit_msb Htt Henc2). rewrite /msl (eqP Hls2mb1); move => Hencmsb2.
+    move : (add_prelude_enc_bit_true (msb bs2) Hcsudiv). rewrite Hencmsb2 => Hmsb2t.
+    move : (bit_blast_neg_correct Hbbneg2 Henc2 Hcsneg2) => Hencneg2.
+    have Hszeq : size ls1 = size lrs_neg2 by rewrite -(bit_blast_neg_size_ss Hbbneg2).
+    move : (bit_blast_neg_correct Hbbneg (bit_blast_udiv_correct' Hbbudiv Hszeq Henc1 Hencneg2 Hcsudiv) Hcsneg).
+    rewrite /sdivB /absB -Hmsb2t Hmsb1f//.
+  - dcase (bit_blast_udiv' g ls1 ls2) => [[[g_udiv cs_udiv] lrs_udiv] Hbbudiv].
+    case => _ <- <- Hsz Hgt Henc1 Henc2 Hcsudiv.
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc1). rewrite /msl (eqP Hls1mb0); move => Hencmsb1.
+    move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1f; symmetry in Hmsb1f.
+    move : (enc_bit_msb Htt Henc2). rewrite /msl (eqP Hls2mb0); move => Hencmsb2.
+    move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsudiv). rewrite Hencmsb2 => Hmsb2f; symmetry in Hmsb2f.
+    rewrite -> Bool.negb_true_iff in Hmsb1f, Hmsb2f.
+    rewrite /sdivB /absB Hmsb1f Hmsb2f eq_refl.
+    move : (bit_blast_udiv_correct' Hbbudiv Hsz Henc1 Henc2 Hcsudiv); done.
+  - dcase (bit_blast_xor g ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[g_xor2 cs_xor2] lrs_xor2] Hbbxor2].
+    dcase (bit_blast_zeroextend (size (splitmsl ls2).1) g_xor2 [:: (splitmsl ls2).2]) => [[[g_zext2 cs_zext2] lrs_zext2] Hbbzext2].
+    dcase (bit_blast_add g_zext2 lrs_xor2 lrs_zext2) => [[[g_add2 cs_add2] lrs_add2] Hbbadd2].
+    dcase (bit_blast_udiv' g_add2 ls1 lrs_add2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
+    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
+    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hbbxor].
+    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
+    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
+    case => _ <- <-.
+    move => Hsz Hgt Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [Hcsxor2 Hcszext2] Hcsadd2] Hcsudiv] Hcseq] Hcslneg] Hcsxor] Hcszext] Hcsadd].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc1); rewrite /msl (eqP Hls1mb0); move => Hencmsb1.
+    move : (add_prelude_enc_bit_is_not_true (msb bs1) Hcsudiv). rewrite Hencmsb1 => Hmsb1f; symmetry in Hmsb1f.
+    rewrite -> Bool.negb_true_iff in Hmsb1f.
+    move : (enc_bit_msb Htt Henc1); rewrite <- enc_bits_seq1 => Hencmsb1'.
+    move : (enc_bit_msb Htt Henc2) => Hencmsb2; generalize Hencmsb2; rewrite <- enc_bits_seq1 => Hencmsb2'.
+    move : (bit_blast_xor_correct Hbbxor2 Henc2 (enc_bits_copy  (size ls2) Hencmsb2) Hcsxor2) => Hencxor2.
+    move : (bit_blast_zeroextend_correct Hbbzext2 Hencmsb2' Hcszext2) => Henczext2.
+    move : (enc_bits_size Henc1) => Hszlsbs1; move : (enc_bits_size Henc2) => Hszlsbs2.
+    have Hszeq : size lrs_xor2 = size lrs_zext2.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor2) size_nseq maxnn.
+      rewrite (bit_blast_zeroextend_size Hbbzext2) size_splitmsl addnC subnK// -Hsz//.
+    }
+    have Haddr2 : ((bs2 ^# copy (size ls2) (msb bs2)) +# (zext (size (splitmsl ls2).1) [:: msb bs2])
+                   = if (msb bs2) then -#bs2 else bs2)%bits.
+    {
+      rewrite xorBC Hszlsbs2 xorB_copy_case size_splitmsl.
+      case (msb bs2); [rewrite Hszlsbs2 bits_v1_zext_b1;
+                       [rewrite addB1//|rewrite -Hszlsbs2 -Hsz//]
+                      |rewrite (eqP (zext_zeros_bit (size ls2 - 1) false)) zeros_cons -addn1 subnK;
+                       [rewrite addB0 unzip1_zip// size_zeros Hszlsbs2//|rewrite -Hsz//]]. 
+    }
+    move : (bit_blast_add_correct Hbbadd2 Hencxor2 Henczext2 Haddr2 Hcsadd2 Hszeq) => Hencadd2.
+    have Hszeq' : size ls1 = size lrs_add2.
+    {
+      rewrite -(bit_blast_add_size_ss Hbbadd2); last rewrite Hszeq//.
+      rewrite (bit_blast_xor_size_max Hbbxor2) size_nseq maxnn //.
+    }
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq' Henc1 Hencadd2 Hcsudiv) => Hencudiv.
+    have Hszeq'' : size [:: (splitmsl ls1).2] = size [:: (splitmsl ls2).2] by done.
+    move : (bit_blast_eq_correct Hbbeq Hszeq'' Hencmsb1' Hencmsb2' Hcseq) => Henceq.
+    move : (bit_blast_lneg_correct Hbblneg Henceq Hcslneg) => Henclneg.
+    generalize Henclneg; rewrite <-enc_bits_seq1 => Henclneg1.
+    move : (bit_blast_zeroextend_correct Hbbzext Henclneg1 Hcszext) => Henczext.
+    move : (bit_blast_xor_correct Hbbxor Hencudiv (enc_bits_copy (size ls1) Henclneg) Hcsxor).
+    rewrite /sdivB /absB Hmsb1f xorBC Hszlsbs1 -(size_udivB (bs1)%bits (if msb bs2 then (-# bs2)%bits else bs2)) xorB_copy_case => Hencxor{Hszeq Hszeq''}.
+    have Hszeq : size lrs_xor = size lrs_zext.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor) (bit_blast_udiv_size_ss' Hbbudiv)// -Hszeq'.
+      rewrite (bit_blast_zeroextend_size Hbbzext) size_splitmsl size_nseq maxnn addnC subnK//.
+    }
+    have Haddr : ((if [:: false] != [:: msb bs2]
+                   then (~~# (udivB bs1 (if msb bs2 then -# bs2 else bs2)).1)
+                   else (udivB bs1 (if msb bs2 then (-# bs2) else bs2)).1)
+                    +# (zext (size (splitmsl ls1).1) [:: [:: msb bs1] != [:: msb bs2]])
+                  = (if false == msb bs2
+                     then (udivB bs1 (if msb bs2 then (-# bs2) else bs2)).1
+                     else (-# (udivB bs1 (if msb bs2 then -# bs2 else bs2)).1)))%bits.
+    {
+      case (msb bs2); rewrite Hmsb1f size_splitmsl/= Hszlsbs1;
+        [rewrite bits_v1_zext_b1;[rewrite size_invB -(size_udivB bs1 (-#bs2)%bits) -size_invB addB1//|rewrite -Hszlsbs1//]
+        |rewrite (eqP (zext_zeros_bit (size bs1 -1) false)) zeros_cons addB0 unzip1_zip// size_udivB size_zeros -addn1 subnK -Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszeq); done.
+  - dcase (bit_blast_neg g_add1 ls2) => [[[g_neg2 cs_neg2] lrs_neg2] Hbbneg2].
+    dcase (bit_blast_udiv' g_neg2 lrs_add1 lrs_neg2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
+    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
+    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hbbxor].
+    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
+    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
+    case => _ <- <-.
+    move => Hsz Hgt Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [Hcsxor1 Hcszext1] Hcsadd1] Hcsneg2] Hcsudiv] Hcseq] Hcslneg] Hcsxor] Hcszext] Hcsadd].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc2); rewrite /msl (eqP Hls2mb1); move => Hencmsb2.
+    move : (add_prelude_enc_bit_true (msb bs2) Hcsudiv). rewrite Hencmsb2 => Hmsb2t; symmetry in Hmsb2t.
+    move : (enc_bit_msb Htt Henc2); rewrite <- enc_bits_seq1 => Hencmsb2'.
+    move : (enc_bit_msb Htt Henc1) => Hencmsb1; generalize Hencmsb1; rewrite <- enc_bits_seq1 => Hencmsb1'.
+    move : (bit_blast_xor_correct Hbbxor1 Henc1 (enc_bits_copy (size ls1) Hencmsb1) Hcsxor1) => Hencxor1.
+    move : (bit_blast_zeroextend_correct Hbbzext1 Hencmsb1' Hcszext1) => Henczext1.
+    move : (enc_bits_size Henc1) (enc_bits_size Henc2) => Hszlsbs1 Hszlsbs2.
+    have Hszeq : size lrs_xor1 = size lrs_zext1.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor1) (bit_blast_zeroextend_size Hbbzext1) size_nseq maxnn size_splitmsl.
+      rewrite addnC -addn1 subnK//.
+    }
+    have Haddr1 : (bs1 ^# copy (size ls1) (msb bs1) +# (zext (size (splitmsl ls1).1) [:: msb bs1])
+                   = if (msb bs1) then -#bs1 else bs1)%bits.
+    {
+      rewrite xorBC size_splitmsl Hszlsbs1 xorB_copy_case.
+      case (msb bs1); [rewrite bits_v1_zext_b1; [rewrite addB1//|rewrite -Hszlsbs1//]
+                      |rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip//size_zeros -addn1 subnK//-Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henczext1 Haddr1 Hcsadd1 Hszeq) => Hencadd1.
+    have Hszeq' : size lrs_add1 = size lrs_neg2.
+    {
+      rewrite -(bit_blast_add_size_ss Hbbadd1 Hszeq) (bit_blast_xor_size_max Hbbxor1) size_nseq maxnn -(bit_blast_neg_size_ss Hbbneg2)//.
+    }
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq' Hencadd1 (bit_blast_neg_correct Hbbneg2 Henc2 Hcsneg2) Hcsudiv) => Hencudiv.
+    have Hszeq'' : size [:: (splitmsl ls1).2] = size [:: (splitmsl ls2).2] by done.
+    move : (bit_blast_eq_correct Hbbeq Hszeq'' Hencmsb1' Hencmsb2' Hcseq) => Henceq.
+    move : (bit_blast_lneg_correct Hbblneg Henceq Hcslneg) => Henclneg.
+    generalize Henclneg; rewrite <-enc_bits_seq1 => Henclneg1.
+    move : (bit_blast_zeroextend_correct Hbbzext Henclneg1 Hcszext) => Henczext.
+    move : (bit_blast_xor_correct Hbbxor Hencudiv (enc_bits_copy (size ls1) Henclneg) Hcsxor).
+    rewrite /sdivB /absB Hmsb2t xorBC Hszlsbs1.
+    have -> : (size bs1 = size ((if msb bs1 then (-# bs1)%bits else bs1))) by (case (msb bs1); [rewrite size_negB//|done]).
+    rewrite -(size_udivB (if msb bs1 then (-# bs1)%bits else bs1) (-# bs2)%bits) xorB_copy_case => Hencxor{Hszeq Hszeq''}.
+    have Hszeq : size lrs_xor = size lrs_zext.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor) (bit_blast_udiv_size_ss' Hbbudiv)// -(bit_blast_neg_size_ss Hbbneg2) -Hsz. 
+      rewrite (bit_blast_zeroextend_size Hbbzext) size_splitmsl size_nseq maxnn addnC subnK//.
+    }
+    have Haddr : ((if [:: msb bs1] != [:: true]
+                  then (~~# (udivB (if msb bs1 then -# bs1 else bs1) (-# bs2)).1)
+                   else (udivB (if msb bs1 then (-# bs1) else bs1) (-# bs2)).1)
+                    +# (zext (size (splitmsl ls1).1) [:: [:: msb bs1] != [:: msb bs2]])
+                  = (if msb bs1 == true
+                     then (udivB (if msb bs1 then (-# bs1) else bs1) (-# bs2)).1
+                     else (-# (udivB (if msb bs1 then -# bs1 else bs1) (-# bs2)).1)))%bits.
+    {
+      case (msb bs1);
+        rewrite Hmsb2t size_splitmsl /=;
+                [rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip// size_udivB size_zeros -addn1 subnK// size_negB Hszlsbs1//
+                |rewrite Hszlsbs1 bits_v1_zext_b1; [rewrite size_invB -(size_udivB bs1 (-#bs2)%bits) -size_invB addB1//
+                                                   |rewrite -Hszlsbs1//]].
+    }
+    move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszeq); done.
+  - dcase (bit_blast_udiv' g_add1 lrs_add1 ls2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
+    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
+    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hbbxor].
+    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
+    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
+    case => _ <- <-.
+    move => Hsz Hgt Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [Hcsxor1 Hcszext1] Hcsadd1] _] Hcsudiv] Hcseq] Hcslneg] Hcsxor] Hcszext] Hcsadd].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc2); rewrite /msl (eqP Hls2mb0); move => Hencmsb2.
+    move : (add_prelude_enc_bit_is_not_true (msb bs2) Hcsudiv). rewrite Hencmsb2 => Hmsb2f; symmetry in Hmsb2f.
+    rewrite -> Bool.negb_true_iff in Hmsb2f.
+    move : (enc_bit_msb Htt Henc2); rewrite <- enc_bits_seq1 => Hencmsb2'.
+    move : (enc_bit_msb Htt Henc1) => Hencmsb1; generalize Hencmsb1; rewrite <- enc_bits_seq1 => Hencmsb1'.
+    move : (bit_blast_xor_correct Hbbxor1 Henc1 (enc_bits_copy (size ls1) Hencmsb1) Hcsxor1) => Hencxor1.
+    move : (bit_blast_zeroextend_correct Hbbzext1 Hencmsb1' Hcszext1) => Henczext1.
+    move : (enc_bits_size Henc1) (enc_bits_size Henc2) => Hszlsbs1 Hszlsbs2.
+    have Hszeq : size lrs_xor1 = size lrs_zext1.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor1) (bit_blast_zeroextend_size Hbbzext1) size_nseq maxnn size_splitmsl.
+      rewrite addnC -addn1 subnK//.
+    }
+    have Haddr1 : (bs1 ^# copy (size ls1) (msb bs1) +# (zext (size (splitmsl ls1).1) [:: msb bs1])
+                   = if (msb bs1) then -#bs1 else bs1)%bits.
+    {
+      rewrite xorBC size_splitmsl Hszlsbs1 xorB_copy_case.
+      case (msb bs1); [rewrite bits_v1_zext_b1; [rewrite addB1//|rewrite -Hszlsbs1//]
+                      |rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip//size_zeros -addn1 subnK//-Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henczext1 Haddr1 Hcsadd1 Hszeq) => Hencadd1.
+    have Hszeq' : size lrs_add1 = size ls2.
+    {
+      rewrite -(bit_blast_add_size_ss Hbbadd1 Hszeq) (bit_blast_xor_size_max Hbbxor1) size_nseq maxnn//.
+    }
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq' Hencadd1 Henc2 Hcsudiv) => Hencudiv.
+    have Hszeq'' : size [:: (splitmsl ls1).2] = size [:: (splitmsl ls2).2] by done.
+    move : (bit_blast_eq_correct Hbbeq Hszeq'' Hencmsb1' Hencmsb2' Hcseq) => Henceq.
+    move : (bit_blast_lneg_correct Hbblneg Henceq Hcslneg) => Henclneg.
+    generalize Henclneg; rewrite <-enc_bits_seq1 => Henclneg1.
+    move : (bit_blast_zeroextend_correct Hbbzext Henclneg1 Hcszext) => Henczext.
+    move : (bit_blast_xor_correct Hbbxor Hencudiv (enc_bits_copy (size ls1) Henclneg) Hcsxor).
+    rewrite /sdivB /absB Hmsb2f xorBC Hszlsbs1.
+    have -> : (size bs1 = size ((if msb bs1 then (-# bs1)%bits else bs1))) by (case (msb bs1); [rewrite size_negB//|done]).
+    rewrite -(size_udivB (if msb bs1 then (-# bs1)%bits else bs1) bs2) xorB_copy_case => Hencxor{Hszeq Hszeq''}.
+    have Hszeq : size lrs_xor = size lrs_zext.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor) (bit_blast_udiv_size_ss' Hbbudiv)// -Hsz. 
+      rewrite (bit_blast_zeroextend_size Hbbzext) size_splitmsl size_nseq maxnn addnC subnK//.
+    }
+    have Haddr : ((if [:: msb bs1] != [:: false]
+                  then (~~# (udivB (if msb bs1 then -# bs1 else bs1) bs2).1)
+                   else (udivB (if msb bs1 then (-# bs1) else bs1) bs2).1)
+                    +# (zext (size (splitmsl ls1).1) [:: [:: msb bs1] != [:: msb bs2]])
+                  = (if msb bs1 == false
+                     then (udivB (if msb bs1 then (-# bs1) else bs1) bs2).1
+                     else (-# (udivB (if msb bs1 then -# bs1 else bs1) bs2).1)))%bits.
+    {
+      case (msb bs1);
+        rewrite Hmsb2f size_splitmsl /=;
+                [rewrite Hszlsbs1 bits_v1_zext_b1;
+                 [rewrite size_invB -size_negB -(size_udivB (-#bs1)%bits bs2) -size_invB addB1//
+                 |rewrite -Hszlsbs1//]
+                |rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip// size_udivB size_zeros -addn1 subnK// Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszeq); done.
+  - dcase (bit_blast_xor g_add1 ls2 (copy (size ls2) (splitmsl ls2).2)) => [[[g_xor2 cs_xor2] lrs_xor2] Hbbxor2].
+    dcase (bit_blast_zeroextend (size (splitmsl ls2).1) g_xor2 [:: (splitmsl ls2).2]) => [[[g_zext2 cs_zext2] lrs_zext2] Hbbzext2].
+    dcase (bit_blast_add g_zext2 lrs_xor2 lrs_zext2) => [[[g_add2 cs_add2] lrs_add2] Hbbadd2].
+    dcase (bit_blast_udiv' g_add2 lrs_add1 lrs_add2) => [[[g_udiv cs_udiv] lqs_udiv] Hbbudiv].
+    dcase (bit_blast_eq g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[g_eq cs_eq] lrs_eq] Hbbeq].
+    dcase (bit_blast_lneg g_eq lrs_eq) => [[[g_lneg cs_lneg] lrs_lneg] Hbblneg].
+    dcase (bit_blast_xor g_lneg lqs_udiv (copy (size ls1) lrs_lneg)) => [[[g_xor cs_xor] lrs_xor] Hbbxor].
+    dcase (bit_blast_zeroextend (size (splitmsl ls1).1) g_xor [:: lrs_lneg]) => [[[g_zext cs_zext] lrs_zext] Hbbzext].
+    dcase (bit_blast_add g_zext lrs_xor lrs_zext) => [[[g_add cs_add] lrs_add] Hbbadd].
+    case => _ <- <-.
+    move => Hsz Hgt Henc1 Henc2. rewrite !add_prelude_catrev.
+    move => /andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [/andP [Hcsxor1 Hcszext1] Hcsadd1] /andP [/andP [Hcsxor2 Hcszext2] Hcsadd2]] Hcsudiv] Hcseq] Hcslneg] Hcsxor] Hcszext] Hcsadd].
+    move : (add_prelude_tt Hcsudiv) => Htt.
+    move : (enc_bit_msb Htt Henc2) => Hencmsb2.
+    move : (enc_bit_msb Htt Henc2); rewrite <- enc_bits_seq1 => Hencmsb2'.
+    move : (enc_bit_msb Htt Henc1) => Hencmsb1; generalize Hencmsb1; rewrite <- enc_bits_seq1 => Hencmsb1'.
+    move : (bit_blast_xor_correct Hbbxor1 Henc1 (enc_bits_copy (size ls1) Hencmsb1) Hcsxor1) => Hencxor1.
+    move : (bit_blast_zeroextend_correct Hbbzext1 Hencmsb1' Hcszext1) => Henczext1.
+    move : (enc_bits_size Henc1) (enc_bits_size Henc2) => Hszlsbs1 Hszlsbs2.
+    have Hszeq : size lrs_xor1 = size lrs_zext1.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor1) (bit_blast_zeroextend_size Hbbzext1) size_nseq maxnn size_splitmsl.
+      rewrite addnC -addn1 subnK//.
+    }
+    have Haddr1 : (bs1 ^# copy (size ls1) (msb bs1) +# (zext (size (splitmsl ls1).1) [:: msb bs1])
+                   = if (msb bs1) then -#bs1 else bs1)%bits.
+    {
+      rewrite xorBC size_splitmsl Hszlsbs1 xorB_copy_case.
+      case (msb bs1); [rewrite bits_v1_zext_b1; [rewrite addB1//|rewrite -Hszlsbs1//]
+                      |rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip//size_zeros -addn1 subnK//-Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd1 Hencxor1 Henczext1 Haddr1 Hcsadd1 Hszeq) => Hencadd1.
+    move : (bit_blast_xor_correct Hbbxor2 Henc2 (enc_bits_copy  (size ls2) Hencmsb2) Hcsxor2) => Hencxor2.
+    move : (bit_blast_zeroextend_correct Hbbzext2 Hencmsb2' Hcszext2) => Henczext2.
+    have Hszeq' : size lrs_xor2 = size lrs_zext2.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor2) size_nseq maxnn.
+      rewrite (bit_blast_zeroextend_size Hbbzext2) size_splitmsl addnC subnK// -Hsz//.
+    }
+    have Haddr2 : ((bs2 ^# copy (size ls2) (msb bs2)) +# (zext (size (splitmsl ls2).1) [:: msb bs2])
+                   = if (msb bs2) then -#bs2 else bs2)%bits.
+    {
+      rewrite xorBC Hszlsbs2 xorB_copy_case size_splitmsl.
+      case (msb bs2); [rewrite Hszlsbs2 bits_v1_zext_b1;
+                       [rewrite addB1//|rewrite -Hszlsbs2 -Hsz//]
+                      |rewrite (eqP (zext_zeros_bit (size ls2 - 1) false)) zeros_cons -addn1 subnK;
+                       [rewrite addB0 unzip1_zip// size_zeros Hszlsbs2//|rewrite -Hsz//]]. 
+    }
+    move : (bit_blast_add_correct Hbbadd2 Hencxor2 Henczext2 Haddr2 Hcsadd2 Hszeq') => Hencadd2.
+    have Hszeq'' : size lrs_add1 = size lrs_add2.
+    {
+      rewrite -(bit_blast_add_size_ss Hbbadd1 Hszeq) -(bit_blast_add_size_ss Hbbadd2 Hszeq').
+      rewrite (bit_blast_xor_size_max Hbbxor1) (bit_blast_xor_size_max Hbbxor2) !size_nseq !maxnn//.
+    }
+    move : (bit_blast_udiv_correct' Hbbudiv Hszeq'' Hencadd1 Hencadd2 Hcsudiv) => Hencudiv {Hszeq }.
+    have Hszeq : size [:: (splitmsl ls1).2] = size [:: (splitmsl ls2).2] by done.
+    move : (bit_blast_eq_correct Hbbeq Hszeq Hencmsb1' Hencmsb2' Hcseq) => Henceq.
+    move : (bit_blast_lneg_correct Hbblneg Henceq Hcslneg) => Henclneg.
+    generalize Henclneg; rewrite <-enc_bits_seq1 => Henclneg1.
+    move : (bit_blast_zeroextend_correct Hbbzext Henclneg1 Hcszext) => Henczext.
+    move : (bit_blast_xor_correct Hbbxor Hencudiv (enc_bits_copy (size ls1) Henclneg) Hcsxor).
+    rewrite /sdivB /absB xorBC Hszlsbs1.
+    have Hszaux : (size bs1 = size ((if msb bs1 then (-# bs1)%bits else bs1))) by (case (msb bs1); [rewrite size_negB//|done]).
+    rewrite Hszaux -(size_udivB (if msb bs1 then (-# bs1)%bits else bs1) (if msb bs2 then (-# bs2)%bits else bs2)) xorB_copy_case => Hencxor.
+    have Hszeq''' : size lrs_xor = size lrs_zext.
+    {
+      rewrite (bit_blast_xor_size_max Hbbxor) (bit_blast_udiv_size_ss' Hbbudiv Hszeq'')// .
+      rewrite (bit_blast_zeroextend_size Hbbzext) size_splitmsl size_nseq addnC subnK//.
+      rewrite -(bit_blast_add_size_ss Hbbadd2 Hszeq') (bit_blast_xor_size_max Hbbxor2) size_nseq Hsz !maxnn//.
+    }
+    have Haddr : ((if [:: msb bs1] != [:: msb bs2]
+                  then (~~# (udivB (if msb bs1 then -# bs1 else bs1) (if msb bs2 then -# bs2 else bs2)).1)
+                   else (udivB (if msb bs1 then (-# bs1) else bs1) (if msb bs2 then -# bs2 else bs2)).1)
+                    +# (zext (size (splitmsl ls1).1) [:: [:: msb bs1] != [:: msb bs2]])
+                  = (if msb bs1 == msb bs2
+                     then (udivB (if msb bs1 then (-# bs1) else bs1) (if msb bs2 then -# bs2 else bs2)).1
+                     else (-# (udivB (if msb bs1 then -# bs1 else bs1) (if msb bs2 then -# bs2 else bs2)).1)))%bits.
+    {
+      case Hmsb : (msb bs1 == msb bs2); rewrite -Seqs.singleton_eq in Hmsb; rewrite Hmsb size_splitmsl/=.
+      rewrite (eqP (zext_zeros_bit _ _)) zeros_cons addB0 unzip1_zip// size_udivB -Hszaux size_zeros -Hszlsbs1 -addn1 subnK//.
+      rewrite Hszlsbs1 bits_v1_zext_b1;
+        [rewrite size_invB Hszaux -(size_udivB (if msb bs1 then -# bs1 else bs1)%bits (if msb bs2 then -# bs2 else bs2)%bits) -size_invB addB1//
+        |rewrite -Hszlsbs1//].
+    }
+    move : (bit_blast_add_correct Hbbadd Hencxor Henczext Haddr Hcsadd Hszeq'''); done.
+Qed.
 
 Lemma mk_env_sdiv_is_bit_blast_sdiv : forall ls1 E g ls2 g' cs rlrs E',
   mk_env_sdiv E g ls1 ls2 = (E', g', cs, rlrs) ->
