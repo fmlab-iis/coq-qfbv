@@ -141,6 +141,38 @@ Proof.
     by apply (env_preserve_trans HEExorg); apply (env_preserve_trans HExorEzextg).
 Qed.    
 
+Lemma mk_env_abs_sat :
+  forall E g ls E' g' cs lrs,
+    mk_env_abs E g ls = (E', g', cs, lrs) ->
+    newer_than_lit g lit_tt -> newer_than_lits g ls -> interp_cnf E' cs.
+Proof.
+  move => E g ls E' g' cs lrs. rewrite /mk_env_abs.
+  case ((splitmsl ls).2 == lit_tt); last case ((splitmsl ls).2 == lit_ff).
+  - rewrite newer_than_lit_tt_ff. exact : mk_env_neg_sat.
+  - by case => <- _ <- _.
+  - dcase (mk_env_xor E g ls (copy (size ls) (splitmsl ls).2)) 
+    => [[[[E_xor] g_xor] cs_xor] lrs_xor] Hmkxor.
+    dcase (mk_env_zeroextend (size (splitmsl ls).1) E_xor g_xor [:: (splitmsl ls).2])
+    => [[[[E_zext] g_zext] cs_zext] lrs_zext] Hmkzext.
+    dcase (mk_env_add E_zext g_zext lrs_xor lrs_zext)
+    => [[[[E_add] g_add] cs_add] lrs_add] Hmkadd.
+    case=> <- _ <- _; rewrite !interp_cnf_catrev => Htt Hgls.
+    move : (newer_than_lits_msl Htt Hgls); rewrite /msl => Hmsl.
+    generalize Hmsl; move => /newer_than_lits_copy => Hcpmsl.
+    move : (mk_env_xor_newer_res Hmkxor Htt Hgls (Hcpmsl (size ls))) => Hgxlx.
+    move : (mk_env_xor_sat Hmkxor Htt Hgls (Hcpmsl (size ls))) => HExcsx.
+    move : (env_preserve_trans (mk_env_zeroextend_preserve Hmkzext) (env_preserve_le (mk_env_add_preserve Hmkadd) (mk_env_zeroextend_newer_gen Hmkzext))) => HExEagx.
+    rewrite (env_preserve_cnf HExEagx (mk_env_xor_newer_cnf Hmkxor Htt Hgls (Hcpmsl (size ls)))) HExcsx.
+    move : (mk_env_zeroextend_newer_res Hmkzext (newer_than_lit_le_newer Htt (mk_env_xor_newer_gen Hmkxor))); rewrite (lock splitmsl)/= -lock andbT.
+    move => Hgzlz'; move : (Hgzlz' (newer_than_lit_le_newer Hmsl (mk_env_xor_newer_gen Hmkxor))) => Hgzlz{Hgzlz'}.
+    move : (mk_env_zeroextend_sat Hmkzext (newer_than_lit_le_newer Htt (mk_env_xor_newer_gen Hmkxor))); rewrite (lock splitmsl)/= -lock andbT => HEzcsz'.
+    move : (HEzcsz' (newer_than_lit_le_newer Hmsl (mk_env_xor_newer_gen Hmkxor))) => HEzcsz{HEzcsz'}.
+    move : (mk_env_zeroextend_newer_cnf Hmkzext (newer_than_lit_le_newer Htt (mk_env_xor_newer_gen Hmkxor))); rewrite (lock splitmsl) /= -lock andbT => Hgzcsz'.
+    move : (Hgzcsz' (newer_than_lit_le_newer Hmsl (mk_env_xor_newer_gen Hmkxor))) => Hgzcsz{Hgzcsz'}.
+    rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hgzcsz) HEzcsz.
+    rewrite (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgxlx (mk_env_zeroextend_newer_gen Hmkzext)) Hgzlz (newer_than_lit_le_newer Htt (pos_leb_trans (mk_env_xor_newer_gen Hmkxor) (mk_env_zeroextend_newer_gen Hmkzext))))//.
+Qed.    
+
 (* ===== bit_blast_sdiv ===== *)
 
 (* Definition bit_blast_sdiv g ls1 ls2 : generator * cnf * word * word := *)
@@ -256,7 +288,9 @@ Definition mk_env_sdiv E g ls1 ls2 : env * generator * cnf * word :=
 
 Lemma size_splitmsl ls : (size (splitmsl ls).1) = size ls -1.
 Proof.
-Admitted.
+  intros. rewrite /splitmsl /split_last /=.
+  elim ls => [|lshd lstl IH]; try done. rewrite /= size_belast subn1//. 
+Qed.
 
 Lemma bit_blast_xor_zip_size_ss : forall lsp g g' cs rls,
   bit_blast_xor_zip g lsp = (g', cs, rls) ->
@@ -879,7 +913,29 @@ Lemma mk_env_sdiv_newer_gen :
     mk_env_sdiv E g ls1 ls2 = (E', g', cs, lrs) ->
     (g <=? g')%positive.
 Proof.
-Admitted.
+  move => ls1 E g ls2 E' g' cs lrs. rewrite /mk_env_sdiv.
+  dcase (mk_env_abs E g ls1) => [[[[E_abs1 g_abs1] cs_abs1] lrs_abs1] Hmkabs1].
+  dcase (mk_env_abs E_abs1 g_abs1 ls2) => [[[[E_abs2 g_abs2] cs_abs2] lrs_abs2] Hmkabs2].
+  dcase (mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2) => [[[[E_udiv g_udiv] cs_udiv] lrs_udiv] Hmkudiv].
+  dcase (mk_env_neg E_udiv g_udiv lrs_udiv) => [[[[E_neg g_neg] cs_neg] lrs_neg] Hmkneg].
+  dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq g_eq] cs_eq] lrs_eq] Hmkeq].
+  dcase (mk_env_lneg E_eq g_eq lrs_eq) => [[[[E_lneg g_lneg] cs_lneg] lrs_lneg] Hmklneg].
+  dcase (mk_env_xor E_lneg g_lneg lrs_udiv (copy (size ls1) lrs_lneg)) => [[[[E_xor g_xor] cs_xor] lrs_xor] Hmkxor].
+  dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: lrs_lneg]) => [[[[E_z g_z] cs_z] lrs_z] Hmkz].
+  dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
+  move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs1) (mk_env_abs_newer_gen Hmkabs2)) => Hggabs2.
+  move : (pos_leb_trans Hggabs2 (mk_env_udiv_newer_gen' Hmkudiv)) => Hggudiv.
+  move : (pos_leb_trans Hggudiv (mk_env_neg_newer_gen Hmkneg)) => Hgudivgneg. SearchAbout mk_env_eq.
+  move : (pos_leb_trans Hggudiv (pos_leb_trans (mk_env_eq_newer_gen Hmkeq) (mk_env_lneg_newer_gen Hmklneg))) => Hgglneg.
+  move : (pos_leb_trans Hgglneg (pos_leb_trans (mk_env_xor_newer_gen Hmkxor) (mk_env_zeroextend_newer_gen Hmkz))) => Hggz.
+  move : (pos_leb_trans Hggz (mk_env_add_newer_gen Hmkadd)) => Hggadd.
+  case Hmsl1f : ((splitmsl ls1).2 == lit_ff); case Hmsl2f : ((splitmsl ls2).2 == lit_ff); try (case => _ <- _ _ => //).
+  - case Hmsl2t: ((splitmsl ls2).2 == lit_tt). rewrite (eqP Hmsl1f). case => _ <- _ _ => //. 
+  - rewrite !andbF. case => _ <- _ _ =>//.
+  - rewrite (eqP Hmsl2f) !andbF. case ((splitmsl ls1).2 == lit_tt). case => _ <- _ _ => //.
+  - case => _ <- _ _ => //.
+  - rewrite !andbF !andFb. case ((splitmsl ls1).2 == lit_tt); case ((splitmsl ls2).2 == lit_tt); try (case => _ <- _ _ => //).
+Qed.
 
 Lemma mk_env_sdiv_newer_res :
   forall ls1 E g ls2 E' g' cs lrs,
@@ -889,7 +945,30 @@ Lemma mk_env_sdiv_newer_res :
     newer_than_lits g ls2 ->
     newer_than_lits g' lrs.
 Proof.
-Admitted.
+  move => ls1 E g ls2 E' g' cs lrs. rewrite /mk_env_sdiv. move => Hmk Htt Hgls1 Hgls2. move : Hmk.
+  dcase (mk_env_abs E g ls1) => [[[[E_abs1 g_abs1] cs_abs1] lrs_abs1] Hmkabs1].
+  dcase (mk_env_abs E_abs1 g_abs1 ls2) => [[[[E_abs2 g_abs2] cs_abs2] lrs_abs2] Hmkabs2].
+  dcase (mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2) => [[[[E_udiv g_udiv] cs_udiv] lrs_udiv] Hmkudiv].
+  dcase (mk_env_neg E_udiv g_udiv lrs_udiv) => [[[[E_neg g_neg] cs_neg] lrs_neg] Hmkneg].
+  dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq g_eq] cs_eq] lrs_eq] Hmkeq].
+  dcase (mk_env_lneg E_eq g_eq lrs_eq) => [[[[E_lneg g_lneg] cs_lneg] lrs_lneg] Hmklneg].
+  dcase (mk_env_xor E_lneg g_lneg lrs_udiv (copy (size ls1) lrs_lneg)) => [[[[E_xor g_xor] cs_xor] lrs_xor] Hmkxor].
+  dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: lrs_lneg]) => [[[[E_z g_z] cs_z] lrs_z] Hmkz].
+  dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
+  move : (mk_env_abs_newer_gen Hmkabs1) => Hggabs1. 
+  move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs1) (mk_env_abs_newer_gen Hmkabs2)) => Hggabs2.
+  move : (pos_leb_trans Hggabs2 (mk_env_udiv_newer_gen' Hmkudiv)) => Hggudiv.
+  move : (mk_env_abs_newer_res Hmkabs1 Htt Hgls1) => Hglsabs1.
+  move : (mk_env_abs_newer_res Hmkabs2 (newer_than_lit_le_newer Htt Hggabs1) (newer_than_lits_le_newer Hgls2 Hggabs1)) => Hglsabs2.
+  move : (mk_env_udiv_newer_res' Hmkudiv (newer_than_lit_le_newer Htt Hggabs2) (newer_than_lits_le_newer Hglsabs1 (mk_env_abs_newer_gen Hmkabs2)) Hglsabs2) => Hglsudiv.
+  move : (mk_env_neg_newer_res Hmkneg (newer_than_lit_le_newer Htt Hggudiv) Hglsudiv) => Hglsneg.
+  move : (mk_env_add_newer_res Hmkadd) => Hglsadd.
+  case Hmsl1f : ((splitmsl ls1).2 == lit_ff); case Hmsl2f : ((splitmsl ls2).2 == lit_ff).
+  - rewrite (eqP Hmsl1f) (eqP Hmsl2f); case => _ <- _ <- => //.
+  - rewrite (eqP Hmsl1f) !andFb. case : ((splitmsl ls2).2 == lit_tt); try case => _ <- _ <- => //.
+  - rewrite (eqP Hmsl2f). case ((splitmsl ls1).2 == lit_tt); try case => _ <- _ <- => //.
+  - case ((splitmsl ls1).2 == lit_tt); case ((splitmsl ls2).2 == lit_tt); try (case => _ <- _ <- => //).
+Qed.
 
 Lemma mk_env_sdiv_newer_cnf :
   forall ls1 E g ls2 E' g' cs lrs,
@@ -899,14 +978,138 @@ Lemma mk_env_sdiv_newer_cnf :
     newer_than_lits g ls2 ->
     newer_than_cnf g' cs.
 Proof.
-Admitted.
+  move => ls1 E g ls2 E' g' cs lrs. rewrite /mk_env_sdiv. move => Hmk Htt Hgls1 Hgls2. move : Hmk.
+  dcase (mk_env_abs E g ls1) => [[[[E_abs1 g_abs1] cs_abs1] lrs_abs1] Hmkabs1].
+  dcase (mk_env_abs E_abs1 g_abs1 ls2) => [[[[E_abs2 g_abs2] cs_abs2] lrs_abs2] Hmkabs2].
+  dcase (mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2) => [[[[E_udiv g_udiv] cs_udiv] lrs_udiv] Hmkudiv].
+  dcase (mk_env_neg E_udiv g_udiv lrs_udiv) => [[[[E_neg g_neg] cs_neg] lrs_neg] Hmkneg].
+  dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq g_eq] cs_eq] lrs_eq] Hmkeq].
+  dcase (mk_env_lneg E_eq g_eq lrs_eq) => [[[[E_lneg g_lneg] cs_lneg] lrs_lneg] Hmklneg].
+  dcase (mk_env_xor E_lneg g_lneg lrs_udiv (copy (size ls1) lrs_lneg)) => [[[[E_xor g_xor] cs_xor] lrs_xor] Hmkxor].
+  dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: lrs_lneg]) => [[[[E_z g_z] cs_z] lrs_z] Hmkz].
+  dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
+  move : (mk_env_abs_newer_gen Hmkabs1) => Hggabs1.
+  move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs2) (mk_env_udiv_newer_gen' Hmkudiv)) => Hgabs1gudiv.
+  move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs1) (mk_env_abs_newer_gen Hmkabs2)) => Hggabs2.
+  move : (mk_env_udiv_newer_gen' Hmkudiv) => Hgabs2gudiv.
+  move : (pos_leb_trans Hggabs2 (mk_env_udiv_newer_gen' Hmkudiv)) => Hggudiv.
+  move : (mk_env_neg_newer_gen Hmkneg) => Hgudivgneg.
+  move : (pos_leb_trans Hggudiv (mk_env_neg_newer_gen Hmkneg)) => Hggneg.
+  move : (mk_env_eq_newer_gen Hmkeq) => Hgudivgeq.
+  move : (mk_env_lneg_newer_gen Hmklneg) => Hgeqglneg.
+  move : (pos_leb_trans Hggudiv (mk_env_eq_newer_gen Hmkeq)) => Hggeq.
+  move : (pos_leb_trans Hggeq (mk_env_lneg_newer_gen Hmklneg)) => Hgglneg.
+  move : (pos_leb_trans Hgglneg (mk_env_xor_newer_gen Hmkxor)) => Hggxor.
+  move : (mk_env_xor_newer_gen Hmkxor) => Hglneggxor. move : (mk_env_zeroextend_newer_gen Hmkz) => Hgxorgz.
+  move : (mk_env_add_newer_gen Hmkadd) => Hgzgadd.
+  move : (mk_env_abs_newer_res Hmkabs1 Htt Hgls1) => Hglsabs1.
+  move : (newer_than_cnf_le_newer (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1) Hgabs1gudiv) => Hgudivcsabs1.
+  move : (mk_env_abs_newer_res Hmkabs2 (newer_than_lit_le_newer Htt Hggabs1) (newer_than_lits_le_newer Hgls2 Hggabs1)) => Hglsabs2.
+  move : (newer_than_cnf_le_newer (mk_env_abs_newer_cnf Hmkabs2 (newer_than_lit_le_newer Htt Hggabs1) (newer_than_lits_le_newer Hgls2 Hggabs1)) Hgabs2gudiv) => Hgudivcsabs2.
+  move : (mk_env_udiv_newer_res' Hmkudiv (newer_than_lit_le_newer Htt Hggabs2) (newer_than_lits_le_newer Hglsabs1 (mk_env_abs_newer_gen Hmkabs2)) Hglsabs2) => Hglsudiv.
+  move : (mk_env_udiv_newer_cnf' Hmkudiv (newer_than_lit_le_newer Htt Hggabs2) (newer_than_lits_le_newer Hglsabs1 (mk_env_abs_newer_gen Hmkabs2)) Hglsabs2) => Hcsudiv.
+  move : (mk_env_neg_newer_res Hmkneg (newer_than_lit_le_newer Htt Hggudiv) Hglsudiv) => Hglsneg.
+  move : (mk_env_neg_newer_cnf Hmkneg (newer_than_lit_le_newer Htt Hggudiv) Hglsudiv) => Hcsneg.
+  move : (mk_env_eq_newer_res Hmkeq) => Hglseq.
+  move : (newer_than_lits_le_newer Hgls1 Hggudiv) => Hgudivls1.
+  move : (newer_than_lits_le_newer Hgls2 Hggudiv) => Hgudivls2.
+  move : (newer_than_lits_splitmsl (newer_than_lit_le_newer Htt Hggudiv) Hgudivls1) => /andP [_ Hgudivmsl1].
+  move : (newer_than_lits_splitmsl (newer_than_lit_le_newer Htt Hggudiv) Hgudivls2) => /andP [_ Hgudivmsl2].
+  move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hggudiv)).
+  rewrite (lock splitmsl) /= -lock !andbT => Hcseq'. move : (Hcseq' Hgudivmsl1 Hgudivmsl2) => Hcseq{Hcseq'}.
+  move : (mk_env_lneg_newer_res Hmklneg) => Hglslneg.
+  move : (mk_env_lneg_newer_cnf Hmklneg Hglseq) => Hcslneg.
+  move : (mk_env_xor_newer_res Hmkxor (newer_than_lit_le_newer Htt Hgglneg) (newer_than_lits_le_newer Hglsudiv (pos_leb_trans (mk_env_eq_newer_gen Hmkeq) (mk_env_lneg_newer_gen Hmklneg))) (newer_than_lits_copy (size ls1) Hglslneg)) => Hglsxor.
+  move : (mk_env_xor_newer_cnf Hmkxor (newer_than_lit_le_newer Htt Hgglneg) (newer_than_lits_le_newer Hglsudiv (pos_leb_trans (mk_env_eq_newer_gen Hmkeq) (mk_env_lneg_newer_gen Hmklneg))) (newer_than_lits_copy (size ls1) Hglslneg)) => Hcsxor.
+  move : (mk_env_zeroextend_newer_res Hmkz (newer_than_lit_le_newer Htt Hggxor)). rewrite (lock splitmsl) /= !andbT -lock => Hglsz'.
+  move : (Hglsz' (newer_than_lit_le_newer Hglslneg (mk_env_xor_newer_gen Hmkxor))) => Hglsz{Hglsz'}.
+  move : (mk_env_zeroextend_newer_cnf Hmkz (newer_than_lit_le_newer Htt Hggxor)). rewrite (lock splitmsl) /= !andbT -lock => Hcsz'.
+  move : (Hcsz' (newer_than_lit_le_newer Hglslneg (mk_env_xor_newer_gen Hmkxor))) => Hcsz{Hcsz'}.
+  move : (mk_env_add_newer_res Hmkadd) => Hglsadd.
+  generalize Htt; rewrite newer_than_lit_tt_ff => Hff.
+  move : (mk_env_add_newer_cnf Hmkadd (newer_than_lits_le_newer Hglsxor (mk_env_zeroextend_newer_gen Hmkz)) Hglsz (newer_than_lit_le_newer Hff (pos_leb_trans Hggxor Hgxorgz))) => Hcsadd. 
+  case Hmsl1f : ((splitmsl ls1).2 == lit_ff); case Hmsl2f : ((splitmsl ls2).2 == lit_ff).
+  - rewrite (eqP Hmsl1f) (eqP Hmsl2f); case => _ <- <- _. rewrite !newer_than_cnf_catrev Hgudivcsabs1 Hgudivcsabs2 Hcsudiv//.
+  - rewrite (eqP Hmsl1f) !andFb. case : ((splitmsl ls2).2 == lit_tt); case => _ <- <- _; rewrite !newer_than_cnf_catrev.
+    + rewrite (newer_than_cnf_le_newer Hgudivcsabs1 Hgudivgneg) (newer_than_cnf_le_newer Hgudivcsabs2 Hgudivgneg).
+      rewrite (newer_than_cnf_le_newer Hcsudiv Hgudivgneg) Hcsneg //.
+    + rewrite (newer_than_cnf_le_newer Hgudivcsabs1 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hgudivcsabs2 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsudiv (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcseq (pos_leb_trans (pos_leb_trans Hgeqglneg (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcslneg (pos_leb_trans (pos_leb_trans Hglneggxor Hgxorgz) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsxor (pos_leb_trans Hgxorgz Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsz Hgzgadd) Hcsadd //.
+  - rewrite (eqP Hmsl2f). case ((splitmsl ls1).2 == lit_tt); case => _ <- <- _; rewrite !newer_than_cnf_catrev.
+    + rewrite (newer_than_cnf_le_newer Hgudivcsabs1 Hgudivgneg) (newer_than_cnf_le_newer Hgudivcsabs2 Hgudivgneg).
+      rewrite (newer_than_cnf_le_newer Hcsudiv Hgudivgneg) Hcsneg //.
+    + rewrite (newer_than_cnf_le_newer Hgudivcsabs1 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hgudivcsabs2 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsudiv (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcseq (pos_leb_trans (pos_leb_trans Hgeqglneg (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcslneg (pos_leb_trans (pos_leb_trans Hglneggxor Hgxorgz) Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsxor (pos_leb_trans Hgxorgz Hgzgadd)).
+      rewrite (newer_than_cnf_le_newer Hcsz Hgzgadd) Hcsadd //.
+  - case ((splitmsl ls1).2 == lit_tt); case ((splitmsl ls2).2 == lit_tt);
+      case => _ <- <- _;
+                rewrite !newer_than_cnf_catrev ;
+                try by (rewrite (newer_than_cnf_le_newer Hgudivcsabs1 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd))
+      (newer_than_cnf_le_newer Hgudivcsabs2 (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd))
+      (newer_than_cnf_le_newer Hcsudiv (pos_leb_trans (pos_leb_trans (pos_leb_trans Hgudivgeq Hgeqglneg) (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd))
+      (newer_than_cnf_le_newer Hcseq (pos_leb_trans (pos_leb_trans Hgeqglneg (pos_leb_trans Hglneggxor Hgxorgz)) Hgzgadd))
+      (newer_than_cnf_le_newer Hcslneg (pos_leb_trans (pos_leb_trans Hglneggxor Hgxorgz) Hgzgadd))
+      (newer_than_cnf_le_newer Hcsxor (pos_leb_trans Hgxorgz Hgzgadd))
+      (newer_than_cnf_le_newer Hcsz Hgzgadd) Hcsadd //).
+    rewrite Hgudivcsabs1 Hgudivcsabs2 Hcsudiv //.
+Qed.
 
 Lemma mk_env_sdiv_preserve :
   forall E g ls1 ls2 E' g' cs lrs,
     mk_env_sdiv E g ls1 ls2 = (E', g', cs, lrs) ->
     env_preserve E E' g.
 Proof.
-Admitted.
+  move => E g ls1 ls2 E' g' cs lrs. rewrite /mk_env_sdiv.
+  dcase (mk_env_abs E g ls1) => [[[[E_abs1 g_abs1] cs_abs1] lrs_abs1] Hmkabs1].
+  dcase (mk_env_abs E_abs1 g_abs1 ls2) => [[[[E_abs2 g_abs2] cs_abs2] lrs_abs2] Hmkabs2].
+  dcase (mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2) => [[[[E_udiv g_udiv] cs_udiv] lrs_udiv] Hmkudiv].
+  dcase (mk_env_neg E_udiv g_udiv lrs_udiv) => [[[[E_neg g_neg] cs_neg] lrs_neg] Hmkneg].
+  dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq g_eq] cs_eq] lrs_eq] Hmkeq].
+  dcase (mk_env_lneg E_eq g_eq lrs_eq) => [[[[E_lneg g_lneg] cs_lneg] lrs_lneg] Hmklneg].
+  dcase (mk_env_xor E_lneg g_lneg lrs_udiv (copy (size ls1) lrs_lneg)) => [[[[E_xor g_xor] cs_xor] lrs_xor] Hmkxor].
+  dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: lrs_lneg]) => [[[[E_z g_z] cs_z] lrs_z] Hmkz].
+  dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
+  move : (mk_env_abs_newer_gen Hmkabs1) => Hggabs1.
+  move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs1) (mk_env_abs_newer_gen Hmkabs2)) => Hggabs2.
+  move : (pos_leb_trans Hggabs2 (mk_env_udiv_newer_gen' Hmkudiv)) => Hggudiv.
+  move : (pos_leb_trans Hggudiv (mk_env_neg_newer_gen Hmkneg)) => Hggneg.
+  move : (pos_leb_trans Hggudiv (mk_env_eq_newer_gen Hmkeq)) => Hggeq.
+  move : (pos_leb_trans Hggeq (mk_env_lneg_newer_gen Hmklneg)) => Hgglneg.
+  move : (pos_leb_trans Hgglneg (mk_env_xor_newer_gen Hmkxor)) => Hggxor.
+  move : (pos_leb_trans Hggxor (mk_env_zeroextend_newer_gen Hmkz)) => Hggz.
+  move : (pos_leb_trans Hggz (mk_env_add_newer_gen Hmkadd)) => Hggadd.
+  move : (mk_env_abs_preserve Hmkabs1) => HEEa1g.
+  move : (mk_env_abs_preserve Hmkabs2) => HEa1Ea2ga1.
+  move : (env_preserve_trans HEEa1g (env_preserve_le HEa1Ea2ga1 Hggabs1)) => HEEa2g.
+  move : (mk_env_udiv_preserve' Hmkudiv) => HEa2Euga2.
+  move : (env_preserve_trans HEEa2g (env_preserve_le HEa2Euga2 Hggabs2)) => HEEug.
+  move : (mk_env_neg_preserve Hmkneg) => HEuEngu.
+  move : (env_preserve_trans HEEug (env_preserve_le HEuEngu Hggudiv)) => HEEng.
+  move : (mk_env_eq_preserve Hmkeq) => HEuEegu.
+  move : (env_preserve_trans HEEug (env_preserve_le HEuEegu Hggudiv)) => HEEeg.
+  move : (mk_env_lneg_preserve Hmklneg) => HEeElge.
+  move : (env_preserve_trans HEEeg (env_preserve_le HEeElge Hggeq)) => HEElg.
+  move : (mk_env_xor_preserve Hmkxor) => HElExgl.
+  move : (env_preserve_trans HEElg (env_preserve_le HElExgl Hgglneg)) => HEExg.
+  move : (mk_env_zeroextend_preserve Hmkz) => HExEzgx.
+  move : (env_preserve_trans HEExg (env_preserve_le HExEzgx Hggxor)) => HEEzg.
+  move : (mk_env_add_preserve Hmkadd) => HEzEagz.
+  move : (env_preserve_trans HEEzg (env_preserve_le HEzEagz Hggz)) => HEEag.
+  case Hmsl1f : ((splitmsl ls1).2 == lit_ff); case Hmsl2f : ((splitmsl ls2).2 == lit_ff).
+  - case => <- _ _ _ //.
+  - rewrite (eqP Hmsl1f). case Hmsl2t : ((splitmsl ls2).2 == lit_tt); case => <- _ _ _ //.
+  - rewrite (eqP Hmsl2f). case Hmsl1t : ((splitmsl ls1).2 == lit_tt); case => <- _ _ _ //.
+  - case ((splitmsl ls1).2 == lit_tt); case ((splitmsl ls2).2 == lit_tt); case => <- _ _ _ //.
+Qed.
 
 Lemma mk_env_sdiv_sat :
   forall E g ls1 ls2 E' g' cs lrs,
@@ -916,8 +1119,84 @@ Lemma mk_env_sdiv_sat :
     newer_than_lits g ls2 ->
     interp_cnf E' cs.
 Proof.
-Admitted.
-  
+  move => E g ls1 ls2 E' g' cs lrs. rewrite /mk_env_sdiv.
+  dcase (mk_env_abs E g ls1) => [[[[E_abs1 g_abs1] cs_abs1] lrs_abs1] Hmkabs1].
+  dcase (mk_env_abs E_abs1 g_abs1 ls2) => [[[[E_abs2 g_abs2] cs_abs2] lrs_abs2] Hmkabs2].
+  dcase (mk_env_udiv' E_abs2 g_abs2 lrs_abs1 lrs_abs2) => [[[[E_udiv g_udiv] cs_udiv] lrs_udiv] Hmkudiv].
+  dcase (mk_env_neg E_udiv g_udiv lrs_udiv) => [[[[E_neg g_neg] cs_neg] lrs_neg] Hmkneg].
+  dcase (mk_env_eq E_udiv g_udiv [:: (splitmsl ls1).2] [:: (splitmsl ls2).2]) => [[[[E_eq g_eq] cs_eq] lrs_eq] Hmkeq].
+  dcase (mk_env_lneg E_eq g_eq lrs_eq) => [[[[E_lneg g_lneg] cs_lneg] lrs_lneg] Hmklneg].
+  dcase (mk_env_xor E_lneg g_lneg lrs_udiv (copy (size ls1) lrs_lneg)) => [[[[E_xor g_xor] cs_xor] lrs_xor] Hmkxor].
+  dcase (mk_env_zeroextend (size (splitmsl ls1).1) E_xor g_xor [:: lrs_lneg]) => [[[[E_z g_z] cs_z] lrs_z] Hmkz].
+  dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
+  move => Hmk Htt Hgls1 Hgls2; move : Hmk.
+  generalize Htt; rewrite newer_than_lit_tt_ff => Hff.
+  move : (mk_env_abs_newer_gen Hmkabs1) => Hgga1. move : (mk_env_abs_newer_gen Hmkabs2) => Hga1ga2.
+  move : (mk_env_udiv_newer_gen' Hmkudiv) => Hga2gu. move : (mk_env_eq_newer_gen Hmkeq) => Hguge.
+  move : (mk_env_lneg_newer_gen Hmklneg) => Hgegl. move : (mk_env_xor_newer_gen Hmkxor) => Hglgx.
+  move : (mk_env_zeroextend_newer_gen Hmkz) => Hgxgz. move : (mk_env_add_newer_gen Hmkadd) => Hgzga.
+  move : (pos_leb_trans Hgga1 (pos_leb_trans Hga1ga2 Hga2gu)) => Hggu.
+  move : (pos_leb_trans Hggu (pos_leb_trans Hguge Hgegl)) => Hggl.
+  move : (mk_env_abs_sat Hmkabs1 Htt Hgls1) => HEa1csa1.
+  move : (mk_env_abs_newer_res Hmkabs1 Htt Hgls1) => Hga1la1.
+  move : (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1) => Hga1csa1.
+  move : (env_preserve_trans (mk_env_abs_preserve Hmkabs2) (env_preserve_le (mk_env_udiv_preserve' Hmkudiv) Hga1ga2)) => HEa1Euga1.
+  move : (mk_env_abs_sat Hmkabs2 (newer_than_lit_le_newer Htt Hgga1) (newer_than_lits_le_newer Hgls2 Hgga1)) => HEa2csa2.
+  move : (mk_env_abs_newer_res Hmkabs2 (newer_than_lit_le_newer Htt Hgga1) (newer_than_lits_le_newer Hgls2 Hgga1)) => Hga2la2.
+  move : (mk_env_abs_newer_cnf Hmkabs2 (newer_than_lit_le_newer Htt Hgga1) (newer_than_lits_le_newer Hgls2 Hgga1)) => Hga2csa2.
+  move : (env_preserve_trans HEa1Euga1 (env_preserve_le (mk_env_neg_preserve Hmkneg) (pos_leb_trans Hga1ga2 (mk_env_udiv_newer_gen' Hmkudiv)))) => HEa1Enga1.
+  move : (env_preserve_trans (mk_env_udiv_preserve' Hmkudiv) (env_preserve_le (mk_env_neg_preserve Hmkneg) Hga2gu)) => HEa2Enga2.
+  move : (mk_env_udiv_newer_res' Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgga1 Hga1ga2)) (newer_than_lits_le_newer Hga1la1 Hga1ga2) Hga2la2) => Hgulsu.
+  move : (mk_env_udiv_newer_cnf' Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgga1 Hga1ga2)) (newer_than_lits_le_newer Hga1la1 Hga1ga2) Hga2la2) => Hgucsu.
+  move : (mk_env_udiv_sat' Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgga1 Hga1ga2)) (newer_than_lits_le_newer Hga1la1 Hga1ga2) Hga2la2) => HEucsu.
+  move : (mk_env_xor_newer_res Hmkxor (newer_than_lit_le_newer Htt Hggl) (newer_than_lits_le_newer Hgulsu (pos_leb_trans Hguge Hgegl)) (newer_than_lits_copy (size ls1) (mk_env_lneg_newer_res Hmklneg))) => Hgxlsx.
+  move : (mk_env_xor_newer_cnf Hmkxor (newer_than_lit_le_newer Htt Hggl) (newer_than_lits_le_newer Hgulsu (pos_leb_trans Hguge Hgegl)) (newer_than_lits_copy (size ls1) (mk_env_lneg_newer_res Hmklneg))) => Hgxcsx.
+  move : (mk_env_xor_sat Hmkxor (newer_than_lit_le_newer Htt Hggl) (newer_than_lits_le_newer Hgulsu (pos_leb_trans Hguge Hgegl)) (newer_than_lits_copy (size ls1) (mk_env_lneg_newer_res Hmklneg))) => HExcsx.
+  move : (mk_env_zeroextend_newer_res Hmkz (newer_than_lit_le_newer Htt (pos_leb_trans Hggl Hglgx))); rewrite (lock splitmsl) /= -lock andbT => Hgzlsz'.
+  move : (Hgzlsz' (newer_than_lit_le_newer (mk_env_lneg_newer_res Hmklneg) Hglgx)) => Hgzlsz {Hgzlsz'}.
+  move : (mk_env_zeroextend_newer_cnf Hmkz (newer_than_lit_le_newer Htt (pos_leb_trans Hggl Hglgx))); rewrite (lock splitmsl) /= -lock andbT => Hgzcsz'.
+  move : (Hgzcsz' (newer_than_lit_le_newer (mk_env_lneg_newer_res Hmklneg) Hglgx)) => Hgzcsz {Hgzcsz'}.
+  move : (mk_env_add_sat Hmkadd (newer_than_lits_le_newer Hgxlsx Hgxgz) Hgzlsz (newer_than_lit_le_newer Hff (pos_leb_trans Hggl (pos_leb_trans Hglgx Hgxgz)))) => HEacsa.
+  move : (mk_env_zeroextend_sat Hmkz (newer_than_lit_le_newer Htt (pos_leb_trans Hggl Hglgx))); rewrite (lock splitmsl) /= -lock andbT => HEzcsz'.
+  move : (HEzcsz' (newer_than_lit_le_newer (mk_env_lneg_newer_res Hmklneg) Hglgx)) => HEzcsz {HEzcsz'}.
+  move : (mk_env_eq_newer_cnf Hmkeq (newer_than_lit_le_newer Htt Hggu)); rewrite (lock splitmsl) /= -lock !andbT -{1}/(msl ls1) -{1}/(msl ls2) => Hgecse'.
+  move : (Hgecse' (newer_than_lit_le_newer (newer_than_lits_msl Htt Hgls1) Hggu) (newer_than_lit_le_newer (newer_than_lits_msl Htt Hgls2) Hggu)) => Hgecse{Hgecse'}.
+  move : (mk_env_eq_sat Hmkeq (newer_than_lit_le_newer Htt Hggu)); rewrite (lock splitmsl) /= -lock !andbT -{1}/(msl ls1) -{1}/(msl ls2)=> HEecse'.
+  move : (HEecse' (newer_than_lit_le_newer (newer_than_lits_msl Htt Hgls1) Hggu) (newer_than_lit_le_newer (newer_than_lits_msl Htt Hgls2) Hggu)) => HEecse{HEecse'}.
+  move : (mk_env_lneg_sat Hmklneg (mk_env_eq_newer_res Hmkeq)) => HElcsl.
+  move : (mk_env_lneg_newer_cnf Hmklneg (mk_env_eq_newer_res Hmkeq)) => Hglcsl.
+  move : (env_preserve_trans HEa1Euga1 (env_preserve_le (mk_env_eq_preserve Hmkeq) (pos_leb_trans Hga1ga2 Hga2gu))) => HEa1Eega1.
+  move : (env_preserve_trans HEa1Eega1 (env_preserve_le (mk_env_lneg_preserve Hmklneg) (pos_leb_trans Hga1ga2 (pos_leb_trans Hga2gu Hguge)))) => HEa1Elga1.
+  move : (env_preserve_trans HEa1Elga1 (env_preserve_le (mk_env_xor_preserve Hmkxor) (pos_leb_trans Hga1ga2 (pos_leb_trans Hga2gu (pos_leb_trans Hguge Hgegl))))) => HEa1Exga1.
+  move : (env_preserve_trans HEa1Exga1 (env_preserve_le (mk_env_zeroextend_preserve Hmkz) (pos_leb_trans Hga1ga2 (pos_leb_trans Hga2gu (pos_leb_trans Hguge (pos_leb_trans Hgegl Hglgx)))))) => HEa1Ezga1.
+  move : (env_preserve_trans HEa1Ezga1 (env_preserve_le (mk_env_add_preserve Hmkadd) (pos_leb_trans Hga1ga2 (pos_leb_trans Hga2gu (pos_leb_trans Hguge (pos_leb_trans Hgegl (pos_leb_trans Hglgx Hgxgz))))))) => HEa1Eaga1{HEa1Eega1 HEa1Elga1 HEa1Exga1 HEa1Ezga1}.
+  move : (env_preserve_trans (mk_env_zeroextend_preserve Hmkz) (env_preserve_le (mk_env_add_preserve Hmkadd) Hgxgz)) => HExEagx.
+  move : (env_preserve_trans (mk_env_xor_preserve Hmkxor) (env_preserve_le HExEagx Hglgx)) => HElEagl.
+  move : (env_preserve_trans (mk_env_lneg_preserve Hmklneg) (env_preserve_le HElEagl Hgegl)) => HEeEage.
+  move : (env_preserve_trans (mk_env_eq_preserve Hmkeq) (env_preserve_le HEeEage Hguge)) => HEuEagu.
+  move : (env_preserve_trans (mk_env_udiv_preserve' Hmkudiv) (env_preserve_le HEuEagu Hga2gu)) => HEa2Eaga2.
+  case Hmsl1f : ((splitmsl ls1).2 == lit_ff); case Hmsl2f : ((splitmsl ls2).2 == lit_ff).
+  - case => <- _ <- _; rewrite !interp_cnf_catrev.
+    rewrite (env_preserve_cnf HEa1Euga1 (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1)) HEa1csa1. 
+    rewrite (env_preserve_cnf (mk_env_udiv_preserve' Hmkudiv) Hga2csa2) HEa2csa2.
+    rewrite (mk_env_udiv_sat' Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgga1 Hga1ga2)) (newer_than_lits_le_newer Hga1la1 Hga1ga2) Hga2la2)//. 
+  - rewrite (eqP Hmsl1f) !andFb; case ((splitmsl ls2).2 == lit_tt); case => <- _ <- _; rewrite !interp_cnf_catrev.
+    + rewrite (env_preserve_cnf HEa1Enga1 Hga1csa1) HEa1csa1 (env_preserve_cnf HEa2Enga2 Hga2csa2) HEa2csa2.
+      rewrite (env_preserve_cnf (mk_env_neg_preserve Hmkneg) Hgucsu) HEucsu (mk_env_neg_sat Hmkneg (newer_than_lit_le_newer Hff (pos_leb_trans Hgga1 (pos_leb_trans Hga1ga2 Hga2gu))) Hgulsu) //.
+    + rewrite (env_preserve_cnf HEa1Eaga1 (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1)) HEa1csa1 (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hgzcsz) HEzcsz HEacsa.
+      rewrite (env_preserve_cnf HExEagx Hgxcsx) HExcsx (env_preserve_cnf HElEagl Hglcsl) HElcsl (env_preserve_cnf HEeEage Hgecse) HEecse (env_preserve_cnf HEuEagu Hgucsu) HEucsu (env_preserve_cnf HEa2Eaga2 Hga2csa2) HEa2csa2//.
+  - rewrite (eqP Hmsl2f) !andbF; case ((splitmsl ls1).2 == lit_tt); case => <- _ <- _; rewrite !interp_cnf_catrev.
+    + rewrite (env_preserve_cnf HEa1Enga1 Hga1csa1) HEa1csa1 (env_preserve_cnf HEa2Enga2 Hga2csa2) HEa2csa2.
+      rewrite (env_preserve_cnf (mk_env_neg_preserve Hmkneg) Hgucsu) HEucsu (mk_env_neg_sat Hmkneg (newer_than_lit_le_newer Hff (pos_leb_trans Hgga1 (pos_leb_trans Hga1ga2 Hga2gu))) Hgulsu) //.
+    + rewrite (env_preserve_cnf HEa1Eaga1 (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1)) HEa1csa1 (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hgzcsz) HEzcsz HEacsa.
+      rewrite (env_preserve_cnf HExEagx Hgxcsx) HExcsx (env_preserve_cnf HElEagl Hglcsl) HElcsl (env_preserve_cnf HEeEage Hgecse) HEecse (env_preserve_cnf HEuEagu Hgucsu) HEucsu (env_preserve_cnf HEa2Eaga2 Hga2csa2) HEa2csa2//.
+  - case ((splitmsl ls1).2 == lit_tt); case ((splitmsl ls2).2 == lit_tt); case => <- _ <- _; rewrite !interp_cnf_catrev;
+    try by (rewrite (env_preserve_cnf HEa1Eaga1 (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1)) HEa1csa1 (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hgzcsz) HEzcsz HEacsa;
+    rewrite (env_preserve_cnf HExEagx Hgxcsx) HExcsx (env_preserve_cnf HElEagl Hglcsl) HElcsl (env_preserve_cnf HEeEage Hgecse) HEecse (env_preserve_cnf HEuEagu Hgucsu) HEucsu (env_preserve_cnf HEa2Eaga2 Hga2csa2) HEa2csa2//).
+    rewrite (env_preserve_cnf HEa1Euga1 (mk_env_abs_newer_cnf Hmkabs1 Htt Hgls1)) HEa1csa1. 
+    rewrite (env_preserve_cnf (mk_env_udiv_preserve' Hmkudiv) Hga2csa2) HEa2csa2.
+    rewrite (mk_env_udiv_sat' Hmkudiv (newer_than_lit_le_newer Htt (pos_leb_trans Hgga1 Hga1ga2)) (newer_than_lits_le_newer Hga1la1 Hga1ga2) Hga2la2)//. 
+Qed.
 
     (* Lemma bit_blast_sdiv_correct g ls1 ls2 g' cs qlrs rlrs E bs1 bs2 : *)
 (*   bit_blast_sdiv g ls1 ls2 = (g', cs, qlrs, rlrs) -> *)
