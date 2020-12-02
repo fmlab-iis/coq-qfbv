@@ -1,15 +1,16 @@
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import FMaps Var.
+From ssrlib Require Import FMaps Var Seqs.
 From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
+From BBCache Require CompTable.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
 
-Module ExpMap <: SsrFMap := FMaps.MakeTreeMap QFBV.ExpOrder.
-Module BexpMap <: SsrFMap := FMaps.MakeTreeMap QFBV.BexpOrder.
+Module ExpMap := CompTable.ExpMap.
+Module BexpMap := CompTable.BexpMap.
 
 Definition expm := ExpMap.t (seq cnf * word).
 Definition bexpm := BexpMap.t (seq cnf * literal).
@@ -75,4 +76,64 @@ Lemma find_bt_add_bt_neq :
   forall e0 e cs l t, ~ e0 == e -> find_bt e0 (add_bt e cs l t) = find_bt e0 t .
 Proof.
   move=> e0 e cs l t Hneq. by apply: BexpMap.Lemmas.find_add_neq.
+Qed.
+
+
+
+(* Convert comptable to CompTable.comptable *)
+
+Definition tflatten_first {A : Type} (p : seq cnf * A) := (Seqs.tflatten p.1, p.2).
+
+Definition expm_of_fexpm (m : expm) : CompTable.expm :=
+  ExpMap.map tflatten_first m.
+
+Definition bexpm_of_fbexpm (m : bexpm) : CompTable.bexpm :=
+  BexpMap.map tflatten_first m.
+
+Definition comptable_of_fcomptable (t : comptable) : CompTable.comptable :=
+  CompTable.Build_comptable (expm_of_fexpm (et t))
+                            (bexpm_of_fbexpm (bt t)).
+
+Definition et_compatible (ft : expm) (t : CompTable.expm) :=
+  forall e, ExpMap.mem e ft = ExpMap.mem e t /\
+            (forall fcs flrs cs (lrs : seq literal),
+                ExpMap.find e ft = Some (fcs, flrs) ->
+                ExpMap.find e t = Some (cs, lrs) ->
+                cnf_eqsat (tflatten fcs) cs /\
+                flrs = lrs).
+
+Definition bt_compatible (ft : bexpm) (t : CompTable.bexpm) :=
+  forall e, BexpMap.mem e ft = BexpMap.mem e t /\
+            (forall fcs flr cs (lr : literal),
+                BexpMap.find e ft = Some (fcs, flr) ->
+                BexpMap.find e t = Some (cs, lr) ->
+                cnf_eqsat (tflatten fcs) cs /\
+                flr = lr).
+
+Definition comptable_compatible (fc : comptable) (c : CompTable.comptable) :=
+  et_compatible (et fc) (CompTable.et c) /\
+  bt_compatible (bt fc) (CompTable.bt c).
+
+Lemma expm_of_fexpm_compatible m : et_compatible m (expm_of_fexpm m).
+Proof.
+  move=> e. split.
+  - rewrite ExpMap.Lemmas.map_b. reflexivity.
+  - move=> fcs flrs cs lrs Hff Hf.
+    rewrite (ExpMap.Lemmas.find_some_map (f:=tflatten_first) Hff) in Hf.
+    case: Hf => ? ?; subst. done.
+Qed.
+
+Lemma bexpm_of_fbexpm_compatible m : bt_compatible m (bexpm_of_fbexpm m).
+Proof.
+  move=> e. split.
+  - rewrite BexpMap.Lemmas.map_b. reflexivity.
+  - move=> fcs flrs cs lrs Hff Hf.
+    rewrite (BexpMap.Lemmas.find_some_map (f:=tflatten_first) Hff) in Hf.
+    case: Hf => ? ?; subst. done.
+Qed.
+
+Lemma comptable_of_fcomptable_compatible t :
+  comptable_compatible t (comptable_of_fcomptable t).
+Proof.
+  split; [exact: expm_of_fexpm_compatible | exact: bexpm_of_fbexpm_compatible].
 Qed.

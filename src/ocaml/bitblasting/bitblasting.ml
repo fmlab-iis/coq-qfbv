@@ -22,6 +22,8 @@ open Smtlib.Ast
 
 let option_debug = ref false
 
+let option_split_conjs = ref false
+
 let option_expand_let = false
 
 exception IllFormedException
@@ -566,14 +568,14 @@ let bexps_of_script vm tm fm env g script : vm * tm * fm * SSATE.env * int * QFB
       ) (false, false, vm, tm, fm, env, g, []) script in
   (vm', tm', fm', env', g', List.rev es_rev)
 
-let bexp_of_file file : vm * tm * SSATE.env * QFBV.bexp =
+let bexps_of_file file : vm * tm * SSATE.env * QFBV.bexp list =
   let vm = M.empty in
   let tm = M.empty in
   let fm = M.empty in
   let env = SSATE.empty in
   let g = 0 in
   let (vm', tm', fm', env', g', es) = bexps_of_script vm tm fm env g file in
-  (vm', tm', env', make_qfbv_conjs es)
+  (vm', tm', env', es)
 
 
 
@@ -584,7 +586,7 @@ let string_of_ssavar v =
   string_of_int (int_of_n svar) ^ " " ^ string_of_int (int_of_n sidx)
 
 let bb_file file =
-  let (vm, tm, env, e) = bexp_of_file file in
+  let (vm, tm, env, es) = bexps_of_file file in
   let _ =
     if !option_debug then
       let _ = List.iter (
@@ -595,12 +597,17 @@ let bb_file file =
                   fun v ssav ->
                   print_endline (v ^ " => " ^ string_of_ssavar ssav)
                 ) vm in
-      let _ = print_endline (string_of_bexp e) in
+      let _ = print_endline (String.concat "\n" (List.map string_of_bexp es)) in
       () in
-  if QFBV.well_formed_bexp e env then
-    let ((((m, c), g), cnf), lr) = bit_blast_bexp_hcache_tflatten env init_vm init_hcache init_gen (hash_bexp e) in
-    let cnf = CNF.add_prelude ([lr]::cnf) in
-    cnf
+  if QFBV.well_formed_bexps es env then
+    if !option_split_conjs then
+      let cnf = bit_blast_bexps_hcache_conjs env es in
+      cnf
+    else
+      let e = make_qfbv_conjs es in
+      let ((((m, c), g), cnf), lr) = bit_blast_bexp_hcache_tflatten env init_vm init_hcache init_gen (hash_bexp e) in
+      let cnf = CNF.add_prelude ([lr]::cnf) in
+      cnf
   else
     raise IllFormedException
 

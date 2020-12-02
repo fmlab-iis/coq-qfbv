@@ -26,6 +26,11 @@ Definition empty : simptable :=
 Definition find_et e t := ExpMap.find e (et t).
 Definition find_bt e t := BexpMap.find e (bt t).
 
+Definition Equal (t1 t2 : simptable) :=
+  ExpMap.Equal (et t1) (et t2) /\
+  BexpMap.Equal (bt t1) (bt t2).
+
+
 
 (* ==== modification ==== *)
 

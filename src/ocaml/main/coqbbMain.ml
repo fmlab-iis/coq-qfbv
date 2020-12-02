@@ -6,7 +6,8 @@ open Extraction.QFBV
 open Bitblasting
 
 let args = [
-    ("-d", Unit (fun () -> option_debug := true), "\t\tPrint debug messages")
+    ("-d", Unit (fun () -> option_debug := true), "\t\tPrint debug messages");
+    ("-s", Set option_split_conjs, "\t\tSplit top-level conjunctions")
   ]
 
 let usage = "Usage: coqsmt OPTIONS FILE\n"

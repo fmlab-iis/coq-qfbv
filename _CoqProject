@@ -11,6 +11,11 @@ src/CNF.v
 src/BBCommon.v
 src/BBVar.v
 src/BBConst.v
+src/BBLow.v
+src/BBHigh.v
+src/BBExtract.v
+src/BBEq.v
+src/BBRepeat.v
 src/BBNot.v
 src/BBAnd.v
 src/BBOr.v
@@ -25,10 +30,8 @@ src/BBLshr.v
 src/BBAshr.v
 src/BBZeroExtend.v
 src/BBSignExtend.v
-src/BBRepeat.v
 src/BBRotateLeft.v
 src/BBRotateRight.v
-src/BBEq.v
 src/BBComp.v
 src/BBConj.v
 src/BBDisj.v
@@ -47,9 +50,6 @@ src/BBSaddo.v
 src/BBSsubo.v
 src/BBSmulo.v
 src/BBLneg.v
-src/BBLow.v
-src/BBHigh.v
-src/BBExtract.v
 src/BBSlice.v
 src/BBConcat.v
 src/BBUdiv.v
@@ -86,6 +86,8 @@ src/bbcache/BitBlastingCCacheDefGeneral.v
 src/bbcache/BitBlastingCCacheGeneral.v
 src/bbcache/BitBlastingCacheDef.v
 src/bbcache/BitBlastingCache.v
+src/bbcache/BitBlastingCCacheExport.v
+src/bbcache/BitBlastingCacheExport.v
 src/bbcache/CompTableFlatten.v
 src/bbcache/CacheFlatten.v
 src/bbcache/BitBlastingCacheFlatten.v
