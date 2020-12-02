@@ -163,6 +163,14 @@ Lemma interp_word_cons E l (ls : word) :
   interp_word E (l::ls) = (interp_lit E l)::(interp_word E ls).
 Proof. rewrite /interp_word. rewrite map_cons. reflexivity. Qed.
 
+Lemma interp_word_rcons E w x :
+  interp_word E (rcons w x) = rcons (interp_word E w) (interp_lit E x).
+Proof. elim: w x => [| y w IH] x //=. rewrite IH. reflexivity. Qed.
+
+Lemma interp_word_cat E w1 w2 :
+  interp_word E (w1 ++ w2) = interp_word E w1 ++ interp_word E w2.
+Proof. elim: w1 w2 => [| x1 w1 IH] w2 //=. rewrite IH. reflexivity. Qed.
+
 Lemma interp_word_split E (ls : word) :
   0 < size ls ->
   interp_word E ls = (interp_lit E (lsl ls))::(interp_word E (droplsl ls)).

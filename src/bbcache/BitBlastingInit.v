@@ -40,7 +40,7 @@ Proof.
   move=> s x. rewrite /consistent1 /init_vm. rewrite SSAVM.Lemmas.empty_o. done.
 Qed.
 
-Lemma init_vm_adhere : 
+Lemma init_vm_adhere :
   forall te, AdhereConform.adhere init_vm te .
 Proof.
   done.
@@ -82,8 +82,8 @@ Proof.
   done.
 Qed.
 
-Lemma init_compatible : 
+Lemma init_compatible :
   compatible init_cache init_ccache.
-Proof. 
-  done. 
+Proof.
+  done.
 Qed.
