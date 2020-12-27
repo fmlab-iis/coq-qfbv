@@ -270,3 +270,16 @@ Proof.
   exists (mk_env s e). rewrite add_prelude_expand.
   rewrite Htt /=. by rewrite Hev Hcs.
 Qed.
+
+Corollary bit_blast_ccache_sat_sound_and_complete TE (e : QFBV.bexp) m c g cs lr :
+  bit_blast_bexp_ccache
+    TE init_vm init_ccache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e TE ->
+  ((exists s, AdhereConform.conform_bexp e s TE /\ QFBV.eval_bexp e s) 
+   <->
+   (exists (E : env), interp_cnf E (add_prelude ([::lr]::cs)))).
+Proof.
+  move=> Hbb Hwf. split.
+  - exact: (bit_blast_ccache_sat_complete Hbb).
+  - exact: (bit_blast_ccache_sat_sound Hbb).
+Qed.

@@ -77,6 +77,18 @@ Proof.
   exact: (bit_blast_ccache_sat_complete Hccache).
 Qed.
 
+Corollary bit_blast_cache_sat_sound_and_complete (e : QFBV.bexp) te m c g cs lr :
+  bit_blast_bexp_cache te init_vm init_cache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e te ->
+  ((exists s, AdhereConform.conform_bexp e s te /\ QFBV.eval_bexp e s)
+   <->
+   (exists (E : env), interp_cnf E (add_prelude ([::lr]::cs)))).
+Proof.
+  move=> Hbb Hwf. split.
+  - exact: (bit_blast_cache_sat_complete Hbb).
+  - exact: (bit_blast_cache_sat_sound Hbb).
+Qed.
+
 
 (* ==== general case ==== *)
 (* = bit-blasting multiple bexps = *)

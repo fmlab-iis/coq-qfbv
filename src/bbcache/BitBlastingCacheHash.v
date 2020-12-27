@@ -1332,6 +1332,19 @@ Proof.
   exact: (bit_blast_bexp_fcache_sat_complete Hfbb Hwf Hev).
 Qed.
 
+Corollary bit_blast_bexp_hcache_sat_sound_and_complete E (e : QFBV.bexp) m c g cs lr :
+  bit_blast_bexp_hcache
+    E init_vm init_hcache init_gen (hash_bexp e) = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e E ->
+  ((exists s, AdhereConform.conform_bexp e s E /\ QFBV.eval_bexp e s) 
+   <->
+   (exists (E : env), interp_cnf E (add_prelude ([:: lr]::(tflatten cs))))).
+Proof.
+  move=> Hbb Hwf. split.
+  - exact: (bit_blast_bexp_hcache_sat_complete Hbb).
+  - exact: (bit_blast_bexp_hcache_sat_sound Hbb).
+Qed.
+
 
 (* ==== general case ==== *)
 

@@ -443,6 +443,17 @@ Proof.
   exact: (bit_blast_cache_sat_complete Hbb Hwf Hev).
 Qed.
 
+Corollary bit_blast_bexp_fcache_sat_sound_and_complete E e m c g cs lr :
+  bit_blast_bexp_fcache E init_vm init_fcache init_gen e = (m, c, g, cs, lr) ->
+  QFBV.well_formed_bexp e E ->
+  ((exists s, AdhereConform.conform_bexp e s E /\ QFBV.eval_bexp e s) 
+   <->
+   (exists (E : env), interp_cnf E (add_prelude ([::lr]::(tflatten cs))))).
+Proof.
+  move=> Hbb Hwf. split.
+  - exact: (bit_blast_bexp_fcache_sat_complete Hbb).
+  - exact: (bit_blast_bexp_fcache_sat_sound Hbb).
+Qed.
 
 (* ==== general case ==== *)
 
