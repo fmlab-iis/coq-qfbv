@@ -1,6 +1,6 @@
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq ssrfun.
-From BitBlasting Require Import QFBV CNF BBCommon BBConst BBAnd BBOr BBAdd BBShl BBSub BBMul BBLshr BBUge BBEq BBNot BBIte.
+From BitBlasting Require Import QFBV CNF BBCommon BBConst BBAnd BBOr BBAdd BBShl BBSub BBMul BBLshr BBUle BBUge BBEq BBNot BBIte.
 From ssrlib Require Import ZAriths Tactics.
 From nbits Require Import NBits.
 
@@ -218,7 +218,7 @@ Proof.
       by rewrite (enc_bits_size Henc2) (enc_bits_size Hencuge1) in Hszuge.
     rewrite Hencugers /geB (leBNlt Hszbs2) => {Hszbs2}. 
     move => HnotltB. symmetry in HnotltB. rewrite ->Bool.negb_true_iff in HnotltB.
-    rewrite to_nat_ltB in HnotltB. rewrite HnotltB/=.
+    (* rewrite to_nat_ltB in HnotltB.  *) rewrite HnotltB/=.
     have Hszudiv1 : size (dropmsl (joinlsl lrsuge lqs)) = size ls2 by rewrite size_dropmsl size_joinlsl addnK Hszlqs.
     move : (bit_blast_sub_size_ss Hbbsub Hszuge) => Hszsub.
     move : (add_prelude_to Hevar Hcssub) => Haddcssub.
@@ -248,7 +248,7 @@ Proof.
         by rewrite (enc_bits_size Henc2) (enc_bits_size Hencuge1) in Hszudivr.
       rewrite Hencugers /geB (leBNlt Hszbs2) Bool.negb_involutive => {Hszbs2}. 
       move => HnotltB. 
-      rewrite to_nat_ltB in HnotltB. rewrite -HnotltB/=.
+      (* rewrite to_nat_ltB in HnotltB. *) rewrite -HnotltB/=.
       have Hencjtq : (enc_bits E (joinlsl lrsuge lqs) (joinlsb false bsq)) by rewrite enc_bits_joinlsb (eqP Hlrsugef) (add_prelude_enc_bit_is_not_true _ Haddcsuge) Hencq. 
       have Hencdjlqs : enc_bits E (dropmsl (joinlsl lrsuge lqs)) (dropmsb (joinlsb false bsq)) by rewrite (enc_bits_dropmsb Htt Hencjtq).
       move : (add_prelude_to Hevar Hcsudivr) => Haddcsudivr.
@@ -270,24 +270,25 @@ Proof.
       move : (bit_blast_uge_correct Hbbuge Hszuge Hencuge1 Henc2 Haddcsuge) => Hencugers.
       have Hszbs2 : size bs2 = size (dropmsb (joinlsb bs1hd bsr))
         by rewrite (enc_bits_size Henc2) (enc_bits_size Hencuge1) in Hszuge.
-      rewrite /geB (leBNlt Hszbs2) to_nat_ltB in Hencugers => {Hszbs2}.
+      rewrite /geB (leBNlt Hszbs2) (*to_nat_ltB*) in Hencugers => {Hszbs2}.
       have Hszand : size (copy (size ls2) lrsuge) = size ls2 by rewrite size_nseq.
-      have Henccp : enc_bits E (copy (size ls2) lrsuge) (copy (size ls2) (~~ (to_nat (dropmsb (joinlsb bs1hd bsr)) < to_nat bs2))) by rewrite (enc_bits_copy (size ls2) Hencugers).
+      have Hszbs2 : size bs2 = size (dropmsb (joinlsb bs1hd bsr)) by rewrite size_dropmsb size_joinlsb addnK -(enc_bits_size Henc2) -(enc_bits_size Hencr)//.
+      have Henccp : enc_bits E (copy (size ls2) lrsuge) (copy (size ls2) ((bs2 <=# (dropmsb (joinlsb bs1hd bsr)))%bits)). rewrite leBNlt// (enc_bits_copy (size ls2) Hencugers)//.
       move : (add_prelude_to Hevar Hcsand) => Haddcsand.
       move : (bit_blast_and_correct Hbband Henccp Henc2 Haddcsand) => Hencandrs.
       move : (bit_blast_and_size_ss Hbband Hszand) => Hszandrs.
       have Hszsub : size (dropmsl (joinlsl ls1hd lrs)) = size lrsand by rewrite size_dropmsl size_joinlsl addnK -Hszandrs size_nseq Hszlrs.
       move : (add_prelude_to Hevar Hcssub) => Haddcssub.
       move : (bit_blast_sub_correct Hbbsub2 Hencuge1 Hencandrs Haddcssub Hszsub) => Hencsubrs.
-      have Hencjlqs : enc_bits E (joinlsl lrsuge lqs) (joinlsb (~~ (to_nat (dropmsb (joinlsb bs1hd bsr)) < to_nat bs2)) bsq) by rewrite enc_bits_joinlsb Hencugers Hencq.
-      have Hdjlqs : enc_bits E (dropmsl (joinlsl lrsuge lqs)) (dropmsb (joinlsb (~~ (to_nat (dropmsb (joinlsb bs1hd bsr)) < to_nat bs2)) bsq)) by rewrite (enc_bits_dropmsb Htt Hencjlqs).
+      have Hencjlqs : enc_bits E (joinlsl lrsuge lqs) (joinlsb (~~ ((dropmsb (joinlsb bs1hd bsr)) <# bs2)%bits) bsq) by rewrite enc_bits_joinlsb Hencugers Hencq.
+      have Hdjlqs : enc_bits E (dropmsl (joinlsl lrsuge lqs)) (dropmsb (joinlsb ((bs2<=#(dropmsb (joinlsb bs1hd bsr)))%bits) bsq)). rewrite leBNlt// (enc_bits_dropmsb Htt Hencjlqs)//.
       have Hszudivr : size (dropmsl (joinlsl lrsuge lqs)) = size ls2 by rewrite size_dropmsl size_joinlsl addnK Hszlqs.
       move : (bit_blast_sub_size_ss Hbbsub2 Hszsub) => Hszsubrs.
       have Hszlrssub2 : size lrssub2 = size ls2 by rewrite Hszsubrs -Hszandrs size_nseq.
       move : (add_prelude_to Hevar Hcsudivr) => Haddcsudivr.
       move : (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Hudivr3 Hszudivr Hszlrssub2 Hencls1tl Henc2 Hdjlqs Hencsubrs Haddcsudivr).
       move : (enc_bits_size Henc2) => Hszlsbs2. rewrite Hszlsbs2 andB_copy_case.
-      case (~~ (to_nat (dropmsb (joinlsb bs1hd bsr)) < to_nat bs2)); first done.
+      case ((bs2 <=# (dropmsb (joinlsb bs1hd bsr)))%bits); first done.
       have {1 2}->: (size bs2 = size (dropmsb (joinlsb bs1hd bsr))) by rewrite size_dropmsb size_joinlsb addnK -(enc_bits_size Hencr) - Hszlsbs2 Hszlrs.
       by rewrite from_natn0 subB0.
 Qed.
@@ -321,7 +322,7 @@ Proof.
     move : (enc_bits_copy (size ls2) Hff) => Hencff.
     move : (bit_blast_eq_correct Hbbeq Hszcp Henc2 Hencff Hcnf).
     rewrite/udivB (eqP Hlrseqt) (add_prelude_enc_bit_true (bs2 == copy (size ls2) false) Hcnf). move => Hbs20.
-    rewrite (eqP Hbs20) size_rev -/b0 -/(zeros (size ls2)) to_nat_zeros from_natn0 eq_refl.
+    rewrite (eqP Hbs20) size_rev -/b0 -/(zeros (size ls2)) to_Zpos_zeros zeros_from_Zpos eq_refl.
     move : (enc_bits_size Henc1) => Hszls1bs1.
     rewrite/= -Hszls1bs1 Hsz12 /ones (enc_bits_copy _ Htt) Henc1//.
   - case Hlrseqf : (lrs_eq == lit_ff).
@@ -333,11 +334,12 @@ Proof.
       move : (bit_blast_eq_correct Hbbeq Hszcp Henc2 Hencff Hcseq).
       move : (enc_bits_size Henc1) => Hszlsbs1.
       move : (enc_bits_size Henc2) => Hszlsbs2.
-      rewrite/udivB (eqP Hlrseqf) size_rev/= -Hszlsbs1 Hsz12 Hszlsbs2 from_nat_to_nat -/b0 -/(zeros (size bs2)).
+      rewrite/udivB (eqP Hlrseqf) size_rev/= -Hszlsbs1 Hsz12 Hszlsbs2 -/b0 -/(zeros (size bs2)).
       move => Hencbs20.
       move : (add_prelude_enc_bit_is_not_true (bs2 == copy (size ls2) false) Hcseq).
       rewrite -/(zeros (size ls2)) Hszlsbs2 Hencbs20. move => Hbs2not0; symmetry in Hbs2not0.
-      rewrite<-Bool.negb_false_iff in Hbs2not0. rewrite Bool.negb_involutive in Hbs2not0. rewrite Hbs2not0.
+      rewrite<-Bool.negb_false_iff in Hbs2not0. rewrite Bool.negb_involutive in Hbs2not0.
+      rewrite from_Zpos_to_Zpos Hbs2not0.
       move : (enc_bits_rev Henc1) => Hencrev1.
       generalize Hencff. rewrite -Hsz12 -(size_rev ls1). move => Hencffrev.
       generalize Hszcp. move => Hszcprev; symmetry in Hszcprev. rewrite -{1}Hsz12 -{1}(size_rev ls1) in Hszcprev. 
@@ -373,7 +375,7 @@ Proof.
       * move : (size_rev lrs_udivr) => /eqP Hszrev.
         move : (enc_bits_rev Hencr) => Hencrrev.
         move : (bit_blast_ite_correct Hszls1 Hbbite Hencbs20t Henc1 Hencr Hcsite).
-        by rewrite /udivB size_rev -Hszlsbs1 Hsz12 Hszlsbs2 from_nat_to_nat -Hszlsbs2 Hbs20/=.
+        rewrite /udivB size_rev -Hszlsbs1 Hsz12 Hszlsbs2 from_Zpos_to_Zpos -Hszlsbs2 Hbs20//.
 Qed.
 
 Lemma bit_blast_udiv_correct' g ls1 ls2 g' cs qlrs E bs1 bs2 :
