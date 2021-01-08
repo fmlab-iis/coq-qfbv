@@ -540,6 +540,13 @@ let bexps_of_command es vm tm fm env g c : vm * tm * fm * SSATE.env * int * QFBV
   | CDefineFun (fn, fargs, fsort, fterm) ->
      let (vm', tm', fm', env', g', es') = define_fun es vm tm fm env g fn fargs fsort fterm in
      (vm', tm', fm', env', g', es')
+  | CAssert (TApplication (QIdentifier (ISimple v), factuals)) when v = fn_and ->
+     let (env', g', es) = List.fold_left (
+                              fun (env, g, es) a ->
+                              let (env1, g1, es1, e1) = convert_bexp_term es vm tm fm env g a in
+                              (env1, g1, e1::es1)
+                            ) (env, g, es) factuals in
+     (vm, tm, fm, env', g', es)
   | CAssert t -> let (env', g', es', e) = convert_bexp_term es vm tm fm env g t in
                  (vm, tm, fm, env', g', List.rev (e::es'))
   | CCheckSat -> (vm, tm, fm, env, g, es)
