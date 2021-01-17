@@ -975,7 +975,7 @@ Lemma newer_than_cnf_cat g cs1 cs2 :
   newer_than_cnf g (cs1++cs2) = newer_than_cnf g cs1 && newer_than_cnf g cs2.
 Proof. elim: cs1 cs2 => [| hd tl IH] cs2 //=. by rewrite (IH cs2) andbA. Qed.
 
-Lemma newer_than_cons_rcons g cs c :
+Lemma newer_than_cnf_rcons g cs c :
   newer_than_cnf g (rcons cs c) = newer_than_cnf g cs && newer_than_lits g c.
 Proof.
   elim: cs => [| hd tl IH] /=.
@@ -1036,6 +1036,32 @@ Lemma interp_cnf_env_upd_newer E x v (cs : cnf) :
 Proof.
   elim: cs => [| hd tl IH] //=. move/andP=> [Hhd Htl].
   rewrite (interp_clause_env_upd_newer _ _ Hhd) (IH Htl). reflexivity.
+Qed.
+
+Lemma newer_than_cnf_rev g cs :
+  newer_than_cnf g (rev cs) = newer_than_cnf g cs.
+Proof.
+  elim: cs => [| c cs IH] //=. rewrite rev_cons. rewrite newer_than_cnf_rcons.
+  rewrite IH andbC. reflexivity.
+Qed.
+
+Lemma newer_than_cnf_tflatten_cons g c cs :
+  newer_than_cnf g (tflatten (c :: cs)) =
+  newer_than_cnf g c && newer_than_cnf g (tflatten cs).
+Proof.
+  elim: cs c => [| hd tl IH] c //=.
+  - rewrite /tflatten /=. rewrite catrevE cats0. rewrite newer_than_cnf_rev andbT. reflexivity.
+  - rewrite tflatten_cons. rewrite newer_than_cnf_cat. rewrite newer_than_cnf_rev.
+    rewrite andbC. reflexivity.
+Qed.
+
+Lemma newer_than_cnf_tflatten_catrev g cs1 cs2 :
+  newer_than_cnf g (tflatten (catrev cs1 cs2)) =
+  newer_than_cnf g (tflatten cs1) && newer_than_cnf g (tflatten cs2).
+Proof.
+  elim: cs1 cs2 => [| c1 cs1 IH] cs2 //=.
+  rewrite IH. rewrite !newer_than_cnf_tflatten_cons.
+  case: (newer_than_cnf g c1) => //=. by rewrite andbF.
 Qed.
 
 
@@ -2074,6 +2100,14 @@ Section EqSat.
       Equivalence_Symmetric := cnf_eqsat_sym;
       Equivalence_Transitive := cnf_eqsat_trans }.
 
+  Lemma cnf_eqsat_sat es1 es2 :
+    cnf_eqsat es1 es2 -> sat es1 <-> sat es2.
+  Proof.
+    move=> H; split; move=> [E Hsat].
+    - exists E. rewrite -(H E). assumption.
+    - exists E. rewrite (H E). assumption.
+  Qed.
+
   Lemma cnf_eqsat_cons c1 cs1 c2 cs2 :
     clause_eqsat c1 c2 -> cnf_eqsat cs1 cs2 ->
     cnf_eqsat (c1::cs1) (c2::cs2).
@@ -2117,6 +2151,14 @@ Section EqSat.
     reflexivity.
   Qed.
 
+  Lemma interp_cnf_add_prelude_tflatten_cons E cs css :
+    interp_cnf E (add_prelude (tflatten (cs :: css))) =
+    interp_cnf E (add_prelude cs) && interp_cnf E (add_prelude (tflatten css)).
+  Proof.
+    rewrite !add_prelude_expand. rewrite interp_cnf_tflatten_cons.
+      by case: (interp_lit E lit_tt) => //=.
+  Qed.
+
   Lemma interp_cnf_tflatten_catrev E cs1 cs2 :
     interp_cnf E (tflatten (catrev cs1 cs2)) = interp_cnf E (tflatten cs1) &&
                                                interp_cnf E (tflatten cs2).
@@ -2147,7 +2189,132 @@ Section EqSat.
     rewrite interp_cnf_catrev. rewrite (Hc E) (Hcs E). reflexivity.
   Qed.
 
+  Lemma interp_cnf_add_prelude E cs1 cs2 :
+    interp_cnf E cs1 = interp_cnf E cs2 ->
+    interp_cnf E (add_prelude cs1) = interp_cnf E (add_prelude cs2).
+  Proof.
+    move=> H. rewrite !add_prelude_expand. by case: (interp_lit E lit_tt) => //=.
+  Qed.
+
+  Lemma cnf_eqsat_add_prelude cs1 cs2 :
+    cnf_eqsat cs1 cs2 -> cnf_eqsat (add_prelude cs1) (add_prelude cs2).
+  Proof.
+    move=> H E. apply: interp_cnf_add_prelude. rewrite (H E). reflexivity.
+  Qed.
+
 End EqSat.
+
+Section EqNew.
+
+  Definition lit_eqnew (l1 l2 : literal) : Prop :=
+    forall g, newer_than_lit g l1 = newer_than_lit g l2.
+
+  Definition lits_eqnew (c1 c2 : clause) : Prop :=
+    forall g, newer_than_lits g c1 = newer_than_lits g c2.
+
+  Definition cnf_eqnew (cs1 cs2 : cnf) : Prop :=
+    forall g, newer_than_cnf g cs1 = newer_than_cnf g cs2.
+
+  Lemma all_newer_than_lits_empty c : (forall g, newer_than_lits g c) -> c = [::].
+  Proof.
+    elim: c => [| l c IH] //=. case: l.
+    - move=> v. move=> H. move: (H v) => /andP [H1 H2]. rewrite /newer_than_lit /= in H1.
+      move: (newer_than_var_irrefl v). rewrite H1. discriminate.
+    - move=> v. move=> H. move: (H v) => /andP [H1 H2]. rewrite /newer_than_lit /= in H1.
+      move: (newer_than_var_irrefl v). rewrite H1. discriminate.
+  Qed.
+
+  Lemma cnf_eqnew_sym cs : cnf_eqnew cs cs.
+  Proof. done. Qed.
+
+  Lemma cnf_eqnew_comm cs1 cs2 : cnf_eqnew cs1 cs2 -> cnf_eqnew cs2 cs1.
+  Proof. move=> Heq g. rewrite (Heq g). reflexivity. Qed.
+
+  Lemma cnf_eqnew_rcons_cons c cs : cnf_eqnew (rcons cs c) (c::cs).
+  Proof.
+    move=> g. rewrite newer_than_cnf_rcons /=. rewrite andbC. reflexivity.
+  Qed.
+
+  Lemma cnf_eqnew_rev cs : cnf_eqnew (rev cs) cs.
+  Proof. move=> g. rewrite newer_than_cnf_rev. reflexivity. Qed.
+
+  Lemma tflatten_singleton_eqnew cs :
+    cnf_eqnew (tflatten [:: cs]) cs.
+  Proof.
+    elim: cs => [| c cs IH] //=. rewrite tflatten_cons /=. exact: cnf_eqnew_rev.
+  Qed.
+
+  Lemma cnf_eqnew_catrev2 cs1 cs2 cs3 cs4 :
+    cnf_eqnew (tflatten cs1) cs2 ->
+    cnf_eqnew (tflatten cs3) cs4 ->
+    cnf_eqnew (tflatten (catrev cs1 cs3)) (catrev cs2 cs4).
+  Proof.
+    move=> Hnew12 Hnew34 g. rewrite newer_than_cnf_tflatten_catrev.
+    rewrite newer_than_cnf_catrev. rewrite (Hnew12 g) (Hnew34 g). reflexivity.
+  Qed.
+
+End EqNew.
+
+
+
+Section EnvEqual.
+
+  Definition env_equal (e1 e2 : env) : Prop :=
+    forall v, e1 v = e2 v.
+
+  Lemma env_equal_interp_lit e1 e2 l :
+    env_equal e1 e2 -> interp_lit e1 l = interp_lit e2 l.
+  Proof.
+    move=> H. case: l => //=. move=> v. rewrite (H v). reflexivity.
+  Qed.
+
+  Lemma env_equal_interp_word e1 e2 w :
+    env_equal e1 e2 -> interp_word e1 w = interp_word e2 w.
+  Proof.
+    elim: w => [| l w IH] H //=. rewrite (IH H). rewrite (env_equal_interp_lit l H).
+    reflexivity.
+  Qed.
+
+  Lemma env_equal_interp_clause e1 e2 c :
+    env_equal e1 e2 -> interp_clause e1 c = interp_clause e2 c.
+  Proof.
+    elim: c => [| l c IH] H //=. rewrite (IH H). rewrite (env_equal_interp_lit l H).
+    reflexivity.
+  Qed.
+
+  Lemma env_equal_interp_cnf e1 e2 cs :
+    env_equal e1 e2 -> interp_cnf e1 cs = interp_cnf e2 cs.
+  Proof.
+    elim: cs => [| c cs IH] H //=. rewrite (IH H) (env_equal_interp_clause c H).
+    reflexivity.
+  Qed.
+
+  Lemma env_equal_upd e1 e2 x v :
+    env_equal e1 e2 -> env_equal (env_upd e1 x v) (env_upd e2 x v).
+  Proof.
+    move=> H y. case Hxy: (x == y).
+    - rewrite (eqP Hxy). rewrite !env_upd_eq. reflexivity.
+    - move/idP/negP: Hxy => Hxy. rewrite !(env_upd_neq _ _ Hxy). exact: (H y).
+  Qed.
+
+  Lemma env_equal_refl e : env_equal e e.
+  Proof. done. Qed.
+
+  Lemma env_equal_sym e1 e2 : env_equal e1 e2 -> env_equal e2 e1.
+  Proof. move=> H x. rewrite (H x). reflexivity. Qed.
+
+  Lemma env_equal_trans e1 e2 e3 : env_equal e1 e2 -> env_equal e2 e3 -> env_equal e1 e3.
+  Proof. move=> H12 H23 x. rewrite (H12 x) (H23 x). reflexivity. Qed.
+
+  Instance env_equal_Reflexive : Reflexive (@env_equal) := @env_equal_refl.
+  Instance env_equal_Symmetric : Symmetric (@env_equal) := @env_equal_sym.
+  Instance env_equal_Transitive : Transitive (@env_equal) := @env_equal_trans.
+  Instance env_equal_Equivalence : Equivalence (@env_equal) :=
+    { Equivalence_Reflexive := env_equal_Reflexive;
+      Equivalence_Symmetric := env_equal_Symmetric;
+      Equivalence_Transitive := env_equal_Transitive }.
+
+End EnvEqual.
 
 
 Global Opaque add_prelude.

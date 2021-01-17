@@ -274,3 +274,26 @@ Proof.
   apply Hncnf_zip; [ done | rewrite unzip1_rev | rewrite unzip2_rev]; 
     by apply newer_than_lits_rev; t_auto_newer.
 Qed.
+
+Lemma mk_env_ult_rev'_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ult_rev'_zip E1 g lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_ult_rev'_zip E2 g lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: lsp E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 =>
+  [| [l1 l2] lsp IH] //= E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_ult_rev'_zip E1 g lsp) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hv_tl1].
+    dcase (mk_env_ult_rev'_zip E2 g lsp) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hv_tl2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Heq Hv_tl1 Hv_tl2) => [Heq1 [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. rewrite !(env_equal_interp_lit _ Heq1).
+    repeat split. apply: env_equal_upd. assumption.
+Qed.
+
+Lemma mk_env_ult_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ult E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_ult E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_ult_rev'_zip_env_equal. Qed.

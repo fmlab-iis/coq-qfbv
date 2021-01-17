@@ -119,3 +119,16 @@ Lemma mk_env_usubo_sat E g ls1 ls2 E' g' cs lr :
 Proof.
   exact: (mk_env_ult_sat).
 Qed.
+
+Lemma mk_env_usubo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_usubo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_usubo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_usubo => Heq.
+  dcase (mk_env_ult E1 g ls1 ls2) => [[[[E_ult1 g_ult1] cs_ult1] lrs_ult1] Hult1].
+  dcase (mk_env_ult E2 g ls1 ls2) => [[[[E_ult2 g_ult2] cs_ult2] lrs_ult2] Hult2].
+  move: (mk_env_ult_env_equal Heq Hult1 Hult2) => {Heq Hult1 Hult2} [Heq [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

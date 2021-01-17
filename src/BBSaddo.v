@@ -220,3 +220,21 @@ Proof.
       case (interp_lit E_fa (lastd lit_ff ls2));
       case (interp_lit E_fa (lastd lit_ff r_fa)).
 Qed.
+
+Lemma mk_env_saddo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_saddo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_saddo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_saddo => Heq.
+  dcase (mk_env_full_adder E1 g lit_ff ls1 ls2)
+  => [[[[[E_fa1 g_fa1] cs_fa1] cout_fa1] lrs_fa1] Hfa1].
+  dcase (mk_env_full_adder E2 g lit_ff ls1 ls2)
+  => [[[[[E_fa2 g_fa2] cs_fa2] cout_fa2] lrs_fa2] Hfa2].
+  move: (mk_env_full_adder_env_equal Heq Hfa1 Hfa2)
+  => {Heq Hfa1 Hfa2} [Heq [? [? [? ?]]]]; subst.
+  dcase (gen g_fa2) => [[g' r'] Hg']. case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  repeat split. rewrite !(env_equal_interp_lit _ Heq). apply: env_equal_upd.
+  assumption.
+Qed.

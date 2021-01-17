@@ -103,3 +103,19 @@ Proof.
   move => [] <- _ <- _ Hgtt Hgls1 Hgls2.
   exact: (mk_env_full_adder_sat Hmk Hgls1 Hgls2 Hgtt).
 Qed.
+
+Lemma mk_env_uaddo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_uaddo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_uaddo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_uaddo => Heq.
+  dcase (mk_env_full_adder E1 g lit_ff ls1 ls2)
+  => [[[[[E_add1 g_add1] cout_add1] cs_add1] lrs_add1] Hadd1].
+  dcase (mk_env_full_adder E2 g lit_ff ls1 ls2)
+  => [[[[[E_add2 g_add2] cout_add2] cs_add2] lrs_add2] Hadd2].
+  move: (mk_env_full_adder_env_equal Heq Hadd1 Hadd2)
+  => {Heq Hadd1 Hadd2} [Heq [? [? [? ?]]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

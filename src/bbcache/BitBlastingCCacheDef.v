@@ -326,60 +326,131 @@ Definition mk_env_eunop (op : QFBV.eunop) :=
 Definition mk_env_ebinop (op : QFBV.ebinop) :=
   match op with
   | QFBV.Band => mk_env_and
-  | QFBV.Bor => mk_env_or 
-  | QFBV.Bxor => mk_env_xor 
-  | QFBV.Badd => mk_env_add 
-  | QFBV.Bsub => mk_env_sub 
+  | QFBV.Bor => mk_env_or
+  | QFBV.Bxor => mk_env_xor
+  | QFBV.Badd => mk_env_add
+  | QFBV.Bsub => mk_env_sub
   | QFBV.Bmul => mk_env_mul
   | QFBV.Bdiv => mk_env_udiv'
   | QFBV.Bmod => mk_env_umod
   | QFBV.Bsdiv => mk_env_sdiv
   | QFBV.Bsrem => mk_env_srem
   | QFBV.Bsmod => mk_env_smod
-  | QFBV.Bshl => mk_env_shl 
-  | QFBV.Blshr => mk_env_lshr 
-  | QFBV.Bashr => mk_env_ashr 
-  | QFBV.Bconcat => mk_env_concat 
+  | QFBV.Bshl => mk_env_shl
+  | QFBV.Blshr => mk_env_lshr
+  | QFBV.Bashr => mk_env_ashr
+  | QFBV.Bconcat => mk_env_concat
   | QFBV.Bcomp => mk_env_comp
   end .
 
 Definition mk_env_bbinop (op : QFBV.bbinop) :=
   match op with
-  | QFBV.Beq => mk_env_eq 
-  | QFBV.Bult => mk_env_ult 
-  | QFBV.Bule => mk_env_ule 
-  | QFBV.Bugt => mk_env_ugt 
-  | QFBV.Buge => mk_env_uge 
-  | QFBV.Bslt => mk_env_slt 
-  | QFBV.Bsle => mk_env_sle 
-  | QFBV.Bsgt => mk_env_sgt 
-  | QFBV.Bsge => mk_env_sge 
-  | QFBV.Buaddo => mk_env_uaddo 
-  | QFBV.Busubo => mk_env_usubo 
-  | QFBV.Bumulo => mk_env_umulo 
-  | QFBV.Bsaddo => mk_env_saddo 
-  | QFBV.Bssubo => mk_env_ssubo 
-  | QFBV.Bsmulo => mk_env_smulo 
+  | QFBV.Beq => mk_env_eq
+  | QFBV.Bult => mk_env_ult
+  | QFBV.Bule => mk_env_ule
+  | QFBV.Bugt => mk_env_ugt
+  | QFBV.Buge => mk_env_uge
+  | QFBV.Bslt => mk_env_slt
+  | QFBV.Bsle => mk_env_sle
+  | QFBV.Bsgt => mk_env_sgt
+  | QFBV.Bsge => mk_env_sge
+  | QFBV.Buaddo => mk_env_uaddo
+  | QFBV.Busubo => mk_env_usubo
+  | QFBV.Bumulo => mk_env_umulo
+  | QFBV.Bsaddo => mk_env_saddo
+  | QFBV.Bssubo => mk_env_ssubo
+  | QFBV.Bsmulo => mk_env_smulo
   end .
+
+
+
+Lemma mk_env_eunop_env_equal op E1 E2 g ls E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_eunop op E1 g ls = (E1', g1', cs1, lrs1) ->
+  mk_env_eunop op E2 g ls = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  case: op => /=.
+  - exact: mk_env_not_env_equal.
+  - exact: mk_env_neg_env_equal.
+  - move=> ? ?; exact: mk_env_extract_env_equal.
+  - move=> ?; exact: mk_env_high_env_equal.
+  - move=> ?; exact: mk_env_low_env_equal.
+  - move=> ?; exact: mk_env_zeroextend_env_equal.
+  - move=> ?; exact: mk_env_signextend_env_equal.
+  - move=> ?; exact: mk_env_repeat_env_equal.
+  - move=> ?; exact: mk_env_rotateleft_env_equal.
+  - move=> ?; exact: mk_env_rotateright_env_equal.
+Qed.
+
+Lemma mk_env_ebinop_env_equal op E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ebinop op E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_ebinop op E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  case: op => /=.
+  - exact: mk_env_and_env_equal.
+  - exact: mk_env_or_env_equal.
+  - exact: mk_env_xor_env_equal.
+  - exact: mk_env_add_env_equal.
+  - exact: mk_env_sub_env_equal.
+  - exact: mk_env_mul_env_equal.
+  - exact: mk_env_udiv'_env_equal.
+  - exact: mk_env_umod_env_equal.
+  - exact: mk_env_sdiv_env_equal.
+  - exact: mk_env_srem_env_equal.
+  - exact: mk_env_smod_env_equal.
+  - exact: mk_env_shl_env_equal.
+  - exact: mk_env_lshr_env_equal.
+  - exact: mk_env_ashr_env_equal.
+  - exact: mk_env_concat_env_equal.
+  - exact: mk_env_comp_env_equal.
+Qed.
+
+Lemma mk_env_bbinop_env_equal op E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_bbinop op E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_bbinop op E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  case: op => /=.
+  - exact: mk_env_eq_env_equal.
+  - exact: mk_env_ult_env_equal.
+  - exact: mk_env_ule_env_equal.
+  - exact: mk_env_ugt_env_equal.
+  - exact: mk_env_uge_env_equal.
+  - exact: mk_env_slt_env_equal.
+  - exact: mk_env_sle_env_equal.
+  - exact: mk_env_sgt_env_equal.
+  - exact: mk_env_sge_env_equal.
+  - exact: mk_env_uaddo_env_equal.
+  - exact: mk_env_usubo_env_equal.
+  - exact: mk_env_umulo_env_equal.
+  - exact: mk_env_saddo_env_equal.
+  - exact: mk_env_ssubo_env_equal.
+  - exact: mk_env_smulo_env_equal.
+Qed.
+
 
 
 Fixpoint mk_env_exp_ccache m cc s E g e :
   vm * compcache * env * generator * cnf * word :=
   (* = mk_env_exp_nocet = *)
-  let mk_env_exp_nocet m cc s E g e : 
+  let mk_env_exp_nocet m cc s E g e :
         vm * compcache * env * generator * cnf * word * cnf :=
       match e with
       | QFBV.Evar v =>
         match find_het e cc with
         | Some (cs, ls) => (m, cc, E, g, cs, ls, cs)
         | None => match SSAVM.find v m with
-                  | None => 
+                  | None =>
                     let '(E', g', cs, rs) := mk_env_var E g (SSAStore.acc v s) v in
                     (SSAVM.add v rs m, add_het e cs rs cc, E', g', cs, rs, cs)
                   | Some rs => (m, add_het e [::] rs cc, E, g, [::], rs, [::])
                   end
         end
-      | QFBV.Econst bs => 
+      | QFBV.Econst bs =>
         match find_het e cc with
         | Some (cs, ls) => (m, cc, E, g, cs, ls, cs)
         | None => let '(E', g', cs, rs) := mk_env_const E g bs in
@@ -398,20 +469,20 @@ Fixpoint mk_env_exp_ccache m cc s E g e :
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_het e cc2 with
         | Some (csop, lsop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lsop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lsop) := mk_env_ebinop op E2 g2 ls1 ls2 in
           (m2, add_het e csop lsop cc2, Eop, gop, catrev cs1 (catrev cs2 csop), lsop, csop)
         end
-      | QFBV.Eite c e1 e2 => 
+      | QFBV.Eite c e1 e2 =>
         let '(mc, ccc, Ec, gc, csc, lc) := mk_env_bexp_ccache m cc s E g c in
         let '(m1, cc1, E1, g1, cs1, ls1) := mk_env_exp_ccache mc ccc s Ec gc e1 in
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_het e cc2 with
-        | Some (csop, lsop) => 
+        | Some (csop, lsop) =>
           (m2, cc2, E2, g2, catrev csc (catrev cs1 (catrev cs2 csop)), lsop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lsop) := mk_env_ite E2 g2 lc ls1 ls2 in
-          (m2, add_het e csop lsop cc2, Eop, gop, 
+          (m2, add_het e csop lsop cc2, Eop, gop,
            catrev csc (catrev cs1 (catrev cs2 csop)), lsop, csop)
         end
       end
@@ -425,15 +496,15 @@ Fixpoint mk_env_exp_ccache m cc s E g e :
 with
 mk_env_bexp_ccache m cc s E g e : vm * compcache * env * generator * cnf * literal :=
   (* = mk_env_bexp_nocbt = *)
-  let mk_env_bexp_nocbt m cc s E g e : 
+  let mk_env_bexp_nocbt m cc s E g e :
         vm * compcache * env * generator * cnf * literal * cnf :=
       match e with
-      | QFBV.Bfalse => 
+      | QFBV.Bfalse =>
         match find_hbt e cc with
         | Some (cs, l) => (m, cc, E, g, cs, l, cs)
         | None => (m, add_hbt e [::] lit_ff cc, E, g, [::], lit_ff, [::])
         end
-      | QFBV.Btrue => 
+      | QFBV.Btrue =>
         match find_hbt e cc with
         | Some (cs, l) => (m, cc, E, g, cs, l, cs)
         | None => (m, add_hbt e [::] lit_tt cc, E, g, [::], lit_tt, [::])
@@ -443,33 +514,33 @@ mk_env_bexp_ccache m cc s E g e : vm * compcache * env * generator * cnf * liter
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lop) := mk_env_bbinop op E2 g2 ls1 ls2 in
           (m2, add_hbt e csop lop cc2, Eop, gop, catrev cs1 (catrev cs2 csop), lop, csop)
         end
-      | QFBV.Blneg e1 => 
+      | QFBV.Blneg e1 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         match find_hbt e cc1 with
         | Some (csop, lop) => (m1, cc1, E1, g1, catrev cs1 csop, lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_lneg E1 g1 l1 in
                   (m1, add_hbt e csop lop cc1, Eop, gop, catrev cs1 csop, lop, csop)
         end
-      | QFBV.Bconj e1 e2 => 
+      | QFBV.Bconj e1 e2 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         let '(m2, cc2, E2, g2, cs2, l2) := mk_env_bexp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_conj E2 g2 l1 l2 in
-                  (m2, add_hbt e csop lop cc2, Eop, gop, 
+                  (m2, add_hbt e csop lop cc2, Eop, gop,
                    catrev cs1 (catrev cs2 csop), lop, csop)
         end
-      | QFBV.Bdisj e1 e2 => 
+      | QFBV.Bdisj e1 e2 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         let '(m2, cc2, E2, g2, cs2, l2) := mk_env_bexp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_disj E2 g2 l1 l2 in
-                  (m2, add_hbt e csop lop cc2, Eop, gop, 
+                  (m2, add_hbt e csop lop cc2, Eop, gop,
                    catrev cs1 (catrev cs2 csop), lop, csop)
         end
       end
@@ -485,20 +556,20 @@ mk_env_bexp_ccache m cc s E g e : vm * compcache * env * generator * cnf * liter
 Lemma mk_env_exp_ccache_equation :
   forall m cc s E g e,  mk_env_exp_ccache m cc s E g e =
   (* = mk_env_exp_nocet = *)
-  let mk_env_exp_nocet m cc s E g e : 
+  let mk_env_exp_nocet m cc s E g e :
         vm * compcache * env * generator * cnf * word * cnf :=
       match e with
       | QFBV.Evar v =>
         match find_het e cc with
         | Some (cs, ls) => (m, cc, E, g, cs, ls, cs)
         | None => match SSAVM.find v m with
-                  | None => 
+                  | None =>
                     let '(E', g', cs, rs) := mk_env_var E g (SSAStore.acc v s) v in
                     (SSAVM.add v rs m, add_het e cs rs cc, E', g', cs, rs, cs)
                   | Some rs => (m, add_het e [::] rs cc, E, g, [::], rs, [::])
                   end
         end
-      | QFBV.Econst bs => 
+      | QFBV.Econst bs =>
         match find_het e cc with
         | Some (cs, ls) => (m, cc, E, g, cs, ls, cs)
         | None => let '(E', g', cs, rs) := mk_env_const E g bs in
@@ -517,20 +588,20 @@ Lemma mk_env_exp_ccache_equation :
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_het e cc2 with
         | Some (csop, lsop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lsop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lsop) := mk_env_ebinop op E2 g2 ls1 ls2 in
           (m2, add_het e csop lsop cc2, Eop, gop, catrev cs1 (catrev cs2 csop), lsop, csop)
         end
-      | QFBV.Eite c e1 e2 => 
+      | QFBV.Eite c e1 e2 =>
         let '(mc, ccc, Ec, gc, csc, lc) := mk_env_bexp_ccache m cc s E g c in
         let '(m1, cc1, E1, g1, cs1, ls1) := mk_env_exp_ccache mc ccc s Ec gc e1 in
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_het e cc2 with
-        | Some (csop, lsop) => 
+        | Some (csop, lsop) =>
           (m2, cc2, E2, g2, catrev csc (catrev cs1 (catrev cs2 csop)), lsop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lsop) := mk_env_ite E2 g2 lc ls1 ls2 in
-          (m2, add_het e csop lsop cc2, Eop, gop, 
+          (m2, add_het e csop lsop cc2, Eop, gop,
            catrev csc (catrev cs1 (catrev cs2 csop)), lsop, csop)
         end
       end
@@ -544,18 +615,18 @@ Lemma mk_env_exp_ccache_equation :
 Proof. move=> m cc s E g e. elim e; done. Qed.
 
 Lemma mk_env_bexp_ccache_equation :
-  forall m cc s E g e, 
+  forall m cc s E g e,
     mk_env_bexp_ccache m cc s E g e =
   (* = mk_env_bexp_nocbt = *)
-  let mk_env_bexp_nocbt m cc s E g e : 
+  let mk_env_bexp_nocbt m cc s E g e :
         vm * compcache * env * generator * cnf * literal * cnf :=
       match e with
-      | QFBV.Bfalse => 
+      | QFBV.Bfalse =>
         match find_hbt e cc with
         | Some (cs, l) => (m, cc, E, g, cs, l, cs)
         | None => (m, add_hbt e [::] lit_ff cc, E, g, [::], lit_ff, [::])
         end
-      | QFBV.Btrue => 
+      | QFBV.Btrue =>
         match find_hbt e cc with
         | Some (cs, l) => (m, cc, E, g, cs, l, cs)
         | None => (m, add_hbt e [::] lit_tt cc, E, g, [::], lit_tt, [::])
@@ -565,33 +636,33 @@ Lemma mk_env_bexp_ccache_equation :
         let '(m2, cc2, E2, g2, cs2, ls2) := mk_env_exp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
-        | None => 
+        | None =>
           let '(Eop, gop, csop, lop) := mk_env_bbinop op E2 g2 ls1 ls2 in
           (m2, add_hbt e csop lop cc2, Eop, gop, catrev cs1 (catrev cs2 csop), lop, csop)
         end
-      | QFBV.Blneg e1 => 
+      | QFBV.Blneg e1 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         match find_hbt e cc1 with
         | Some (csop, lop) => (m1, cc1, E1, g1, catrev cs1 csop, lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_lneg E1 g1 l1 in
                   (m1, add_hbt e csop lop cc1, Eop, gop, catrev cs1 csop, lop, csop)
         end
-      | QFBV.Bconj e1 e2 => 
+      | QFBV.Bconj e1 e2 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         let '(m2, cc2, E2, g2, cs2, l2) := mk_env_bexp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_conj E2 g2 l1 l2 in
-                  (m2, add_hbt e csop lop cc2, Eop, gop, 
+                  (m2, add_hbt e csop lop cc2, Eop, gop,
                    catrev cs1 (catrev cs2 csop), lop, csop)
         end
-      | QFBV.Bdisj e1 e2 => 
+      | QFBV.Bdisj e1 e2 =>
         let '(m1, cc1, E1, g1, cs1, l1) := mk_env_bexp_ccache m cc s E g e1 in
         let '(m2, cc2, E2, g2, cs2, l2) := mk_env_bexp_ccache m1 cc1 s E1 g1 e2 in
         match find_hbt e cc2 with
         | Some (csop, lop) => (m2, cc2, E2, g2, catrev cs1 (catrev cs2 csop), lop, csop)
         | None => let '(Eop, gop, csop, lop) := mk_env_disj E2 g2 l1 l2 in
-                  (m2, add_hbt e csop lop cc2, Eop, gop, 
+                  (m2, add_hbt e csop lop cc2, Eop, gop,
                    catrev cs1 (catrev cs2 csop), lop, csop)
         end
       end

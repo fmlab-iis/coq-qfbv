@@ -6,245 +6,13 @@ From BitBlasting Require Import Typ TypEnv State QFBV CNF BBExport.
 From BitBlasting Require Import AdhereConform.
 From BBCache Require Import BitBlastingInit.
 From BBCache Require Import BitBlastingCCacheExport BitBlastingCacheExport.
-From BBCache Require Import BitBlastingCacheFlatten.
-From BBCache Require Import CacheFlatten CacheHash QFBVHash.
+From BBCache Require Import CacheFlatten BitBlastingCCacheFlatten BitBlastingCacheFlatten.
+From BBCache Require Import CacheHash QFBVHash BitBlastingCCacheHash.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-
-Lemma mk_state_preserve_eval_exp E m1 m2 e :
-  bound_exp e m1 ->
-  vm_preserve m1 m2 ->
-  QFBV.eval_exp e (mk_state E m1) = QFBV.eval_exp e (mk_state E m2)
-with
-mk_state_preserve_eval_bexp E m1 m2 e :
-  bound_bexp e m1 ->
-  vm_preserve m1 m2 ->
-  QFBV.eval_bexp e (mk_state E m1) = QFBV.eval_bexp e (mk_state E m2).
-Proof.
-  (* mk_state_preserve_eval_exp *)
-  case: e => //=.
-  - move=> s Hmem Hpre. move: (SSAVM.Lemmas.mem_find_some Hmem) => [ls Hfind1].
-    move: (Hpre _ _ Hfind1) => Hfind2.
-    rewrite (mk_state_find E Hfind1) (mk_state_find E Hfind2). reflexivity.
-  - move=> op e Hbound1 Hpre.
-    rewrite (mk_state_preserve_eval_exp _ _ _ _ Hbound1 Hpre). reflexivity.
-  - move=> op e1 e2 /andP [Hbound1 Hbound2] Hpre.
-    rewrite (mk_state_preserve_eval_exp _ _ _ _ Hbound1 Hpre)
-            (mk_state_preserve_eval_exp _ _ _ _ Hbound2 Hpre). reflexivity.
-  - move=> e1 e2 e3 /andP [/andP [Hbound1 Hbound2] Hbound3] Hpre.
-    rewrite (mk_state_preserve_eval_bexp _ _ _ _ Hbound1 Hpre)
-            (mk_state_preserve_eval_exp _ _ _ _ Hbound2 Hpre)
-            (mk_state_preserve_eval_exp _ _ _ _ Hbound3 Hpre). reflexivity.
-  (* mk_state_preserve_eval_bexp *)
-  case: e => //=.
-  - move=> op e1 e2 /andP [Hbound1 Hbound2] Hpre.
-    rewrite (mk_state_preserve_eval_exp _ _ _ _ Hbound1 Hpre)
-            (mk_state_preserve_eval_exp _ _ _ _ Hbound2 Hpre). reflexivity.
-  - move=> e Hbound1 Hpre.
-    rewrite (mk_state_preserve_eval_bexp _ _ _ _ Hbound1 Hpre). reflexivity.
-  - move=> e1 e2 /andP [Hbound1 Hbound2] Hpre.
-    rewrite (mk_state_preserve_eval_bexp _ _ _ _ Hbound1 Hpre)
-            (mk_state_preserve_eval_bexp _ _ _ _ Hbound2 Hpre). reflexivity.
-  - move=> e1 e2 /andP [Hbound1 Hbound2] Hpre.
-    rewrite (mk_state_preserve_eval_bexp _ _ _ _ Hbound1 Hpre)
-            (mk_state_preserve_eval_bexp _ _ _ _ Hbound2 Hpre). reflexivity.
-Qed.
-
-Lemma bit_blast_exp_ccache_interp_cache_ct
-      TE E e im ic ig om oc og ocs olrs :
-  bit_blast_exp_ccache TE im ic ig e = (om, oc, og, ocs, olrs) ->
-  interp_cnf E ocs ->
-  CompCache.interp_cache_ct E ic ->
-  CompCache.interp_cache_ct E oc
-with
-bit_blast_bexp_ccache_interp_cache_ct
-  TE E e im ic ig om oc og ocs olr :
-  bit_blast_bexp_ccache TE im ic ig e = (om, oc, og, ocs, olr) ->
-  interp_cnf E ocs ->
-  CompCache.interp_cache_ct E ic ->
-  CompCache.interp_cache_ct E oc.
-Proof.
-  (* bit_blast_exp_ccache_interp_cache_ct *)
-  case: e => //=.
-  - move=> v. case: (CompCache.find_cet (QFBV.Evar v) ic).
-    + move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> _. by apply.
-    + case: (CompCache.find_het (QFBV.Evar v) ic).
-      * move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        exact: (CompCache.interp_cache_ct_add_cet _ _ Hic Hcs).
-      * case: (SSAVM.find v im).
-        -- move=> lrs. case=> ? ? ? ? ?; subst. move=> _ Hic.
-           exact: (CompCache.interp_cache_ct_add_cet _ _ Hic).
-        -- dcase (bit_blast_var TE ig v) => [[[g1 cs1] lrs1] Hbb1].
-           case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-           exact: (CompCache.interp_cache_ct_add_cet _ _ Hic Hcs).
-  - move=> bs. case: (CompCache.find_cet (QFBV.Econst bs) ic).
-    + move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> _. by apply.
-    + case: (CompCache.find_het (QFBV.Econst bs) ic).
-      * move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        exact: (CompCache.interp_cache_ct_add_cet _ _ Hic Hcs).
-      * case=> ? ? ? ? ?; subst. move=> _ Hic.
-        exact: (CompCache.interp_cache_ct_add_cet _ _ Hic).
-  - move=> op e. case: (CompCache.find_cet (QFBV.Eunop op e) ic).
-    + move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> _. by apply.
-    + dcase (bit_blast_exp_ccache TE im ic ig e) => [[[[[m1 c1] g1] cs1] lrs1] Hbb1].
-      case: (CompCache.find_het (QFBV.Eunop op e) c1).
-      * move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite interp_cnf_catrev in Hcs. move/andP: Hcs=> [Hcs1 Hcs].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * dcase (bit_blast_eunop op g1 lrs1) => [[[g2 cs2] lrs2] Hbb2].
-        case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 Hcs2].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs2).
-        apply (CompCache.interp_cache_ct_add_het).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  - move=> op e1 e2. case: (CompCache.find_cet (QFBV.Ebinop op e1 e2) ic).
-    + move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> _. by apply.
-    + dcase (bit_blast_exp_ccache TE im ic ig e1) => [[[[[m1 c1] g1] cs1] lrs1] Hbb1].
-      dcase (bit_blast_exp_ccache TE m1 c1 g1 e2) => [[[[[m2 c2] g2] cs2] lrs2] Hbb2].
-      case: (CompCache.find_het (QFBV.Ebinop op e1 e2) c2).
-      * move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs).
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * dcase (bit_blast_ebinop op g2 lrs1 lrs2) => [[[g3 cs3] lrs3] Hbb3].
-        case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs3]].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs3).
-        apply CompCache.interp_cache_ct_add_het.
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  - move=> e1 e2 e3. case: (CompCache.find_cet (QFBV.Eite e1 e2 e3) ic).
-    + move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> _. by apply.
-    + dcase (bit_blast_bexp_ccache TE im ic ig e1) => [[[[[m1 c1] g1] cs1] lrs1] Hbb1].
-      dcase (bit_blast_exp_ccache TE m1 c1 g1 e2) => [[[[[m2 c2] g2] cs2] lrs2] Hbb2].
-      dcase (bit_blast_exp_ccache TE m2 c2 g2 e3) => [[[[[m3 c3] g3] cs3] lrs3] Hbb3].
-      case: (CompCache.find_het (QFBV.Eite e1 e2 e3) c3).
-      * move=> [cs lrs]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs.
-        move/andP: Hcs => [Hcs1 /andP [Hcs2 /andP [Hcs3 Hcs]]].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs).
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb3 Hcs3).
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * dcase (bit_blast_ite g3 lrs1 lrs2 lrs3) => [[[g4 cs4] lrs4] Hbb4].
-        case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs.
-        move/andP: Hcs => [Hcs1 /andP [Hcs2 /andP [Hcs3 Hcs4]]].
-        apply: (CompCache.interp_cache_ct_add_cet _ _ _ Hcs4).
-        apply CompCache.interp_cache_ct_add_het.
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb3 Hcs3).
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  (* bit_blast_bexp_ccache_interp_cache_ct *)
-  case: e => //=.
-  - case: (CompCache.find_cbt QFBV.Bfalse ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + case: (CompCache.find_hbt QFBV.Bfalse ic).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hocs Hic.
-        exact: (CompCache.interp_cache_ct_add_cbt _ _ Hic Hocs).
-      * case=> ? ? ? ? ?; subst. move=> _ Hic.
-        apply: CompCache.interp_cache_ct_add_cbt; last by done.
-        apply CompCache.interp_cache_ct_add_hbt. assumption.
-  - case: (CompCache.find_cbt QFBV.Btrue ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + case: (CompCache.find_hbt QFBV.Btrue ic).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hocs Hic.
-        exact: (CompCache.interp_cache_ct_add_cbt _ _ Hic Hocs).
-      * case=> ? ? ? ? ?; subst. move=> _ Hic.
-        apply: CompCache.interp_cache_ct_add_cbt; last by done.
-        apply CompCache.interp_cache_ct_add_hbt. assumption.
-  - move=> op e1 e2. case: (CompCache.find_cbt (QFBV.Bbinop op e1 e2) ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + dcase (bit_blast_exp_ccache TE im ic ig e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
-      dcase (bit_blast_exp_ccache TE m1 c1 g1 e2) => [[[[[m2 c2] g2] cs2] ls2] Hbb2].
-      case: (CompCache.find_hbt (QFBV.Bbinop op e1 e2) c2).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * dcase (bit_blast_bbinop op g2 ls1 ls2) => [[[g3 cs3] ls3] Hbb3].
-        case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs3]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs3).
-        apply CompCache.interp_cache_ct_add_hbt.
-        apply: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_exp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  - move=> e. case: (CompCache.find_cbt (QFBV.Blneg e) ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + dcase (bit_blast_bexp_ccache TE im ic ig e) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
-      case: (CompCache.find_hbt (QFBV.Blneg e) c1).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 Hcs].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 Hcs].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply CompCache.interp_cache_ct_add_hbt.
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  - move=> e1 e2. case: (CompCache.find_cbt (QFBV.Bconj e1 e2) ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + dcase (bit_blast_bexp_ccache TE im ic ig e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
-      dcase (bit_blast_bexp_ccache TE m1 c1 g1 e2) => [[[[[m2 c2] g2] cs2] ls2] Hbb2].
-      case: (CompCache.find_hbt (QFBV.Bconj e1 e2) c2).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-  - move=> e1 e2. case: (CompCache.find_cbt (QFBV.Bdisj e1 e2) ic).
-    + move=> [cs lr]. case=> ? ? ? ? ?; subst. done.
-    + dcase (bit_blast_bexp_ccache TE im ic ig e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
-      dcase (bit_blast_bexp_ccache TE m1 c1 g1 e2) => [[[[[m2 c2] g2] cs2] ls2] Hbb2].
-      case: (CompCache.find_hbt (QFBV.Bdisj e1 e2) c2).
-      * move=> [cs lr]. case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-      * case=> ? ? ? ? ?; subst. move=> Hcs Hic.
-        rewrite !interp_cnf_catrev in Hcs. move/andP: Hcs => [Hcs1 /andP [Hcs2 Hcs]].
-        apply: (CompCache.interp_cache_ct_add_cbt _ _ _ Hcs).
-        apply: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb2 Hcs2).
-        exact: (bit_blast_bexp_ccache_interp_cache_ct
-                  _ _ _ _ _ _ _ _ _ _ _ Hbb1 Hcs1 Hic).
-Qed.
 
 (* ==== bit_blast_exp_hcache and bit_blast_bexp_hcache ==== *)
 
@@ -367,37 +135,14 @@ bit_blast_bexp_hcache E m c g (e : hbexp) : vm * cache * generator * seq cnf * l
   end.
 
 
-
 (* ==== relation between bit_blast_exp_hcache and bit_blast_exp_fcache ==== *)
 
 Section WellFormedCache.
 
   Import QFBV.
 
-  Definition well_formed_cet (ht : SimpTableHash.simptable) : Prop :=
-    forall (e : hexp) r, SimpTableHash.find_et e ht = Some r ->
-                         well_formed_hexp e.
-
-  Definition well_formed_cbt (ht : SimpTableHash.simptable) : Prop :=
-    forall (e : hbexp) r, SimpTableHash.find_bt e ht = Some r ->
-                          well_formed_hbexp e.
-
-  Definition well_formed_ct (ht : SimpTableHash.simptable) : Prop :=
-    well_formed_cet ht /\ well_formed_cbt ht.
-
-  Definition well_formed_het (ht : CompTableHash.comptable) : Prop :=
-    forall (e : hexp) r, CompTableHash.find_et e ht = Some r ->
-                         well_formed_hexp e.
-
-  Definition well_formed_hbt (ht : CompTableHash.comptable) : Prop :=
-    forall (e : hbexp) r, CompTableHash.find_bt e ht = Some r ->
-                          well_formed_hbexp e.
-
-  Definition well_formed_ht (ht : CompTableHash.comptable) : Prop :=
-    well_formed_het ht /\ well_formed_hbt ht.
-
   Definition well_formed_cache (hc : CacheHash.cache) : Prop :=
-    well_formed_ct (CacheHash.ct hc) /\ well_formed_ht (CacheHash.ht hc).
+    well_formed_st (CacheHash.ct hc) /\ well_formed_ct (CacheHash.ht hc).
 
   Lemma well_formed_cache_find_cet hc e r :
     well_formed_cache hc -> CacheHash.find_cet e hc = Some r ->
@@ -1336,7 +1081,7 @@ Corollary bit_blast_bexp_hcache_sat_sound_and_complete E (e : QFBV.bexp) m c g c
   bit_blast_bexp_hcache
     E init_vm init_hcache init_gen (hash_bexp e) = (m, c, g, cs, lr) ->
   QFBV.well_formed_bexp e E ->
-  ((exists s, AdhereConform.conform_bexp e s E /\ QFBV.eval_bexp e s) 
+  ((exists s, AdhereConform.conform_bexp e s E /\ QFBV.eval_bexp e s)
    <->
    (exists (E : env), interp_cnf E (add_prelude ([:: lr]::(tflatten cs))))).
 Proof.
@@ -1907,6 +1652,38 @@ Proof.
   exact: (mk_conjs_rec_bound Hbb_e Hbb_es).
 Qed.
 
+Lemma mk_conjs_rec_conform e es s E :
+  conform_bexp (mk_conjs_rec e es) s E =
+  conform_bexp e s E && conform_bexp (mk_conjs es) s E.
+Proof.
+  move: es e. apply: last_ind => /=.
+  - move=> e. rewrite andbT. reflexivity.
+  - move=> es le IH e. rewrite mk_conjs_rec_rcons /=. rewrite {}IH.
+    case: (conform_bexp e s E) => //=. rewrite mk_conjs_rcons. by case: es.
+Qed.
+
+Lemma mk_conjs_conform es s E :
+  conform_bexp (mk_conjs es) s E = conform_bexps es s E.
+Proof.
+  elim: es => [| e es IH] //=. rewrite mk_conjs_rec_conform IH. reflexivity.
+Qed.
+
+Lemma mk_conjs_rec_well_formed TE e es :
+  QFBV.well_formed_bexp (mk_conjs_rec e es) TE =
+  QFBV.well_formed_bexp e TE && QFBV.well_formed_bexps es TE.
+Proof.
+  move: es. apply: last_ind => /=.
+  - rewrite andbT. reflexivity.
+  - move=> es le IH. rewrite mk_conjs_rec_rcons /=. rewrite IH.
+    rewrite QFBV.well_formed_bexps_rcons. rewrite andbA. reflexivity.
+Qed.
+
+Lemma mk_conjs_well_formed TE es :
+  QFBV.well_formed_bexp (mk_conjs es) TE = QFBV.well_formed_bexps es TE.
+Proof.
+  case: es => [| e es] //=. rewrite mk_conjs_rec_well_formed. reflexivity.
+Qed.
+
 
 
 Definition size1 {A : Type} (s : seq A) :=
@@ -2013,7 +1790,7 @@ Proof.
     dcase (bit_blast_bexp_cache TE hm1 c1 hg1 hd) =>
     [[[[[om oc] og] ocs] olr] Hbb_hd].
     move: (bit_blast_bexp_fcache_valid Hccfc1 Hfbb_hd Hbb_hd) =>
-    [? [Hccofc [? [Heqs ?]]]]; subst.
+    [? [Hccofc [? [Heqs [Heqn ?]]]]]; subst.
     move: (bit_blast_bexp_cache_is_bit_blast_bexp_ccache Hccc1 Hbb_hd)
     => [cicc [Hcbb_hd Hccoc]].
     move: (bit_blast_hbexps_hcache_conjs_adhere
@@ -2120,7 +1897,7 @@ Proof.
     dcase (bit_blast_bexp_cache TE hm1 c1 hg1 hd) =>
     [[[[[om oc] og] ocs] olr] Hbb_hd].
     move: (bit_blast_bexp_fcache_valid Hccfc1 Hfbb_hd Hbb_hd) =>
-    [? [Hccofc [? [Heqs ?]]]]; subst.
+    [? [Hccofc [? [Heqs [Heqn ?]]]]]; subst.
     move: (bit_blast_bexp_cache_is_bit_blast_bexp_ccache Hccc1 Hbb_hd)
     => [cicc [Hcbb_hd Hccoc]].
     move: (bit_blast_hbexps_hcache_conjs_adhere
@@ -2186,6 +1963,9 @@ Proof.
             (init_interp_cache_ct E) (init_correct init_vm)).
 Qed.
 
+
+(* Soundness of bit_blast_hbexps_hcache_conjs *)
+
 Lemma bit_blast_hbexps_hcache_conjs_sat_sound TE es m c g cs lrs :
   bit_blast_hbexps_hcache_conjs
     TE init_vm init_hcache init_gen (mapr hash_bexp es) = (m, c, g, cs, lrs) ->
@@ -2198,6 +1978,7 @@ Proof.
   - exact: (bit_blast_hbexps_hcache_conjs_conform _ Hhbb).
   - exact: (bit_blast_hbexps_hcache_conjs_mk_state Hhbb Hwf Hcs).
 Qed.
+
 
 
 Definition bit_blast_bexps_hcache_conjs TE es : cnf :=
@@ -2218,3 +1999,397 @@ Proof.
            (mapr hash_bexp es)) => [[[[[m c] g] cs] lrs] Hbb].
   move=> Hsat. exact: (bit_blast_hbexps_hcache_conjs_sat_sound Hbb Hwf Hsat).
 Qed.
+
+
+(**)
+
+Lemma init_hcache_hccache_compatible :
+  compatible init_hcache init_hccache.
+Proof. done. Qed.
+
+Ltac dcase_bb_base :=
+  match goal with
+  | |- context f [bit_blast_var ?E ?g ?v] =>
+    let g' := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    let H := fresh in
+    dcase (bit_blast_var E g v) => [[[g' cs] lrs] H]
+  | |- context f [bit_blast_eunop ?op ?g ?lrs] =>
+    let g' := fresh in
+    let cs' := fresh in
+    let lrs' := fresh in
+    let H := fresh in
+    dcase (bit_blast_eunop op g lrs) => [[[g' cs'] lrs'] H]
+  | |- context f [bit_blast_ebinop ?op ?g ?lrs1 ?lrs2] =>
+    let g' := fresh in
+    let cs' := fresh in
+    let lrs' := fresh in
+    let H := fresh in
+    dcase (bit_blast_ebinop op g lrs1 lrs2) => [[[g' cs'] lrs'] H]
+  | |- context f [bit_blast_ite ?g ?lr ?ls1 ?ls2] =>
+    let g' := fresh in
+    let cs' := fresh in
+    let lr' := fresh in
+    let H := fresh in
+    dcase (bit_blast_ite g lr ls1 ls2) => [[[g' cs'] lr'] H]
+  | |- context f [bit_blast_bbinop ?op ?g ?lrs1 ?lrs2] =>
+    let g' := fresh in
+    let cs' := fresh in
+    let lr' := fresh in
+    let H := fresh in
+    dcase (bit_blast_bbinop op g lrs1 lrs2) => [[[g' cs'] lr'] H]
+  end.
+
+Ltac dcase_bb_cache :=
+  match goal with
+  (**)
+  | |- context f [find_cet ?e ?c] =>
+    let Hfe_cet := fresh in
+    let lrs := fresh in
+    dcase (find_cet e c); case=> [lrs|] Hfe_cet
+  | |- context f [find_cbt ?e ?c] =>
+    let Hfe_cbt := fresh in
+    let lr := fresh in
+    dcase (find_cbt e c); case=> [lr|] Hfe_cbt
+  | |- context f [find_het ?e ?c] =>
+    let Hfe_het := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    dcase (find_het e c); case=> [[cs lrs]|] Hfe_het
+  | |- context f [find_hbt ?e ?c] =>
+    let Hfe_hbt := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    dcase (find_hbt e c); case=> [[cs lr]|] Hfe_hbt
+  (**)
+  | |- context f [SSAVM.find ?v ?m] =>
+    let lrs := fresh in
+    case: (SSAVM.find v m) => [lrs|]
+  | |- context f [bit_blast_exp_hcache ?E ?m ?ec ?g ?e] =>
+    let m' := fresh in
+    let ec' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    let H := fresh in
+    dcase (bit_blast_exp_hcache E m ec g e) =>
+    [[[[[m' ec'] g'] cs] lrs] H]
+  | |- context f [bit_blast_bexp_hcache ?E ?m ?ec ?g ?e] =>
+    let m' := fresh in
+    let ec' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    let H := fresh in
+    dcase (bit_blast_bexp_hcache E m ec g e) =>
+    [[[[[m' ec'] g'] cs] lr] H]
+  | |- context f [bit_blast_exp_fcache ?E ?m ?c ?g ?e] =>
+    let m' := fresh in
+    let c' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    let H := fresh in
+    dcase (bit_blast_exp_fcache E m c g e) =>
+    [[[[[m' c'] g'] cs] lrs] H]
+  | |- context f [bit_blast_bexp_fcache ?E ?m ?c ?g ?e] =>
+    let m' := fresh in
+    let c' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    let H := fresh in
+    dcase (bit_blast_bexp_fcache E m c g e) =>
+    [[[[[m' c'] g'] cs] lr] H]
+  (**)
+  | |- _ => dcase_bb_base
+  end.
+
+Ltac dcase_bb_ccache :=
+  match goal with
+  | |- context f [find_cet ?e ?c] =>
+    let Hfe_cet := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    dcase (find_cet e c); case=> [[cs lrs]|] Hfe_cet
+  | |- context f [find_cbt ?e ?c] =>
+    let Hfe_cbt := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    dcase (find_cbt e c); case=> [[cs lr]|] Hfe_cbt
+  | |- context f [find_het ?e ?c] =>
+    let Hfe_het := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    dcase (find_het e c); case=> [[cs lrs]|] Hfe_het
+  | |- context f [find_hbt ?e ?c] =>
+    let Hfe_hbt := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    dcase (find_hbt e c); case=> [[cs lr]|] Hfe_hbt
+  (**)
+  | |- context f [SSAVM.find ?v ?m] =>
+    let lrs := fresh in
+    case: (SSAVM.find v m) => [lrs|]
+  | |- context f [bit_blast_exp_hccache ?E ?m ?ec ?g ?e] =>
+    let m' := fresh in
+    let ec' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    let H := fresh in
+    dcase (bit_blast_exp_hccache E m ec g e) =>
+    [[[[[m' ec'] g'] cs] lrs] H]
+  | |- context f [bit_blast_bexp_hccache ?E ?m ?ec ?g ?e] =>
+    let m' := fresh in
+    let ec' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    let H := fresh in
+    dcase (bit_blast_bexp_hccache E m ec g e) =>
+    [[[[[m' ec'] g'] cs] lr] H]
+  | |- context f [bit_blast_exp_fccache ?E ?m ?c ?g ?e] =>
+    let m' := fresh in
+    let c' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lrs := fresh in
+    let H := fresh in
+    dcase (bit_blast_exp_fccache E m c g e) =>
+    [[[[[m' c'] g'] cs] lrs] H]
+  | |- context f [bit_blast_bexp_fccache ?E ?m ?c ?g ?e] =>
+    let m' := fresh in
+    let c' := fresh in
+    let g' := fresh in
+    let cs := fresh in
+    let lr := fresh in
+    let H := fresh in
+    dcase (bit_blast_bexp_fccache E m c g e) =>
+    [[[[[m' c'] g'] cs] lr] H]
+  (**)
+  | |- _ => dcase_bb_base
+  end.
+
+Ltac myauto ::=
+  repeat
+    match goal with
+    | |- _ /\ _ => split
+    | |- ?e = ?e => reflexivity
+    | H : ?p |- ?p => assumption
+    | |- (_, _, _, _, _, _) = (_, _, _, _, _, _) -> _ =>
+      case=> ? ? ? ? ? ?; subst
+    | |- (_, _, _, _, _) = (_, _, _, _, _) -> _ =>
+      case=> ? ? ? ? ?; subst
+    | H1 : ?e = Some _, H2 : ?e = None |- _ =>
+      rewrite H1 in H2; discriminate
+    (**)
+    | Hc : compatible ?oc ?cc,
+      Hf : find_cet ?e ?oc = Some _
+      |- context [CCacheHash.find_cet ?e ?cc] =>
+      let cs := fresh in
+      let H := fresh in
+      (move: (CacheHash.compatible_find_cet_some Hc Hf) => [cs H]);
+      rewrite H; clear Hf
+    | Hc : compatible ?oc ?cc,
+      Hf : find_cet ?e ?oc = None
+      |- context [CCacheHash.find_cet ?e ?cc] =>
+      let H := fresh in
+      (move: (CacheHash.compatible_find_cet_none Hc Hf) => H);
+      rewrite H; clear Hf
+    | Hc : compatible ?oc ?cc,
+      Hf : find_cbt ?e ?oc = Some _
+      |- context [CCacheHash.find_cbt ?e ?cc] =>
+      let cs := fresh in
+      let H := fresh in
+      (move: (CacheHash.compatible_find_cbt_some Hc Hf) => [cs H]);
+      rewrite H; clear Hf
+    | Hc : compatible ?oc ?cc,
+      Hf : find_cbt ?e ?oc = None
+      |- context [CCacheHash.find_cbt ?e ?cc] =>
+      let H := fresh in
+      (move: (CacheHash.compatible_find_cbt_none Hc Hf) => H);
+      rewrite H; clear Hf
+    | Hc : compatible ?oc ?cc |- context [CCacheHash.find_het ?e ?cc] =>
+      rewrite -(compatible_find_het e Hc)
+    | Hc : compatible ?oc ?cc |- context [CCacheHash.find_hbt ?e ?cc] =>
+      rewrite -(compatible_find_hbt e Hc)
+    (**)
+    | Hf : find_cet ?e ?oc = _ |- context [find_cet ?e ?oc] => rewrite Hf
+    | Hf : find_cbt ?e ?oc = _ |- context [find_cbt ?e ?oc] => rewrite Hf
+    | Hf : find_het ?e ?oc = _ |- context [find_het ?e ?oc] => rewrite Hf
+    | Hf : find_hbt ?e ?oc = _ |- context [find_hbt ?e ?oc] => rewrite Hf
+    (* apply induction hypothesis *)
+    | bit_blast_exp_hcache_is_bit_blast_exp_hccache :
+        (forall (TE : SSATE.env)
+                (m : vm) (c : cache)
+                (cc : CCacheHash.ccache)
+                (g : generator) (e : hexp)
+                (om : vm) (oc : cache)
+                (og : generator)
+                (ocs : seq cnf) (olrs : word),
+            compatible c cc ->
+            bit_blast_exp_hcache TE m c g e =
+            (om, oc, og, ocs, olrs) ->
+            exists occ : CCacheHash.ccache,
+              bit_blast_exp_hccache TE m cc g e =
+              (om, occ, og, ocs, olrs) /\
+              compatible oc occ),
+        Hc : compatible ?c ?cc,
+        Hbb : bit_blast_exp_hcache ?TE ?m ?c ?g ?e = _ |- _ =>
+      let occ := fresh in
+      let Hcbb := fresh in
+      let Hcc := fresh in
+      move: (bit_blast_exp_hcache_is_bit_blast_exp_hccache
+               _ _ _ _ _ _ _ _ _ _ _ Hc Hbb) => [occ [Hcbb Hcc]]; clear Hbb
+    | bit_blast_bexp_hcache_is_bit_blast_bexp_hccache :
+        (forall (TE : SSATE.env)
+                (m : vm) (c : cache)
+                (cc : CCacheHash.ccache)
+                (g : generator)
+                (e : hbexp) (om : vm)
+                (oc : cache) (og : generator)
+                (ocs : seq cnf)
+                (olrs : literal),
+            compatible c cc ->
+            bit_blast_bexp_hcache TE m c g e =
+            (om, oc, og, ocs, olrs) ->
+            exists occ : CCacheHash.ccache,
+              bit_blast_bexp_hccache TE m cc g e =
+              (om, occ, og, ocs, olrs) /\
+              compatible oc occ),
+        Hc : compatible ?c ?cc,
+        Hbb : bit_blast_bexp_hcache ?TE ?m ?c ?g ?e = _ |- _ =>
+      let occ := fresh in
+      let Hcbb := fresh in
+      let Hcc := fresh in
+      move: (bit_blast_bexp_hcache_is_bit_blast_bexp_hccache
+               _ _ _ _ _ _ _ _ _ _ _ Hc Hbb) => [occ [Hcbb Hcc]]; clear Hbb
+    (**)
+    | H1 : bit_blast_eunop ?op ?g ?ls = _,
+      H2 : bit_blast_eunop ?op ?g ?ls = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ?; subst
+    | H1 : bit_blast_ebinop ?op ?g ?ls1 ?ls2 = _,
+      H2 : bit_blast_ebinop ?op ?g ?ls1 ?ls2 = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ?; subst
+    | H1 : bit_blast_ite ?g ?c ?ls1 ?ls2 = _,
+      H2 : bit_blast_ite ?g ?c ?ls1 ?ls2 = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ?; subst
+    | H1 : bit_blast_exp_hccache ?TE ?m ?cc ?g ?e = _,
+      H2 : bit_blast_exp_hccache ?TE ?m ?cc ?g ?e = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ? ? ?; subst
+    | H1 : bit_blast_bexp_hccache ?TE ?m ?cc ?g ?e = _,
+      H2 : bit_blast_bexp_hccache ?TE ?m ?cc ?g ?e = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ? ? ?; subst
+    | H1 : bit_blast_bbinop ?op ?g ?ls1 ?ls2 = _,
+      H2 : bit_blast_bbinop ?op ?g ?ls1 ?ls2 = _ |- _ =>
+      (rewrite H1 in H2); case: H2 => ? ? ?; subst
+    (**)
+    | |- exists occ : CCacheHash.ccache,
+        (?om, ?cc, ?og, ?ocs, ?olrs) = (?om, occ, ?og, ?ocs, ?olrs) /\ compatible _ occ =>
+      exists cc; (split; first try done)
+    | |- compatible (add_cet ?e ?olrs ?c) (CCacheHash.add_cet ?e ?ocs ?olrs ?cc) =>
+      apply: compatible_add_cet
+    | |- compatible (add_cbt ?e ?olr ?c) (CCacheHash.add_cbt ?e ?ocs ?olrb ?cc) =>
+      apply: compatible_add_cbt
+    | |- compatible (add_het ?e ?ocs ?olrs ?c) (CCacheHash.add_het ?e ?ocs ?olrs ?cc) =>
+      apply: compatible_add_het
+    | |- compatible (add_hbt ?e ?ocs ?olr ?c) (CCacheHash.add_hbt ?e ?ocs ?olr ?cc) =>
+      apply: compatible_add_hbt
+    (**)
+    | |- _ => dcase_bb_cache || dcase_bb_ccache
+    end.
+
+Lemma bit_blast_exp_hcache_is_bit_blast_exp_hccache
+      TE m c cc g e om oc og ocs olrs :
+  CacheHash.compatible c cc ->
+  bit_blast_exp_hcache TE m c g e = (om, oc, og, ocs, olrs) ->
+  exists occ,
+    bit_blast_exp_hccache TE m cc g e = (om, occ, og, ocs, olrs)
+    /\ CacheHash.compatible oc occ
+with
+  bit_blast_bexp_hcache_is_bit_blast_bexp_hccache
+      TE m c cc g e om oc og ocs olrs :
+  CacheHash.compatible c cc ->
+  bit_blast_bexp_hcache TE m c g e = (om, oc, og, ocs, olrs) ->
+  exists occ,
+    bit_blast_bexp_hccache TE m cc g e = (om, occ, og, ocs, olrs)
+    /\ CacheHash.compatible oc occ.
+Proof.
+  (* bit_blast_exp_hcache_is_bit_blast_exp_hccache *)
+  case: e. case=> //=.
+  - move=> v z Hcc. by myauto.
+  - move=> bs z Hcc. by myauto.
+  - move=> op e z Hcc. by myauto.
+  - move=> op e1 e2 z Hcc. by myauto.
+  - move=> e1 e2 e3 z Hcc. by myauto.
+  (* bit_blast_bexp_hcache_is_bit_blast_bexp_hccache *)
+  case: e. case=> //=.
+  - move=> z Hcc. by myauto.
+  - move=> z Hcc. by myauto.
+  - move=> op e1 e2 z Hcc. by myauto.
+  - move=> e z Hcc. by myauto.
+  - move=> e1 e2 z Hcc. by myauto.
+  - move=> e1 e2 z Hcc. by myauto.
+Qed.
+
+Lemma bit_blast_hbexps_hcache_conjs_rec_is_bit_blast_hbexps_hccache_conjs_rec
+      TE m c cc g rcs rlrs es om oc og ocs olrs :
+  CacheHash.compatible c cc ->
+  bit_blast_hbexps_hcache_conjs_rec TE m c g rcs rlrs es = (om, oc, og, ocs, olrs) ->
+  exists occ,
+    bit_blast_hbexps_hccache_conjs_rec TE m cc g rcs rlrs es = (om, occ, og, ocs, olrs)
+    /\ CacheHash.compatible oc occ.
+Proof.
+  elim: es m c cc g rcs rlrs om oc og ocs olrs
+  => [| e es IH] //= im ic icc ig ircs irlrs om oc og ocs olrs Hcc.
+  - case=> ? ? ? ? ?; subst. exists icc. done.
+  - dcase (bit_blast_bexp_hcache TE im ic ig e) => [[[[[m1 c1] g1] cs1] lrs1] Hbb1] Hbb2.
+    move: (bit_blast_bexp_hcache_is_bit_blast_bexp_hccache Hcc Hbb1) => [cc1 [Hcbb1 Hcc1]].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Hcc1 Hbb2) => [cc2 [Hcbb2 Hcc2]].
+    exists cc2. rewrite Hcbb1 Hcbb2. done.
+Qed.
+
+Lemma bit_blast_hbexps_hcache_conjs_is_bit_blast_hbexps_hccache_conjs
+      TE m c cc g es om oc og ocs olrs :
+  CacheHash.compatible c cc ->
+  bit_blast_hbexps_hcache_conjs TE m c g es = (om, oc, og, ocs, olrs) ->
+  exists occ,
+    bit_blast_hbexps_hccache_conjs TE m cc g es = (om, occ, og, ocs, olrs)
+    /\ CacheHash.compatible oc occ.
+Proof. exact: bit_blast_hbexps_hcache_conjs_rec_is_bit_blast_hbexps_hccache_conjs_rec. Qed.
+
+
+
+(* Completeness of bit_blast_hbexps_hcache_conjs *)
+
+
+Lemma bit_blast_hbexps_hcache_conjs_sat_complete TE es m c g cs lrs :
+  bit_blast_hbexps_hcache_conjs
+    TE init_vm init_hcache init_gen (mapr hash_bexp es) = (m, c, g, cs, lrs) ->
+  QFBV.well_formed_bexps es TE ->
+  (exists s, AdhereConform.conform_bexps es s TE /\
+             QFBV.eval_bexp (mk_conjs es) s) ->
+  (sat (add_prelude (tflatten (lrs::cs)))).
+Proof.
+  move=> Hbb Hwf Hev.
+  move: (bit_blast_hbexps_hcache_conjs_is_bit_blast_hbexps_hccache_conjs
+           init_hcache_hccache_compatible Hbb) => [occ [Hcbb Hcocc]].
+  exact: (bit_blast_hbexps_hccache_conjs_sat_complete Hcbb Hwf Hev).
+Qed.
+
+Theorem bit_blast_bexps_hcache_conjs_sat_complete TE es :
+  QFBV.well_formed_bexps es TE ->
+  (exists s, AdhereConform.conform_bexps es s TE /\
+             QFBV.eval_bexp (mk_conjs es) s) ->
+  (sat (bit_blast_bexps_hcache_conjs TE es)).
+Proof.
+  move=> Hwf. rewrite /bit_blast_bexps_hcache_conjs.
+  dcase (bit_blast_hbexps_hcache_conjs
+           TE init_vm init_hcache init_gen
+           (mapr hash_bexp es)) => [[[[[m c] g] cs] lrs] Hbb].
+  move=> Hev.
+  exact: (bit_blast_hbexps_hcache_conjs_sat_complete Hbb Hwf Hev).
+Qed.
+

@@ -552,3 +552,53 @@ Proof.
   move=> Hgtt Hgls1 Hgls2.
     by apply: Hsat_zip; t_auto_newer.
 Qed.
+
+Lemma mk_env_eq_neq_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_eq_neq_zip E1 g lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_eq_neq_zip E2 g lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: lsp E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 =>
+  [| [l1 l2] lsp IH] //= E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - rewrite (env_equal_interp_lit l1 Heq) (env_equal_interp_lit l2 Heq).
+    dcase (mk_env_eq_neq_zip (env_upd E1 g (xorb (interp_lit E2 l1) (interp_lit E2 l2)))
+                             (g + 1)%positive lsp) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hbb_tl1].
+    dcase (mk_env_eq_neq_zip (env_upd E2 g (xorb (interp_lit E2 l1) (interp_lit E2 l2)))
+                             (g + 1)%positive lsp) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hbb_tl2].
+    case=> ? ? ? ?; case=> ? ? ? ?; subst.
+    move: (env_equal_upd g (xorb (interp_lit E2 l1) (interp_lit E2 l2)) Heq) => Heq1.
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Heq1 Hbb_tl1 Hbb_tl2) => [Heq2 [? [? ?]]]; subst.
+    done.
+Qed.
+
+Lemma mk_env_eq_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_eq_zip E1 g lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_eq_zip E2 g lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_eq_zip => Heq. dcase (gen g) => [[g1 r1] Hg1].
+  dcase (mk_env_eq_neq_zip
+           (env_upd E1 (var_of_lit r1)
+                    (interp_word E1 (unzip1 lsp) == interp_word E1 (unzip2 lsp)))
+           g1 lsp) => [[[[E_aux1 g_aux1] cs_aux1] lrs_aux1] Hbb_aux1].
+  dcase (mk_env_eq_neq_zip
+           (env_upd E2 (var_of_lit r1)
+                    (interp_word E2 (unzip1 lsp) == interp_word E2 (unzip2 lsp)))
+           g1 lsp) => [[[[E_aux2 g_aux2] cs_aux2] lrs_aux2] Hbb_aux2].
+  case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  rewrite !(env_equal_interp_word _ Heq) in Hbb_aux1.
+  move: (env_equal_upd (var_of_lit lrs2)
+                       (interp_word E2 (unzip1 lsp) == interp_word E2 (unzip2 lsp)) Heq) => Heq1.
+  move: (mk_env_eq_neq_zip_env_equal Heq1 Hbb_aux1 Hbb_aux2) => [Heq2 [? [? ?]]]; subst.
+  done.
+Qed.
+
+Lemma mk_env_eq_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_eq E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_eq E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_eq_zip_env_equal. Qed.

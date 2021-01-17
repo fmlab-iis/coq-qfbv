@@ -988,4 +988,55 @@ Proof.
     rewrite (env_preserve_cnf (mk_env_and_preserve Hmkand) Hcsnot) Hcnfnot.
     rewrite (env_preserve_cnf (mk_env_add_preserve Hmkadd) Hcsand) Hcnfand//.
 Qed.
-  
+
+Lemma mk_env_smod_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_smod E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_smod E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_smod => Heq.
+  dcase (mk_env_srem E1 g ls1 ls2) => [[[[E_srem1 g_srem1] cs_srem1] lrs_srem1] Hsrem1].
+  dcase (mk_env_srem E2 g ls1 ls2) => [[[[E_srem2 g_srem2] cs_srem2] lrs_srem2] Hsrem2].
+  move: (mk_env_srem_env_equal Heq Hsrem1 Hsrem2) => {Heq Hsrem1 Hsrem2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_eq E_srem1 g_srem2 [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq1 g_eq1] cs_eq1] lrs_eq1] Heq1].
+  dcase (mk_env_eq E_srem2 g_srem2 [:: (splitmsl ls1).2] [:: (splitmsl ls2).2])
+  => [[[[E_eq2 g_eq2] cs_eq2] lrs_eq2] Heq2].
+  move: (mk_env_eq_env_equal Heq Heq1 Heq2) => {Heq Heq1 Heq2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_eq E_eq1 g_eq2 lrs_srem2 (copy (size lrs_srem2) lit_ff))
+  => [[[[E_eq3 g_eq3] cs_eq3] lrs_eq3] Heq3].
+  dcase (mk_env_eq E_eq2 g_eq2 lrs_srem2 (copy (size lrs_srem2) lit_ff))
+  => [[[[E_eq4 g_eq4] cs_eq4] lrs_eq4] Heq4].
+  move: (mk_env_eq_env_equal Heq Heq3 Heq4) => {Heq Heq3 Heq4} [Heq [? [? ?]]]; subst.
+  case: ((lrs_eq2 == lit_tt) || (lrs_eq4 == lit_tt));
+    last case: ((lrs_eq2 == lit_ff) && (lrs_eq4 == lit_ff)).
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_add E_eq3 g_eq4 lrs_srem2 ls2)
+    => [[[[E_add1 g_add1] cs_add1] lrs_add1] Hadd1].
+    dcase (mk_env_add E_eq4 g_eq4 lrs_srem2 ls2)
+    => [[[[E_add2 g_add2] cs_add2] lrs_add2] Hadd2].
+    move: (mk_env_add_env_equal Heq Hadd1 Hadd2) => {Heq Hadd1 Hadd2} [Heq [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_or E_eq3 g_eq4 (copy (size ls2) lrs_eq2) (copy (size ls2) lrs_eq4))
+    => [[[[E_or1 g_or1] cs_or1] lrs_or1] Hor1].
+    dcase (mk_env_or E_eq4 g_eq4 (copy (size ls2) lrs_eq2) (copy (size ls2) lrs_eq4))
+    => [[[[E_or2 g_or2] cs_or2] lrs_or2] Hor2].
+    move: (mk_env_or_env_equal Heq Hor1 Hor2) => {Heq Hor1 Hor2} [Heq [? [? ?]]]; subst.
+    dcase (mk_env_not E_or1 g_or2 lrs_or2)
+    => [[[[E_not1 g_not1] cs_not1] lrs_not1] Hnot1].
+    dcase (mk_env_not E_or2 g_or2 lrs_or2)
+    => [[[[E_not2 g_not2] cs_not2] lrs_not2] Hnot2].
+    move: (mk_env_not_env_equal Heq Hnot1 Hnot2) => {Heq Hnot1 Hnot2} [Heq [? [? ?]]]; subst.
+    dcase (mk_env_and E_not1 g_not2 ls2 lrs_not2)
+    => [[[[E_and1 g_and1] cs_and1] lrs_and1] Hand1].
+    dcase (mk_env_and E_not2 g_not2 ls2 lrs_not2)
+    => [[[[E_and2 g_and2] cs_and2] lrs_and2] Hand2].
+    move: (mk_env_and_env_equal Heq Hand1 Hand2) => {Heq Hand1 Hand2} [Heq [? [? ?]]]; subst.
+    dcase (mk_env_add E_and1 g_and2 lrs_srem2 lrs_and2)
+    => [[[[E_add1 g_add1] cs_add1] lrs_add1] Hadd1].
+    dcase (mk_env_add E_and2 g_and2 lrs_srem2 lrs_and2)
+    => [[[[E_add2 g_add2] cs_add2] lrs_add2] Hadd2].
+    move: (mk_env_add_env_equal Heq Hadd1 Hadd2) => {Heq Hadd1 Hadd2} [Heq [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

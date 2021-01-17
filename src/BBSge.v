@@ -48,7 +48,7 @@ Lemma mk_env_sge_newer_res E g ls1 ls2 E' g' cs lr:
   newer_than_lit g' lr.
 Proof.
   rewrite /mk_env_sge. exact: mk_env_sle_newer_res.
-Qed.  
+Qed.
 
 Lemma mk_env_sge_newer_cnf E g ls1 ls2 E' g' cs lr:
   mk_env_sge E g ls1 ls2 = (E', g', cs, lr) ->
@@ -69,10 +69,17 @@ Qed.
 
 Lemma mk_env_sge_sat E g ls1 ls2 E' g' cs lr:
   mk_env_sge E g ls1 ls2 = (E', g', cs, lr) ->
-  newer_than_lit g lit_tt ->  
+  newer_than_lit g lit_tt ->
   newer_than_lits g ls1 -> newer_than_lits g ls2 ->
   interp_cnf E' cs.
 Proof.
   rewrite /mk_env_sge => Hmksle Hgt Hgl1 Hgl2.
   exact: (mk_env_sle_sat Hmksle Hgt Hgl2 Hgl1).
 Qed.
+
+Lemma mk_env_sge_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_sge E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_sge E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_sle_env_equal. Qed.

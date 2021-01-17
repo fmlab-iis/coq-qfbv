@@ -778,3 +778,54 @@ Section BBUmulo.
         case :(interp_lit E_mul (msl lrs_mul)).
   Qed.
 End BBUmulo.
+
+Lemma mk_env_umulo_rec_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lr1 lr2 lrao1 lrao2 :
+  env_equal E1 E2 ->
+  mk_env_umulo_rec_zip E1 g lsp = (E1', g1', cs1, lr1, lrao1) ->
+  mk_env_umulo_rec_zip E2 g lsp = (E2', g2', cs2, lr2, lrao2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2 /\ lrao1 = lrao2.
+Proof.
+  elim: lsp E1 E2 g E1' E2' g1' g2' cs1 cs2 lr1 lr2 lrao1 lrao2 =>
+  [| [l1 l2] lsp IH] /= E1 E2 g E1' E2' g1' g2' cs1 cs2 lr1 lr2 lrao1 lrao2 Heq.
+  - case=> ? ? ? ? ?; case=> ? ? ? ? ?; subst. done.
+  - dcase (mk_env_umulo_rec_zip E1 g lsp)
+    => [[[[[E_rec1 g_rec1] cs_rec1] lr_rec1] lrao_rec1] Hrec1].
+    dcase (mk_env_umulo_rec_zip E2 g lsp)
+    => [[[[[E_rec2 g_rec2] cs_rec2] lr_rec2] lrao_rec2] Hrec2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Heq Hrec1 Hrec2)
+    => {Heq Hrec1 Hrec2} [Heq [? [? [? ?]]]]; subst.
+    case=> ? ? ? ? ?; case=> ? ? ? ? ?; subst. repeat split.
+    rewrite !(env_equal_interp_lit _ Heq).
+    move: (env_equal_upd g_rec2 (interp_lit E_rec2 lr_rec2 || interp_lit E_rec2 l1) Heq) => Heq1.
+    rewrite !(env_equal_interp_lit _ Heq1). rewrite (Heq1 g_rec2).
+    apply: env_equal_upd. apply: env_equal_upd. assumption.
+Qed.
+
+Lemma mk_env_umulo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_umulo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_umulo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_umulo => Heq.
+  dcase (mk_env_zeroextend 1 E1 g ls1) => [[[[E_ze1 g_ze1] cs_ze1] lrs_ze1] Hze1].
+  dcase (mk_env_zeroextend 1 E2 g ls1) => [[[[E_ze2 g_ze2] cs_ze2] lrs_ze2] Hze2].
+  move: (mk_env_zeroextend_env_equal Heq Hze1 Hze2) => {Heq Hze1 Hze2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_zeroextend 1 E_ze1 g_ze2 ls2) => [[[[E_ze3 g_ze3] cs_ze3] lrs_ze3] Hze3].
+  dcase (mk_env_zeroextend 1 E_ze2 g_ze2 ls2) => [[[[E_ze4 g_ze4] cs_ze4] lrs_ze4] Hze4].
+  move: (mk_env_zeroextend_env_equal Heq Hze3 Hze4) => {Heq Hze3 Hze4} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_umulo_rec E_ze3 g_ze4 (snd (splitlsl ls1)) (snd (splitlsl ls2)))
+  => [[[[[E_rec1 g_rec1] cs_rec1] lrs_rec1] lraos_rec1] Hrec1].
+  dcase (mk_env_umulo_rec E_ze4 g_ze4 (snd (splitlsl ls1)) (snd (splitlsl ls2)))
+  => [[[[[E_rec2 g_rec2] cs_rec2] lrs_rec2] lraos_rec2] Hrec2].
+  move: (mk_env_umulo_rec_zip_env_equal Heq Hrec1 Hrec2)
+  => {Heq Hrec1 Hrec2} [Heq [? [? [? ?]]]]; subst.
+  dcase (mk_env_mul E_rec1 g_rec2 lrs_ze2 lrs_ze4)
+  => [[[[E_mul1 g_mul1] cs_mul1] lrs_mul1] Hmul1].
+  dcase (mk_env_mul E_rec2 g_rec2 lrs_ze2 lrs_ze4)
+  => [[[[E_mul2 g_mul2] cs_mul2] lrs_mul2] Hmul2].
+  move: (mk_env_mul_env_equal Heq Hmul1 Hmul2) => {Heq Hmul1 Hmul2} [Heq [? [? ?]]]; subst.
+  dcase (gen g_mul2) => [[g' r'] Hg']. case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  repeat split. rewrite !(env_equal_interp_lit _ Heq). apply: env_equal_upd.
+  assumption.
+Qed.

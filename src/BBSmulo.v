@@ -646,3 +646,54 @@ Section BBSmulo.
     done.
   Qed.
 End BBSmulo.
+
+Lemma mk_env_smulo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_smulo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_smulo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_smulo => Heq.
+  dcase (mk_env_xor
+           E1 g (fst (splitmsl ls1)) (copy (size (fst (splitmsl ls1))) (snd (splitmsl ls1))))
+  => [[[[E_xls1 g_xls1] cs_xls1] xls1] Hxls1].
+  dcase (mk_env_xor
+           E2 g (fst (splitmsl ls1)) (copy (size (fst (splitmsl ls1))) (snd (splitmsl ls1))))
+  => [[[[E_xls2 g_xls2] cs_xls2] xls2] Hxls2].
+  move: (mk_env_xor_env_equal Heq Hxls1 Hxls2) => {Heq Hxls1 Hxls2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_xor E_xls1 g_xls2 (fst (splitmsl ls2))
+                    (copy (size (fst (splitmsl ls2))) (snd (splitmsl ls2))))
+  => [[[[E_xls3 g_xls3] cs_xls3] xls3] Hxls3].
+  dcase (mk_env_xor E_xls2 g_xls2 (fst (splitmsl ls2))
+                    (copy (size (fst (splitmsl ls2))) (snd (splitmsl ls2))))
+  => [[[[E_xls4 g_xls4] cs_xls4] xls4] Hxls4].
+  move: (mk_env_xor_env_equal Heq Hxls3 Hxls4) => {Heq Hxls3 Hxls4} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_smulo_rec E_xls3 g_xls4 (snd (splitlsl xls2)) (snd (splitlsl xls4)))
+  => [[[[[E_rec1 g_rec1] cs_rec1] lrs_rec1] lrsao_rec1] Hrec1].
+  dcase (mk_env_smulo_rec E_xls4 g_xls4 (snd (splitlsl xls2)) (snd (splitlsl xls4)))
+  => [[[[[E_rec2 g_rec2] cs_rec2] lrs_rec2] lrsao_rec2] Hrec2].
+  move: (mk_env_umulo_rec_zip_env_equal Heq Hrec1 Hrec2)
+  => {Heq Hrec1 Hrec2} [Heq [? [? [? ?]]]]; subst.
+  dcase (mk_env_signextend 1 E_rec1 g_rec2 ls1) => [[[[E_wls1 g_wls1] cs_wls1] lrs_wls1] Hwls1].
+  dcase (mk_env_signextend 1 E_rec2 g_rec2 ls1) => [[[[E_wls2 g_wls2] cs_wls2] lrs_wls2] Hwls2].
+  move: (mk_env_signextend_env_equal Heq Hwls1 Hwls2) => {Heq Hwls1 Hwls2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_signextend 1 E_wls1 g_wls2 ls2) => [[[[E_wls3 g_wls3] cs_wls3] lrs_wls3] Hwls3].
+  dcase (mk_env_signextend 1 E_wls2 g_wls2 ls2) => [[[[E_wls4 g_wls4] cs_wls4] lrs_wls4] Hwls4].
+  move: (mk_env_signextend_env_equal Heq Hwls3 Hwls4) => {Heq Hwls3 Hwls4} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_mul E_wls3 g_wls4 lrs_wls2 lrs_wls4)
+  => [[[[E_mul1 g_mul1] cs_mul1] lrs_mul1] Hmul1].
+  dcase (mk_env_mul E_wls4 g_wls4 lrs_wls2 lrs_wls4)
+  => [[[[E_mul2 g_mul2] cs_mul2] lrs_mul2] Hmul2].
+  move: (mk_env_mul_env_equal Heq Hmul1 Hmul2) => {Heq Hmul1 Hmul2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_xor1 E_mul1 g_mul2 (snd (splitmsl lrs_mul2))
+                     (snd (splitmsl (fst (splitmsl lrs_mul2)))))
+  => [[[[E_xor1 g_xor1] cs_xor1] lrs_xor1] Hxor1].
+  dcase (mk_env_xor1 E_mul2 g_mul2 (snd (splitmsl lrs_mul2))
+                     (snd (splitmsl (fst (splitmsl lrs_mul2)))))
+  => [[[[E_xor2 g_xor2] cs_xor2] lrs_xor2] Hxor2].
+  move: (mk_env_xor1_env_equal Heq Hxor1 Hxor2) => {Heq Hxor1 Hxor2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_or1 E_xor1 g_xor2 lrsao_rec2 lrs_xor2) => [[[[E_or1 g_or1] cs_or1] lrs_or1] Hor1].
+  dcase (mk_env_or1 E_xor2 g_xor2 lrsao_rec2 lrs_xor2) => [[[[E_or2 g_or2] cs_or2] lrs_or2] Hor2].
+  move: (mk_env_or1_env_equal Heq Hor1 Hor2) => {Heq Hor1 Hor2} [Heq [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. repeat split. assumption.
+Qed.

@@ -319,3 +319,41 @@ Proof.
   rewrite -(eqP Hsz).
     by rewrite maxnn.
 Qed.
+
+Lemma mk_env_xor1_env_equal E1 E2 g l1 l2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_xor1 E1 g l1 l2 = (E1', g1', cs1, lr1) ->
+  mk_env_xor1 E2 g l1 l2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_xor1 => Heq. dcase (gen g) => [[g' r] Hg].
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. repeat split.
+  rewrite (env_equal_interp_lit l1 Heq) (env_equal_interp_lit l2 Heq).
+  apply: env_equal_upd. assumption.
+Qed.
+
+Lemma mk_env_xor_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_xor_zip E1 g lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_xor_zip E2 g lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: lsp E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2
+  => [| [l1 l2] lsp IH] E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - rewrite /mk_env_xor_zip -/mk_env_xor_zip.
+    dcase (mk_env_xor1 E1 g l1 l2) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hvhd1].
+    dcase (mk_env_xor1 E2 g l1 l2) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hvhd2].
+    move: (mk_env_xor1_env_equal Heq Hvhd1 Hvhd2) => [Heq' [? [? ?]]]; subst.
+    dcase (mk_env_xor_zip E_hd1 g_hd2 lsp) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hvtl1].
+    dcase (mk_env_xor_zip E_hd2 g_hd2 lsp) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hvtl2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Heq' Hvtl1 Hvtl2) => [Heq'' [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.
+
+Lemma mk_env_xor_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_xor E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_xor E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_xor_zip_env_equal. Qed.

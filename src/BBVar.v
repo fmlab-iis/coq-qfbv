@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith List.
 From mathcomp Require Import ssreflect ssrbool ssrnat eqtype seq.
-From BitBlasting Require Import TypEnv QFBV CNF BBCommon.
+From BitBlasting Require Import TypEnv State QFBV CNF BBCommon.
 From ssrlib Require Import Var ZAriths Tactics.
 From nbits Require Import NBits.
 
@@ -152,4 +152,49 @@ Lemma mk_env_var_enc E g bs v E' g' cs lrs :
 Proof.
   rewrite /mk_env_var. dcase (mk_env_var' E g bs) => [[[oE og] olrs] Henv].
   case=> <- _ _ <-. exact: (mk_env_var'_enc Henv).
+Qed.
+
+Lemma mk_env_var'_env_equal E1 E2 g bs E1' E2' g1 g2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_var' E1 g bs = (E1', g1, lrs1) ->
+  mk_env_var' E2 g bs = (E2', g2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ lrs1 = lrs2.
+Proof.
+  elim: bs E1 E2 g g1 g2 lrs1 lrs2 => [| b bs IH] //= E1 E2 g g1 g2 lrs1 lrs2 Heq.
+  - case=> ? ? ?; subst. case=> ? ? ?; subst. done.
+  - dcase (mk_env_var' (env_upd E1 g b) (g + 1)%positive bs) => [[[E1'' g1''] tl1] Hv1].
+    dcase (mk_env_var' (env_upd E2 g b) (g + 1)%positive bs) => [[[E2'' g2''] tl2] Hv2].
+    case=> ? ? ?; case=> ? ? ?; subst.
+    move: (IH _ _ _ _ _ _ _ (env_equal_upd g b Heq) Hv1 Hv2) => [H1 [H2 H3]].
+    rewrite H2 H3. done.
+Qed.
+
+Lemma mk_env_var_env_equal E1 E2 g bs v E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_var E1 g bs v = (E1', g1, cs1, lrs1) ->
+  mk_env_var E2 g bs v = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_var => Heq.
+  dcase (mk_env_var' E1 g bs) => [[[E1'' g1''] lrs1''] Hv1].
+  dcase (mk_env_var' E2 g bs) => [[[E2'' g2''] lrs2''] Hv2].
+  case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  move: (mk_env_var'_env_equal Heq Hv1 Hv2) => [H1 [H2 H3]]. done.
+Qed.
+
+Lemma mk_env_var_consistent s iE im ig v oE og ocs olrs :
+  mk_env_var iE ig (SSAStore.acc v s) v = (oE, og, ocs, olrs) ->
+  newer_than_vm ig im ->
+  consistent im iE s ->
+  consistent (SSAVM.add v olrs im) oE s.
+Proof.
+  move=> Henv Hnew Hcon. move=> x. rewrite /consistent1.
+  dcase (SSAVM.find x (SSAVM.add v olrs im)); case => //=.
+  move=> xls. case Hxv: (x == v).
+  - rewrite (SSAVM.Lemmas.find_add_eq Hxv). case=> ?; subst.
+    rewrite (eqP Hxv). exact: (mk_env_var_enc Henv).
+  - move/negP: Hxv => Hxv. rewrite (SSAVM.Lemmas.find_add_neq Hxv) => Hfx.
+    move: (Hcon x). rewrite /consistent1. rewrite Hfx => Henc.
+    move: (Hnew x _ Hfx) => Hnew_igxls.
+    exact: (env_preserve_enc_bits (mk_env_var_preserve Henv) Hnew_igxls Henc).
 Qed.

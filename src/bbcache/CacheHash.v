@@ -50,7 +50,102 @@ Definition reset_ct (c : cache) :=
      ct := SimpTableHash.empty |}.
 
 
+(* Compatibility beteeen CCacheHash.cache and CacheHash.cache *)
 
+From BBCache Require CCacheHash.
+
+Section Compatible.
+
+  Definition compatible (c1 : cache) (c2 : CCacheHash.ccache) :=
+    SimpTableHash.compatible (ct c1) (CCacheHash.ct c2)
+    /\ (ht c1) = (CCacheHash.ht c2).
+
+  Lemma compatible_find_het :
+    forall c1 c2 e, compatible c1 c2 -> find_het e c1 = CCacheHash.find_het e c2.
+  Proof.
+    move=> c1 c2 e [Hct Hht] /=. rewrite /find_het Hht. done.
+  Qed.
+
+  Lemma compatible_find_hbt :
+    forall c1 c2 e, compatible c1 c2 -> find_hbt e c1 = CCacheHash.find_hbt e c2.
+  Proof.
+    move=> c1 c2 e [Hct Hht] /=. rewrite /find_hbt Hht. done.
+  Qed.
+
+  Lemma compatible_find_cet_some :
+    forall c1 c2 e ls,
+      compatible c1 c2 -> find_cet e c1 = Some ls
+      -> exists cs, CCacheHash.find_cet e c2 = Some (cs, ls).
+  Proof.
+    move=> c1 c2 e ls [Hct Hht] /=. exact: SimpTableHash.compatible_find_et_some.
+  Qed.
+
+  Lemma compatible_find_cet_none :
+    forall c1 c2 e,
+      compatible c1 c2 -> find_cet e c1 = None -> CCacheHash.find_cet e c2 = None.
+  Proof.
+    move=> c1 c2 e [Hct Hht] /=. exact: SimpTableHash.compatible_find_et_none.
+  Qed.
+
+  Lemma compatible_find_cbt_some :
+    forall c1 c2 e l,
+      compatible c1 c2 -> find_cbt e c1 = Some l
+      -> exists cs, CCacheHash.find_cbt e c2 = Some (cs, l).
+  Proof.
+    move=> c1 c2 e l [Hct Hht] /=. exact: SimpTableHash.compatible_find_bt_some.
+  Qed.
+
+  Lemma compatible_find_cbt_none :
+    forall c1 c2 e,
+      compatible c1 c2 -> find_cbt e c1 = None -> CCacheHash.find_cbt e c2 = None.
+  Proof.
+    move=> c1 c2 e [Hct Hht] /=. exact: SimpTableHash.compatible_find_bt_none.
+  Qed.
+
+  Lemma compatible_add_het :
+    forall c1 c2 e cs ls,
+      compatible c1 c2
+      -> compatible (add_het e cs ls c1) (CCacheHash.add_het e cs ls c2).
+  Proof.
+    move=> c1 c2 e cs ls [Hct Hht]. split; [ done | by rewrite /add_het Hht ].
+  Qed.
+
+  Lemma compatible_add_hbt :
+    forall c1 c2 e cs l,
+      compatible c1 c2
+      -> compatible (add_hbt e cs l c1) (CCacheHash.add_hbt e cs l c2).
+  Proof.
+    move=> c1 c2 e cs l [Hct Hht]. split; [ done | by rewrite /add_hbt Hht ].
+  Qed.
+
+  Lemma compatible_add_cet :
+    forall c1 c2 e cs ls,
+      compatible c1 c2 -> compatible (add_cet e ls c1) (CCacheHash.add_cet e cs ls c2).
+  Proof.
+    move=> c1 c2 e cs ls [Hct Hht].
+    split; [ exact: SimpTableHash.compatible_add_et | done ].
+  Qed.
+
+  Lemma compatible_add_cbt :
+    forall c1 c2 e cs l,
+      compatible c1 c2 -> compatible (add_cbt e l c1) (CCacheHash.add_cbt e cs l c2).
+  Proof.
+    move=> c1 c2 e cs ls [Hct Hht].
+    split; [ exact: SimpTableHash.compatible_add_bt | done ].
+  Qed.
+
+  Lemma compatible_reset_ct :
+    forall c1 c2,
+      compatible c1 c2 -> compatible (reset_ct c1) (CCacheHash.reset_ct c2).
+  Proof.
+    move=> c1 c2 [Hct Hht]. split; done.
+  Qed.
+
+End Compatible.
+
+
+
+(* Compatibility beteeen CacheHash.cache and CacheFlatten.cache *)
 
 From BBCache Require SimpTable CompTableFlatten CacheFlatten.
 
@@ -227,7 +322,7 @@ Section CacheCompatible.
     exact: (cache_compatible_add_cet _ _ Hcc).
   Qed.
 
-  Lemma cache_compatible_add_cet_hbexp hc fc (e : hbexp) ls :
+  Lemma cache_compatible_add_cbt_hbexp hc fc (e : hbexp) ls :
     cache_compatible hc fc ->
     well_formed_hbexp e ->
     cache_compatible (add_cbt e ls hc)
@@ -246,82 +341,4 @@ Section CacheCompatible.
   Qed.
 
 End CacheCompatible.
-
-(*
-Section CacheConversion.
-
-  Definition comp_add_exp he v (m : CompTableFlatten.expm) :=
-    CompTableFlatten.ExpMap.add (QFBVHash.unhash_hexp he) v m.
-
-  Definition comp_add_bexp he v (m : CompTableFlatten.bexpm) :=
-    CompTableFlatten.BexpMap.add (QFBVHash.unhash_hbexp he) v m.
-
-  Definition hexpmap_of_expmap_comp (m : CompTableHash.expm) :
-    CompTableFlatten.expm :=
-    HexpMap.fold comp_add_exp m (CompTableFlatten.ExpMap.empty (seq cnf * word)).
-
-  Definition hbexpmap_of_bexpmap_comp (m : CompTableHash.bexpm) :
-    CompTableFlatten.bexpm :=
-    HbexpMap.fold comp_add_bexp m (CompTableFlatten.BexpMap.empty (seq cnf * literal)).
-
-  Definition fcomp_table_of_hcomp_table (m : CompTableHash.comptable) :
-    CompTableFlatten.comptable :=
-    CompTableFlatten.Build_comptable
-      (hexpmap_of_expmap_comp (CompTableHash.et m))
-      (hbexpmap_of_bexpmap_comp (CompTableHash.bt m)).
-
-  Definition simp_add_exp he v (m : SimpTable.expm) :=
-    CompTable.ExpMap.add (QFBVHash.unhash_hexp he) v m.
-
-  Definition simp_add_bexp he v (m : SimpTable.bexpm) :=
-    CompTable.BexpMap.add (QFBVHash.unhash_hbexp he) v m.
-
-  Definition hexpmap_of_expmap_simp (m : SimpTableHash.expm) :
-    SimpTable.expm :=
-    HexpMap.fold simp_add_exp m (CompTable.ExpMap.empty word).
-
-  Definition hbexpmap_of_bexpmap_simp (m : SimpTableHash.bexpm) :
-    SimpTable.bexpm :=
-    HbexpMap.fold simp_add_bexp m (CompTable.BexpMap.empty literal).
-
-  Definition fsimp_table_of_hsimp_table (m : SimpTableHash.simptable) :
-    SimpTable.simptable :=
-    SimpTable.Build_simptable
-      (hexpmap_of_expmap_simp (SimpTableHash.et m))
-      (hbexpmap_of_bexpmap_simp (SimpTableHash.bt m)).
-
-  Definition fcache_of_hcache (c : cache) : CacheFlatten.cache :=
-    CacheFlatten.Build_cache (fcomp_table_of_hcomp_table (ht c))
-                              (fsimp_table_of_hsimp_table (ct c)).
-
-  Lemma fsimp_table_of_hsimp_table_find_et c :
-    forall e : QFBV.exp,
-      find_et (hash_exp e) (ct c) =
-      SimpTable.find_et e (fsimp_table_of_hsimp_table (ct c)).
-  Proof.
-    move=> e. rewrite /fsimp_table_of_hsimp_table /SimpTable.find_et /=.
-    rewrite /find_et. rewrite /hexpmap_of_expmap_simp.
-    move: (et (ct c)) => {c} m. move: m.
-    eapply (@CompTableHash.HexpMap.Lemmas.OP.P.map_induction
-              word
-              (fun m =>
-                 HexpMap.find (hash_exp e) m =
-                 CompTable.ExpMap.find
-                   e
-                   (HexpMap.fold simp_add_exp m (CompTable.ExpMap.empty word)))).
-    - move=> m Hempty. 
-    -
-
-  Qed.
-  
-  Lemma fcache_of_hcache_compatible c : cache_compatible c (fcache_of_hcache c).
-  Proof.
-    split.
-    - split.
-      rewrite /fcache_of_hcache /cet_compatible /=.
-      
-    -
-  Qed.
-End CacheConversion
-*)
 

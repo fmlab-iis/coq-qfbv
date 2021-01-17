@@ -152,3 +152,13 @@ Lemma mk_env_extract_sat E g i j ls E' g' cs lrs :
 Proof .
   by rewrite /mk_env_extract; case => <- _ <- _ _ .
 Qed .
+
+Lemma mk_env_extract_env_equal E1 E2 g i j ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_extract E1 g i j ls = (E1', g1, cs1, lrs1) ->
+  mk_env_extract E2 g i j ls = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_extract => Heq.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

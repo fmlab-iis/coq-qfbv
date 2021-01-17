@@ -55,6 +55,21 @@ Definition bit_blast_and g ls1 ls2 := bit_blast_and_zip g (extzip_ff ls1 ls2).
 
 Definition mk_env_and E g ls1 ls2 := mk_env_and_zip E g (extzip_ff ls1 ls2).
 
+Lemma bit_blast_and_size_ss :
+      forall ls1 ls2 g g' cs lrs,
+  bit_blast_and g ls1 ls2 = (g', cs, lrs) -> size ls1 = size ls2 -> size ls1 = size lrs.
+Proof.
+  elim => [|ls1_hd ls1_tl IH] ls2 g g' cs lrs.
+  - move => /=Hbband Hsz0. move : Hbband. symmetry in Hsz0; rewrite (size0nil Hsz0). by case => _ _ <-.
+  - rewrite/bit_blast_and /=. case ls2 => [|ls2_hd ls2_tl]; try discriminate.
+    rewrite /bit_blast_and_zip (lock bit_blast_and1) /= -!lock -/bit_blast_and_zip.
+    dcase (bit_blast_and1 g ls1_hd ls2_hd) => [[[g_hd cs_hd] lrs_hd] Hbband1].
+    dcase (bit_blast_and_zip g_hd (extzip_ff ls1_tl ls2_tl)) => [[[g_tl cs_tl] lrs_tl] Hbbandzip].
+    move => Hres Hsz. rewrite -addn1 in Hsz; symmetry in Hsz; rewrite -addn1 in Hsz. move : (addIn Hsz) => Hszeq; symmetry in Hszeq.
+    rewrite /bit_blast_and in IH; rewrite (IH _ _ _ _ _ Hbbandzip Hszeq).
+    by case : Hres =>  _ _ <-.
+Qed.
+
 Lemma bit_blast_and1_correct E g b1 b2 l1 l2 g' cs lr :
   bit_blast_and1 g l1 l2 = (g', cs, lr) ->
   enc_bit E l1 b1 -> enc_bit E l2 b2 ->
@@ -295,3 +310,45 @@ Proof.
   rewrite /mk_env_and => Henv Hnewtt Hnew1 Hnew2.
   apply: (mk_env_and_zip_sat Henv); by t_auto_newer.
 Qed.
+
+Lemma mk_env_and1_env_equal E1 E2 g l1 l2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_and1 E1 g l1 l2 = (E1', g1', cs1, lr1) ->
+  mk_env_and1 E2 g l1 l2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_and1 => Heq. case ((l1 == lit_ff) || (l2 == lit_ff)).
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - case (l1 == lit_tt).
+    + case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+    + case (l2 == lit_tt).
+      * case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+      * dcase (gen g) => [[g' r] Hg]. case=> ? ? ? ?; case=> ? ? ? ?; subst.
+        repeat split. rewrite (env_equal_interp_lit l1 Heq) (env_equal_interp_lit l2 Heq).
+        apply: env_equal_upd. assumption.
+Qed.
+
+Lemma mk_env_and_zip_env_equal E1 E2 g lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_and_zip E1 g lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_and_zip E2 g lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: lsp E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2
+  => [| [l1 l2] lsp IH] //= E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_and1 E1 g l1 l2) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hvhd1].
+    dcase (mk_env_and1 E2 g l1 l2) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hvhd2].
+    move: (mk_env_and1_env_equal Heq Hvhd1 Hvhd2) => [Heq' [? [? ?]]]; subst.
+    dcase (mk_env_and_zip E_hd1 g_hd2 lsp) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hvtl1].
+    dcase (mk_env_and_zip E_hd2 g_hd2 lsp) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hvtl2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Heq' Hvtl1 Hvtl2) => [Heq'' [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.
+
+Lemma mk_env_and_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_and E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_and E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_and_zip_env_equal. Qed.

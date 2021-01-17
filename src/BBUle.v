@@ -180,3 +180,22 @@ Proof.
   move: (env_preserve_cnf Hpre_disj Hnewcnf_gult_cseq) => -> /=.
     by rewrite eq1 /=.
 Qed.
+
+Lemma mk_env_ule_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ule E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_ule E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_ule => Heq.
+  dcase (mk_env_eq E1 g ls1 ls2) => [[[[E_eq1 g_eq1] cs_eq1] lrs_eq1] Hv_eq1].
+  dcase (mk_env_eq E2 g ls1 ls2) => [[[[E_eq2 g_eq2] cs_eq2] lrs_eq2] Hv_eq2].
+  move: (mk_env_eq_env_equal Heq Hv_eq1 Hv_eq2) => [Heq1 [? [? ?]]]; subst.
+  dcase (mk_env_ult E_eq1 g_eq2 ls1 ls2) => [[[[E_lt1 g_lt1] cs_lt1] lrs_lt1] Hv_lt1].
+  dcase (mk_env_ult E_eq2 g_eq2 ls1 ls2) => [[[[E_lt2 g_lt2] cs_lt2] lrs_lt2] Hv_lt2].
+  move: (mk_env_ult_env_equal Heq1 Hv_lt1 Hv_lt2) => [Heq2 [? [? ?]]]; subst.
+  dcase (mk_env_disj E_lt1 g_lt2 lrs_eq2 lrs_lt2) =>[[[[E_d1 g_d1] cs_d1] lrs_d1] Hv_d1].
+  dcase (mk_env_disj E_lt2 g_lt2 lrs_eq2 lrs_lt2) =>[[[[E_d2 g_d2] cs_d2] lrs_d2] Hv_d2].
+  move: (mk_env_disj_env_equal Heq2 Hv_d1 Hv_d2) => [Heq3 [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

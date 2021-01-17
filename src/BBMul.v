@@ -52,7 +52,7 @@ Import Prenex Implicits.
 
 (* Lemma full_adder_0_r : forall p n, (full_adder false p (zeros n)).2 = unzip1 (zip p (zeros n)). *)
 (* Proof. rewrite /full_adder. exact : full_adder_zip_0_r. Qed. *)
-  
+
 (* Lemma addB0 : forall p n, addB p (zeros n) = unzip1 (zip p (zeros n)). *)
 (* Proof. rewrite /addB. exact : full_adder_0_r. Qed. *)
 
@@ -93,7 +93,7 @@ Import Prenex Implicits.
 (*     try (rewrite muln2 odd_double/joinlsb uphalf_half odd_double-muln2 -div.divn2 div.mulnK; [by rewrite add0n-(IH qtl true (addIn Hsz)) Hfaddzt| by rewrite (Nats.expn2_gt0 1)]); *)
 (*     try (rewrite muln2 odd_double/joinlsb-muln2 -div.divn2 div.mulnK; [by rewrite -(IH qtl false (addIn Hsz)) Hfaddzf|by rewrite (Nats.expn2_gt0 1)]). *)
 (* Qed. *)
-    
+
 (* Lemma addB_to_nat : forall p q, size p = size q -> addB p q = from_nat (size p) (to_nat p + to_nat q). *)
 (* Proof.  *)
 (*   intros. exact : (adcB_to_nat false). *)
@@ -110,7 +110,7 @@ Proof.
   case n; first (rewrite to_nat_nil/=; discriminate).
   intros; by rewrite to_nat_cons-/from_nat/=odd_double.
 Qed.*)
-  
+
 (* Lemma full_mul1 : forall p n, if (n==0) then full_mul p (from_nat n 1) = zeros (size p) else full_mul p (from_nat n 1) = zext n p. *)
 (* Proof. *)
 (*   intros; case n. *)
@@ -158,16 +158,16 @@ Qed.*)
 (* Lemma addBA : associative (@addB). *)
 (* Proof. *)
 (* Admitted. *)
-  
+
 (* Lemma full_mulBC : forall p q, full_mul p q = full_mul q p. *)
 (* Proof. *)
 (* Admitted. *)
-      
+
 (* Lemma mulBC : forall (p q: bits), size p = size q -> mulB p q = mulB q p. *)
 (* Proof. *)
 
 (* Admitted. *)
-  
+
 (* Lemma shlB_mul2exp i (p: bits) : iter i shlB1 p = mulB p (from_nat (size p) (2^i)). *)
 (* Proof. *)
 (*   elim i. rewrite expn0. case H : ((size p) == 0). rewrite (eqP H)/=. *)
@@ -193,7 +193,7 @@ Qed.*)
 (* Lemma mulB_muln p m1 m2 : mulB p (from_nat (size p) (m1*m2)) = mulB (mulB p (from_nat (size p) m1)) (from_nat (size p) m2). *)
 (* Proof. *)
 (* Admitted. *)
-  
+
 (* Lemma andB_copy_case : *)
 (*   forall b (bs : bits), *)
 (*     andB (copy (size bs) b) bs = if b then bs else (from_nat (size bs) 0). *)
@@ -213,53 +213,6 @@ Qed.*)
 (*   - rewrite mulB0; reflexivity. *)
 (* Qed. *)
 
-Lemma bit_blast_shl_int_size_ss n ls g g' cs lrs :
-  bit_blast_shl_int g ls n = (g', cs, lrs) -> size ls = size lrs.
-Proof.
-  exact: size_bit_blast_shl_int.
-Qed.
-
-Lemma bit_blast_full_adder_size_ss :
-  forall ls1 ls2 lcin g g' cs lrs lcout,
-    bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs) ->
-    size ls1 = size ls2 -> size ls1 = size lrs.
-Proof.
-  elim => [| ls1_hd ls1_tl IH] ls2 lcin g g' cs lrs lcout.
-  - move => /=Hbbadd Hnil. symmetry in Hnil; rewrite (size0nil Hnil) in Hbbadd. by case :Hbbadd => _ _ _ <-.
-  -
-    rewrite /bit_blast_full_adder/bit_blast_full_adder_zip (lock bit_blast_full_adder1) /= -!lock -/bit_blast_full_adder_zip.
-    case ls2 =>[|ls2_ht ls2_tl]; try discriminate.
-    rewrite /bit_blast_full_adder_zip (lock bit_blast_full_adder1) /= -!lock -/bit_blast_full_adder_zip.
-    dcase (bit_blast_full_adder1 g ls1_hd ls2_ht lcin) => [[[[g_hd cs_hd] lcout_hd] lrs_hd] Hbbfa1].
-    dcase (bit_blast_full_adder_zip g_hd lcout_hd (extzip_ff ls1_tl ls2_tl)) => [[[[g_tl cs_tl] lcout_tl] lrs_tl] Hbbfaz].
-    move => Hres Hsz. rewrite -addn1 in Hsz; symmetry in Hsz; rewrite -addn1 in Hsz. move : (addIn Hsz) => Hszeq; symmetry in Hszeq.
-    rewrite /bit_blast_full_adder in IH; rewrite (IH _ _ _ _ _ _ _ Hbbfaz Hszeq).
-    by case : Hres => _ _ _ <-.
-Qed.
-
-Lemma bit_blast_add_size_ss ls1 ls2 g g' cs lrs :
-  bit_blast_add g ls1 ls2 = (g', cs, lrs) -> size ls1 = size ls2 -> size ls1 = size lrs.
-Proof.
-  rewrite /bit_blast_add.
-  dcase (bit_blast_full_adder g lit_ff ls1 ls2) => [[[[ga csa] couta] lrsa] Hbbfa].
-  case => _ _ <-.
-  exact : (bit_blast_full_adder_size_ss Hbbfa).
-Qed.
-
-Lemma bit_blast_and_size_ss :
-      forall ls1 ls2 g g' cs lrs,
-  bit_blast_and g ls1 ls2 = (g', cs, lrs) -> size ls1 = size ls2 -> size ls1 = size lrs.
-Proof.
-  elim => [|ls1_hd ls1_tl IH] ls2 g g' cs lrs.
-  - move => /=Hbband Hsz0. move : Hbband. symmetry in Hsz0; rewrite (size0nil Hsz0). by case => _ _ <-.
-  - rewrite/bit_blast_and /=. case ls2 => [|ls2_hd ls2_tl]; try discriminate.
-    rewrite /bit_blast_and_zip (lock bit_blast_and1) /= -!lock -/bit_blast_and_zip.
-    dcase (bit_blast_and1 g ls1_hd ls2_hd) => [[[g_hd cs_hd] lrs_hd] Hbband1].
-    dcase (bit_blast_and_zip g_hd (extzip_ff ls1_tl ls2_tl)) => [[[g_tl cs_tl] lrs_tl] Hbbandzip].
-    move => Hres Hsz. rewrite -addn1 in Hsz; symmetry in Hsz; rewrite -addn1 in Hsz. move : (addIn Hsz) => Hszeq; symmetry in Hszeq.
-    rewrite /bit_blast_and in IH; rewrite (IH _ _ _ _ _ Hbbandzip Hszeq).
-    by case : Hres =>  _ _ <-.
-Qed.
 
 (* ===== bit_blast_mul ===== *)
 
@@ -688,3 +641,50 @@ Proof.
   rewrite /mk_env_mul. move => Hmk Hgtt Hgls1 Hgls2.
   exact : (mk_env_mul_rec_sat Hmk Hgtt Hgls1 Hgls2).
 Qed.
+
+Lemma mk_env_mul_rec_env_equal E1 E2 g ls1 ls2 n E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_mul_rec E1 g ls1 ls2 n = (E1', g1', cs1, lrs1) ->
+  mk_env_mul_rec E2 g ls1 ls2 n = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: ls2 E1 E2 g ls1 n E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 =>
+  [| l2 ls2 IH] /= E1 E2 g ls1 n E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_mul_rec E1 g ls1 ls2 (n + 1)) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hbb_tl1].
+    dcase (mk_env_mul_rec E2 g ls1 ls2 (n + 1)) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hbb_tl2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Heq Hbb_tl1 Hbb_tl2) => [Heq1 [? [? ?]]]; subst.
+    case: (l2 == lit_tt).
+    + dcase (mk_env_shl_int E_tl1 g_tl2 ls1 n) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hbb_hd1].
+      dcase (mk_env_shl_int E_tl2 g_tl2 ls1 n) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hbb_hd2].
+      move: (mk_env_shl_int_env_equal Heq1 Hbb_hd1 Hbb_hd2) => [Heq2 [? [? ?]]]; subst.
+      dcase (mk_env_add E_hd1 g_hd2 lrs_tl2 lrs_hd2) =>
+      [[[[E_add1 g_add1] cs_add1] lrs_add1] Hv_add1].
+      dcase (mk_env_add E_hd2 g_hd2 lrs_tl2 lrs_hd2) =>
+      [[[[E_add2 g_add2] cs_add2] lrs_add2] Hv_add2].
+      move: (mk_env_add_env_equal Heq2 Hv_add1 Hv_add2) => [Heq3 [? [? ?]]]; subst.
+      case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+    + case: (l2 == lit_ff).
+      * case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+      * dcase (mk_env_shl_int E_tl1 g_tl2 ls1 n) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hbb_hd1].
+        dcase (mk_env_shl_int E_tl2 g_tl2 ls1 n) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hbb_hd2].
+        move: (mk_env_shl_int_env_equal Heq1 Hbb_hd1 Hbb_hd2) => [Heq2 [? [? ?]]]; subst.
+        dcase (mk_env_and E_hd1 g_hd2 (copy (size ls1) l2) lrs_hd2) =>
+        [[[[E_and1 g_and1] cs_and1] lrs_and1] Hv_and1]. rewrite Hv_and1.
+        dcase (mk_env_and E_hd2 g_hd2 (copy (size ls1) l2) lrs_hd2) =>
+        [[[[E_and2 g_and2] cs_and2] lrs_and2] Hv_and2]. rewrite Hv_and2.
+        move: (mk_env_and_env_equal Heq2 Hv_and1 Hv_and2) => [Heq3 [? [? ?]]]; subst.
+        dcase (mk_env_add E_and1 g_and2 lrs_tl2 lrs_and2) =>
+        [[[[E_add1 g_add1] cs_add1] lrs_add1] Hv_add1].
+        dcase (mk_env_add E_and2 g_and2 lrs_tl2 lrs_and2) =>
+        [[[[E_add2 g_add2] cs_add2] lrs_add2] Hv_add2].
+        move: (mk_env_add_env_equal Heq3 Hv_add1 Hv_add2) => [Heq4 [? [? ?]]]; subst.
+        case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.
+
+Lemma mk_env_mul_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_mul E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_mul E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_mul_rec_env_equal. Qed.

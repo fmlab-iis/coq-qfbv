@@ -237,3 +237,24 @@ Proof.
       move: (mk_env_not1_newer_gen Hmk_hd).
       by apply: newer_than_lits_le_newer.
 Qed.
+
+Lemma mk_env_not_env_equal E1 E2 g ls E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_not E1 g ls = (E1', g1', cs1, lrs1) ->
+  mk_env_not E2 g ls = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: ls E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2
+  => [| l ls IH] //= E1 E2 g E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_not (env_upd E1 g (~~ interp_lit E1 l)) (g + 1)%positive ls)
+    => [[[[Etl1 gtl1] cstl1] lrstl1] Htl1].
+    dcase (mk_env_not (env_upd E2 g (~~ interp_lit E2 l)) (g + 1)%positive ls)
+    => [[[[Etl2 gtl2] cstl2] lrstl2] Htl2].
+    case=> ? ? ? ?; case=> ? ? ? ?; subst.
+    have Heq': env_equal (env_upd E1 g (~~ interp_lit E1 l))
+                         (env_upd E2 g (~~ interp_lit E2 l)).
+    { rewrite (env_equal_interp_lit l Heq). apply: env_equal_upd. assumption. }
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ Heq' Htl1 Htl2) => [H1 [H2 [H3 H4]]]; subst.
+    done.
+Qed.

@@ -213,3 +213,18 @@ Proof.
     case (interp_lit E_sub (lastd lit_ff ls2));
     case (interp_lit E_sub (lastd lit_ff lrs_sub)).
 Qed.
+
+Lemma mk_env_ssubo_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_ssubo E1 g ls1 ls2 = (E1', g1', cs1, lr1) ->
+  mk_env_ssubo E2 g ls1 ls2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_ssubo => Heq.
+  dcase (mk_env_sub E1 g ls1 ls2) => [[[[E_sub1 g_sub1] cs_sub1] lrs_sub1] Hsub1].
+  dcase (mk_env_sub E2 g ls1 ls2) => [[[[E_sub2 g_sub2] cs_sub2] lrs_sub2] Hsub2].
+  move: (mk_env_sub_env_equal Heq Hsub1 Hsub2) => {Heq Hsub1 Hsub2} [Heq [? [? ?]]]; subst.
+  dcase (gen g_sub2) => [[g' r'] Hg']. case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  repeat split. rewrite !(env_equal_interp_lit _ Heq). apply: env_equal_upd.
+  assumption.
+Qed.

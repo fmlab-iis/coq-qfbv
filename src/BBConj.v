@@ -95,3 +95,14 @@ Proof.
   rewrite (interp_lit_env_upd_neq _ _ (newer_than_lit_neq Hnew2)).
   by case: (interp_lit E l1); case: (interp_lit E l2).
 Qed.
+
+Lemma mk_env_conj_env_equal E1 E2 g l1 l2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_conj E1 g l1 l2 = (E1', g1', cs1, lr1) ->
+  mk_env_conj E2 g l1 l2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_conj => Heq. dcase (gen g) => [[g' r'] Hg'].
+  rewrite !(env_equal_interp_lit _ Heq). case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  repeat split. apply: env_equal_upd. assumption.
+Qed.

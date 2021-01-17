@@ -89,12 +89,16 @@ src/bbcache/BitBlastingCache.v
 src/bbcache/BitBlastingCCacheExport.v
 src/bbcache/BitBlastingCacheExport.v
 src/bbcache/CompTableFlatten.v
+src/bbcache/CCacheFlatten.v
 src/bbcache/CacheFlatten.v
+src/bbcache/BitBlastingCCacheFlatten.v
 src/bbcache/BitBlastingCacheFlatten.v
 src/bbcache/QFBVHash.v
 src/bbcache/CompTableHash.v
 src/bbcache/SimpTableHash.v
+src/bbcache/CCacheHash.v
 src/bbcache/CacheHash.v
+src/bbcache/BitBlastingCCacheHash.v
 src/bbcache/BitBlastingCacheHash.v
 src/Extract.v
 src/SMTLIBSemantics.v

@@ -12,14 +12,21 @@ Import Prenex Implicits.
 (* Proof. *)
 (* Admitted. *)
 
-Lemma bit_blast_neg_size_ss :
-  forall ls g g' (cs: cnf) (lrs: seq literal),
-    bit_blast_neg g ls = (g', cs, lrs) ->
-    size ls = size lrs.
+Lemma bit_blast_neg_size_ss ls g g' (cs: cnf) (lrs: seq literal) :
+  bit_blast_neg g ls = (g', cs, lrs) ->
+  size ls = size lrs.
 Proof.
-Admitted.
-  
-  
+  rewrite /bit_blast_neg. dcase (bit_blast_not g ls) => [[[g_not cs_not] lrs_not] Hbb_not].
+  dcase (BBConst.bit_blast_const g_not (size ls) -bits of (1)%bits) =>
+  [[[g_con cs_con] lrs_con] Hbb_con].
+  dcase (bit_blast_add g_con lrs_not lrs_con) => [[[g_add cs_add] lrs_add] Hbb_add].
+  case=> ? ? ?; subst. case: Hbb_con => ? ? ?; subst.
+  move: (bit_blast_not_size_ss Hbb_not) => H. rewrite H.
+  apply: (bit_blast_add_size_ss Hbb_add). rewrite size_map. rewrite size_from_nat.
+  symmetry. assumption.
+Qed.
+
+
 (* ===== bit_blast_sbb ===== *)
 
 Definition bit_blast_sbb g l_bin ls1 ls2 : generator * cnf * literal * word :=
@@ -342,4 +349,22 @@ Proof.
   move : (mk_env_neg_newer_cnf Hmkneg Htt Hgls2) => Hcsneg.
   rewrite (env_preserve_cnf HEnegEadd Hcsneg) Hcnfneg.
   done.
+Qed.
+
+Lemma mk_env_sub_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_sub E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_sub E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_sub => Heq.
+  dcase (mk_env_neg E1 g ls2) => [[[[E_neg1 g_neg1] cs_neg1] lrs_neg1] Hbb_neg1].
+  dcase (mk_env_neg E2 g ls2) => [[[[E_neg2 g_neg2] cs_neg2] lrs_neg2] Hbb_neg2].
+  move: (mk_env_neg_env_equal Heq Hbb_neg1 Hbb_neg2) => [Heq' [? [? ?]]]; subst.
+  dcase (mk_env_add E_neg1 g_neg2 ls1 lrs_neg2) =>
+  [[[[E_add1 g_add1] cs_add1] lrs_add1] Hbb_add1].
+  dcase (mk_env_add E_neg2 g_neg2 ls1 lrs_neg2) =>
+  [[[[E_add2 g_add2] cs_add2] lrs_add2] Hbb_add2].
+  move: (mk_env_add_env_equal Heq' Hbb_add1 Hbb_add2) => [Heq'' [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
 Qed.

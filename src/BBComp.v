@@ -87,3 +87,16 @@ Proof.
   case Hmk : (mk_env_eq E g ls1 ls2) => [[[E_eq g_eq] cs_eq] lr_eq]. 
   case=> <- _ <- _ Hgtt Hgls1 Hgls2. exact: (mk_env_eq_sat Hmk).
 Qed.
+
+Lemma mk_env_comp_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_comp E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_comp E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_comp => Heq.
+  dcase (mk_env_eq E1 g ls1 ls2) => [[[[E_eq1 g_eq1] cs_eq1] lrs_eq1] Heq1].
+  dcase (mk_env_eq E2 g ls1 ls2) => [[[[E_eq2 g_eq2] cs_eq2] lrs_eq2] Heq2].
+  move: (mk_env_eq_env_equal Heq Heq1 Heq2) => {Heq Heq1 Heq2} [Heq [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

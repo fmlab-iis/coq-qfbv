@@ -75,3 +75,10 @@ Proof.
   rewrite /mk_env_sgt => Hmkslt Hgt Hgl1 Hgl2.
   exact: (mk_env_slt_sat Hmkslt Hgt Hgl2 Hgl1).
 Qed.
+
+Lemma mk_env_sgt_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_sgt E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_sgt E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_slt_env_equal. Qed.

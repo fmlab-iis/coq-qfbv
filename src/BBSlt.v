@@ -575,3 +575,20 @@ Proof.
 Qed.
 *)
 
+
+Lemma mk_env_slt_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_slt E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_slt E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_slt => Heq.
+  dcase (mk_env_ult E1 g (splitmsl ls1).1 (splitmsl ls2).1)
+  => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Htl1].
+  dcase (mk_env_ult E2 g (splitmsl ls1).1 (splitmsl ls2).1)
+  => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Htl2].
+  move: (mk_env_ult_env_equal Heq Htl1 Htl2) => {Heq Htl1 Htl2} [Heq [? [? ?]]]; subst.
+  dcase (gen g_tl2) => [[g' r'] Hg']. case=> ? ? ? ?; case=> ? ? ? ?; subst.
+  repeat split. rewrite !(env_equal_interp_lit _ Heq). apply: env_equal_upd.
+  assumption.
+Qed.

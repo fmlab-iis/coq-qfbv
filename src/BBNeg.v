@@ -56,7 +56,6 @@ Definition mk_env_neg E g ls : env * generator * cnf * word :=
   let '(E_add, g_add, cs_add, lrs_add) := mk_env_add E_con g_con lrs_not lrs_con in
   (E_add, g_add, catrev cs_not (catrev cs_con cs_add), lrs_add).
 
-
 Lemma bit_blast_neg_correct :
   forall g bs E ls g' cs lrs,
     bit_blast_neg g ls = (g', cs, lrs) ->
@@ -212,4 +211,24 @@ Proof.
   rewrite (newer_than_cnf_le_newer Hcnfnot (pos_leb_trans Hgnotgcon Hgcongadd)) /=.
   rewrite /mk_env_const in Hmkcon.
   by case :Hmkcon => _ _ <- _ /=.
+Qed.
+
+Lemma mk_env_neg_env_equal E1 E2 g ls E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_neg E1 g ls = (E1', g1', cs1, lrs1) ->
+  mk_env_neg E2 g ls = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_neg => Heq.
+  dcase (mk_env_not E1 g ls) => [[[[E_not1 g_not1] cs_not1] lrs_not1] Hnot1].
+  dcase (mk_env_not E2 g ls) => [[[[E_not2 g_not2] cs_not2] lrs_not2] Hnot2].
+  move: (mk_env_not_env_equal Heq Hnot1 Hnot2) => [Heq1 [? [? ?]]]; subst.
+  rewrite /mk_env_const => /=.
+  set ls' := [seq lit_of_bool i | i <- (size ls) -bits of (1)%bits].
+  dcase (mk_env_add E_not1 g_not2 lrs_not2 ls')
+  => [[[[E_add1 g_add1] cs_add1] lrs_add1] Hadd1].
+  dcase (mk_env_add E_not2 g_not2 lrs_not2 ls')
+  => [[[[E_add2 g_add2] cs_add2] lrs_add2] Hadd2].
+  move: (mk_env_add_env_equal Heq1 Hadd1 Hadd2) => [Heq2 [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
 Qed.

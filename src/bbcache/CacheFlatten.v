@@ -117,7 +117,7 @@ Lemma cache_compatible_find_het_some ec c e ecs elrs cs lrs :
   cache_compatible ec c ->
   find_het e ec = Some (ecs, elrs) ->
   Cache.find_het e c = Some (cs, lrs) ->
-  cnf_eqsat (tflatten ecs) cs /\ elrs = lrs.
+  cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs /\ elrs = lrs.
 Proof.
   move=> [_ [Hht_e Hht_b]] Hfe Hf. move: (Hht_e e) => [H1 H2].
   exact: (H2 _ _ _ _ Hfe Hf).
@@ -127,11 +127,11 @@ Lemma cache_compatible_find_het_some_exists1 ec c e ecs elrs :
   cache_compatible ec c ->
   find_het e ec = Some (ecs, elrs) ->
   exists cs, Cache.find_het e c = Some (cs, elrs) /\
-             cnf_eqsat (tflatten ecs) cs.
+             cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs.
 Proof.
   move=> Hcc Hfe. dcase (Cache.find_het e c); case.
-  - move=> [cs lrs] Hf. move: (cache_compatible_find_het_some Hcc Hfe Hf) => [H1 H2].
-    exists cs. rewrite H2. done.
+  - move=> [cs lrs] Hf. move: (cache_compatible_find_het_some Hcc Hfe Hf) => [H1 [H2 H3]].
+    exists cs. rewrite H3. done.
   - move=> Hf. move/(cache_compatible_find_het_none _ Hcc): Hf. rewrite Hfe.
     discriminate.
 Qed.
@@ -140,12 +140,12 @@ Lemma cache_compatible_find_het_some_exists2 ec c e cs lrs :
   cache_compatible ec c ->
   Cache.find_het e c = Some (cs, lrs) ->
   exists ecs, find_het e ec = Some (ecs, lrs) /\
-             cnf_eqsat (tflatten ecs) cs.
+              cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs.
 Proof.
   move=> Hcc Hf. dcase (find_het e ec); case.
   - move=> [ecs elrs] Hfe.
-    move: (cache_compatible_find_het_some Hcc Hfe Hf) => [H1 H2].
-    exists ecs. rewrite H2. done.
+    move: (cache_compatible_find_het_some Hcc Hfe Hf) => [H1 [H2 H3]].
+    exists ecs. rewrite H3. done.
   - move=> Hfe. move/(cache_compatible_find_het_none _ Hcc): Hfe. rewrite Hf.
     discriminate.
 Qed.
@@ -154,7 +154,7 @@ Lemma cache_compatible_find_hbt_some ec c e ecs elr cs lr :
   cache_compatible ec c ->
   find_hbt e ec = Some (ecs, elr) ->
   Cache.find_hbt e c = Some (cs, lr) ->
-  cnf_eqsat (tflatten ecs) cs /\ elr = lr.
+  cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs /\ elr = lr.
 Proof.
   move=> [_ [Hht_e Hht_b]] Hfe Hf. move: (Hht_b e) => [H1 H2].
   exact: (H2 _ _ _ _ Hfe Hf).
@@ -164,11 +164,11 @@ Lemma cache_compatible_find_hbt_some_exists1 ec c e ecs elr :
   cache_compatible ec c ->
   find_hbt e ec = Some (ecs, elr) ->
   exists cs, Cache.find_hbt e c = Some (cs, elr) /\
-             cnf_eqsat (tflatten ecs) cs.
+             cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs.
 Proof.
   move=> Hcc Hfe. dcase (Cache.find_hbt e c); case.
-  - move=> [cs lrs] Hf. move: (cache_compatible_find_hbt_some Hcc Hfe Hf) => [H1 H2].
-    exists cs. rewrite H2. done.
+  - move=> [cs lrs] Hf. move: (cache_compatible_find_hbt_some Hcc Hfe Hf) => [H1 [H2 H3]].
+    exists cs. rewrite H3. done.
   - move=> Hf. move/(cache_compatible_find_hbt_none _ Hcc): Hf. rewrite Hfe.
     discriminate.
 Qed.
@@ -177,12 +177,12 @@ Lemma cache_compatible_find_hbt_some_exists2 ec c e cs lr :
   cache_compatible ec c ->
   Cache.find_hbt e c = Some (cs, lr) ->
   exists ecs, find_hbt e ec = Some (ecs, lr) /\
-             cnf_eqsat (tflatten ecs) cs.
+              cnf_eqsat (tflatten ecs) cs /\ cnf_eqnew (tflatten ecs) cs.
 Proof.
   move=> Hcc Hf. dcase (find_hbt e ec); case.
   - move=> [ecs elrs] Hfe.
-    move: (cache_compatible_find_hbt_some Hcc Hfe Hf) => [H1 H2].
-    exists ecs. rewrite H2. done.
+    move: (cache_compatible_find_hbt_some Hcc Hfe Hf) => [H1 [H2 H3]].
+    exists ecs. rewrite H3. done.
   - move=> Hfe. move/(cache_compatible_find_hbt_none _ Hcc): Hfe. rewrite Hf.
     discriminate.
 Qed.
@@ -212,6 +212,7 @@ Qed.
 Lemma cache_compatible_add_het e lrs ec c ecs cs :
   cache_compatible ec c ->
   cnf_eqsat (tflatten ecs) cs ->
+  cnf_eqnew (tflatten ecs) cs ->
   cache_compatible (add_het e ecs lrs ec) (Cache.add_het e cs lrs c).
 Proof.
   move=> [[Hcet Hcbt] [Hhet Hhbt]] Heqs. split; [split | split].
@@ -235,6 +236,7 @@ Qed.
 Lemma cache_compatible_add_hbt e lr ec c ecs cs :
   cache_compatible ec c ->
   cnf_eqsat (tflatten ecs) cs ->
+  cnf_eqnew (tflatten ecs) cs ->
   cache_compatible (add_hbt e ecs lr ec) (Cache.add_hbt e cs lr c).
 Proof.
   move=> [[Hcet Hcbt] [Hhet Hhbt]] Heqs. split; [split | split].

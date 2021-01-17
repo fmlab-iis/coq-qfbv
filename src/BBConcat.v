@@ -73,3 +73,12 @@ Proof .
   rewrite /mk_env_concat; case => <- _ <- _ // .
 Qed .
 
+Lemma mk_env_concat_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_concat E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_concat E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_concat => Heq.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

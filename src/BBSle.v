@@ -255,3 +255,24 @@ Qed.
 Corollary toZ_neq n (x y : BITS n.+1): (x != y) = (toZ x != toZ y).
 Proof. by rewrite toZ_eq. Qed.
 *)
+
+Lemma mk_env_sle_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_sle E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_sle E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_sle => Heq.
+  dcase (mk_env_eq E1 g ls1 ls2) => [[[[E_eq1 g_eq1] cs_eq1] lrs_eq1] Heq1].
+  dcase (mk_env_eq E2 g ls1 ls2) => [[[[E_eq2 g_eq2] cs_eq2] lrs_eq2] Heq2].
+  move: (mk_env_eq_env_equal Heq Heq1 Heq2) => {Heq Heq1 Heq2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_slt E_eq1 g_eq2 ls1 ls2) => [[[[E_lt1 g_lt1] cs_lt1] lrs_lt1] Hlt1].
+  dcase (mk_env_slt E_eq2 g_eq2 ls1 ls2) => [[[[E_lt2 g_lt2] cs_lt2] lrs_lt2] Hlt2].
+  move: (mk_env_slt_env_equal Heq Hlt1 Hlt2) => {Heq Hlt1 Hlt2} [Heq [? [? ?]]]; subst.
+  dcase (mk_env_disj E_lt1 g_lt2 lrs_eq2 lrs_lt2)
+  => [[[[E_disj1 g_disj1] cs_disj1] lrs_disj1] Hdisj1].
+  dcase (mk_env_disj E_lt2 g_lt2 lrs_eq2 lrs_lt2)
+  => [[[[E_disj2 g_disj2] cs_disj2] lrs_disj2] Hdisj2].
+  move: (mk_env_disj_env_equal Heq Hdisj1 Hdisj2) => {Heq Hdisj1 Hdisj2} [Heq [? [? ?]]]; subst.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. repeat split. assumption.
+Qed.

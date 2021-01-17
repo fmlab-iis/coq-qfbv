@@ -352,3 +352,45 @@ Proof .
     apply /andP; split; done .
 Qed .
 
+Lemma mk_env_ite1_env_equal E1 E2 g c l1 l2 E1' E2' g1' g2' cs1 cs2 lr1 lr2 :
+  env_equal E1 E2 ->
+  mk_env_ite1 E1 g c l1 l2 = (E1', g1', cs1, lr1) ->
+  mk_env_ite1 E2 g c l1 l2 = (E2', g2', cs2, lr2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lr1 = lr2.
+Proof.
+  rewrite /mk_env_ite1 => Heq. dcase (gen g) => [[g' r] Hg].
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. repeat split.
+  rewrite (env_equal_interp_lit l1 Heq) (env_equal_interp_lit l2 Heq)
+          (env_equal_interp_lit c Heq).
+  apply: env_equal_upd. assumption.
+Qed.
+
+Lemma mk_env_ite_zip_env_equal E1 E2 g c lsp E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ite_zip E1 g c lsp = (E1', g1', cs1, lrs1) ->
+  mk_env_ite_zip E2 g c lsp = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: lsp E1 E2 g c E1' E2' g1' g2' cs1 cs2 lrs1 lrs2
+  => [| [l1 l2] lsp IH] //= E1 E2 g c E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - rewrite !(env_equal_interp_lit _ Heq).
+    dcase (mk_env_ite_zip
+             (env_upd E1 g (if interp_lit E2 c then interp_lit E2 l1 else interp_lit E2 l2))
+             (g + 1)%positive c lsp) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hv_tl1].
+    dcase (mk_env_ite_zip
+             (env_upd E2 g (if interp_lit E2 c then interp_lit E2 l1 else interp_lit E2 l2))
+             (g + 1)%positive c lsp) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hv_tl2].
+    case=> ? ? ? ?; case=> ? ? ? ?; subst.
+    move: (env_equal_upd g (if interp_lit E2 c then interp_lit E2 l1 else interp_lit E2 l2) Heq)
+    => Heq1.
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ _ Heq1 Hv_tl1 Hv_tl2) => [Heq3 [? [? ?]]]; subst.
+    done.
+Qed.
+
+Lemma mk_env_ite_env_equal E1 E2 g c ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_ite E1 g c ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_ite E2 g c ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_ite_zip_env_equal. Qed.

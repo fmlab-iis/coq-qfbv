@@ -84,3 +84,10 @@ Proof.
   move=> H e0 e1 e2.
   exact: (mk_env_ule_sat H e0 e2 e1).
 Qed.
+
+Lemma mk_env_uge_env_equal E1 E2 g ls1 ls2 E1' E2' g1' g2' cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_uge E1 g ls1 ls2 = (E1', g1', cs1, lrs1) ->
+  mk_env_uge E2 g ls1 ls2 = (E2', g2', cs2, lrs2) ->
+  env_equal E1' E2' /\ g1' = g2' /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof. exact: mk_env_ule_env_equal. Qed.

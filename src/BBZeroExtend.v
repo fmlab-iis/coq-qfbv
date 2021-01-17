@@ -88,3 +88,13 @@ Lemma mk_env_zeroextend_sat n E g ls E' g' cs lrs :
 Proof.
     by case=> <- _ <- _ .
 Qed.
+
+Lemma mk_env_zeroextend_env_equal E1 E2 g n ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_zeroextend n E1 g ls = (E1', g1, cs1, lrs1) ->
+  mk_env_zeroextend n E2 g ls = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_zeroextend => Heq.
+  case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.

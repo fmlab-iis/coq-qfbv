@@ -109,6 +109,21 @@ Proof.
     by apply: (R_mk_env_shl_int_1 _ _ _ _ _ _ _ _ Hbb _ _ _ _ _ _ _ _ _ Hbb1).
 Qed.
 
+Lemma mk_env_shl_int_Nsucc E g ls n :
+  mk_env_shl_int E g ls (N.succ n) =
+  let '(E_m, g_m, cs_m, ls_m) := mk_env_shl_int E g ls n in
+  let '(E', g', cs1, lrs) := mk_env_shl_int1 E_m g_m ls_m in
+  (E', g', catrev cs_m cs1, lrs).
+Proof.
+  dcase (mk_env_shl_int E g ls (N.succ n)) => [[[[E_s g_s] cs_s] ls_s] Hv_s].
+  dcase (mk_env_shl_int E g ls n) => [[[[E_m g_m] cs_m] lrs_m] Hv_m].
+  dcase (mk_env_shl_int1 E_m g_m lrs_m) => [[[[E' g'] cs'] lrs'] Hv'].
+  symmetry in Hv_s. move: (R_mk_env_shl_int_correct Hv_s) => Hr. inversion Hr.
+  - move: (N.neq_0_succ n) => Hne. rewrite -H in Hne. apply: False_ind; apply: Hne; reflexivity.
+  - move: (R_mk_env_shl_int_complete H6). rewrite H3. rewrite -N.pred_sub N.pred_succ.
+    move=> Hv_shl. rewrite H7 Hv_m in Hv_shl. case: Hv_shl => ? ? ? ?; subst.
+    rewrite Hv' in H8. case: H8 => ? ? ? ?; subst. done.
+Qed.
 
 
 Lemma bit_blast_shl_int1_correct :
@@ -171,6 +186,12 @@ Proof.
   - clear n. move=> n [] p Hn //=. move=> _ IH g_m cs_m ls_m Hbb g1 cs1 ls1 Hbb1.
     move=> g' cs lrs [] ? ? ?; subst => /=. rewrite (IH _ _ _ Hbb).
     exact: (size_bit_blast_shl_int1 Hbb1).
+Qed.
+
+Lemma bit_blast_shl_int_size_ss n ls g g' cs lrs :
+  bit_blast_shl_int g ls n = (g', cs, lrs) -> size ls = size lrs.
+Proof.
+  exact: size_bit_blast_shl_int.
 Qed.
 
 
@@ -316,12 +337,12 @@ Lemma extract_low i ns :
   extract i 0 ns = low i.+1 ns .
 Proof .
   case i => [Hsz | j Hsz] /= .
-  - rewrite /extract subnn addn1 . 
+  - rewrite /extract subnn addn1 .
     rewrite low1_lsb {1}lastI high1_rcons /last // .
   - rewrite /extract subn0 !addn1; trivial .
     rewrite -{1}(size_low j.+2 ns) high_size // .
 Qed .
-    
+
 Lemma extract_cat i ns :
   i.+1 < size ns ->
   ns = (extract i 0 ns) ++ (extract (size ns).-1 i.+1 ns) .
@@ -349,7 +370,7 @@ Lemma to_nat_zeros_iff bs : (exists n, bs = zeros n) <-> to_nat bs = 0 .
 Proof .
   split .
   - elim => n ->; apply to_nat_zeros .
-  - move => Hbs .  
+  - move => Hbs .
     exists (size bs) .
     move : Hbs .
     elim : bs => [ Hbs | b bs IH ] .
@@ -442,7 +463,7 @@ Proof .
   move => Hlog2szbsprednaddn1 .
   dcase (extract (size ns).-1 log2szbs ns == (size ns - log2szbs) -bits of (0)%bits); case => /eqP Hcon .
   - rewrite -to_nat_bounded_high_zeros; trivial .
-    + by rewrite Hlog2szbsprednaddn1 . 
+    + by rewrite Hlog2szbsprednaddn1 .
     + by rewrite Hlog2szbsprednaddn1 Hcon .
   - rewrite -zeros_from_nat .
     apply shlB_oversize .
@@ -463,7 +484,7 @@ Proof .
   - by apply Nats.le_leq .
   - done .
   - by apply Z.log2_up_nonneg .
-Qed .        
+Qed .
 
 Corollary bit_blast_shl_correct g bs ns E ls lns g' cs lrs :
   size ls > 0 ->
@@ -1309,7 +1330,7 @@ Proof .
            (mk_env_shl_rec_newer_res Hgeqtt Hgeqls Hgeqnslo Hshl)
            (mk_env_shl_rec_newer_cnf Hshl Hgeqtt Hgeqls Hgeqnslo)
            (mk_env_shl_rec_preserve Hshl)
-           (mk_env_shl_rec_newer_gen Hshl) 
+           (mk_env_shl_rec_newer_gen Hshl)
     => {Hgeqnslo} Hshlsat Hgshllsshl Hgshlcsshl HEeqEshl Hgeqgshl .
     move : (newer_than_lit_le_newer Hgeqtt (mk_env_shl_rec_newer_gen Hshl))
            (newer_than_lit_le_newer Hgeqleq (mk_env_shl_rec_newer_gen Hshl))
@@ -1352,3 +1373,114 @@ Proof .
   - move => Henv .
     exact : (mk_env_shl_rec_sat Henv Hgtt Hgls Hgns) .
 Qed .
+
+Lemma mk_env_shl_int1_env_equal E1 E2 g ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_shl_int1 E1 g ls = (E1', g1, cs1, lrs1) ->
+  mk_env_shl_int1 E2 g ls = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_shl_int1 => Heq. case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+Qed.
+
+Lemma mk_env_shl_int_env_equal E1 E2 g n ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_shl_int E1 g ls n = (E1', g1, cs1, lrs1) ->
+  mk_env_shl_int E2 g ls n = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  move: n E1 E2 g ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2.
+  apply: N.peano_ind => [| n IH] E1 E2 g ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 Heq.
+  - rewrite !mk_env_shl_int_N0. case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - rewrite !mk_env_shl_int_Nsucc.
+    dcase (mk_env_shl_int E1 g ls n) => [[[[E_m1 g_m1] cs_m1] lrs_m1] Hv_m1].
+    dcase (mk_env_shl_int E2 g ls n) => [[[[E_m2 g_m2] cs_m2] lrs_m2] Hv_m2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ _ Heq Hv_m1 Hv_m2) => [Heq1 [? [? ?]]]; subst.
+    dcase (mk_env_shl_int1 E_m1 g_m2 lrs_m2) => [[[[E'1 g'1] cs'1] lrs'1] Hv'1].
+    dcase (mk_env_shl_int1 E_m2 g_m2 lrs_m2) => [[[[E'2 g'2] cs'2] lrs'2] Hv'2].
+    case=> ? ? ? ?; case=> ? ? ? ?; subst.
+    move: (mk_env_shl_int1_env_equal Heq1 Hv'1 Hv'2) => [Heq2 [? [? ?]]]; subst.
+    done.
+Qed.
+
+Lemma mk_env_shl_rec_env_equal E1 E2 g n ls ns E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_shl_rec E1 g ls ns n = (E1', g1, cs1, lrs1) ->
+  mk_env_shl_rec E2 g ls ns n = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  elim: ns E1 E2 g n ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 =>
+  [| nhd ns IH] //= E1 E2 g n ls E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 Heq.
+  - case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - dcase (mk_env_shl_rec E1 g ls ns (n * 2)) => [[[[E_tl1 g_tl1] cs_tl1] lrs_tl1] Hv_tl1].
+    dcase (mk_env_shl_rec E2 g ls ns (n * 2)) => [[[[E_tl2 g_tl2] cs_tl2] lrs_tl2] Hv_tl2].
+    move: (IH _ _ _ _ _ _ _ _ _ _ _ _ _ Heq Hv_tl1 Hv_tl2) => [Heq1 [? [? ?]]]; subst.
+    case: (nhd == lit_tt).
+    + dcase (mk_env_shl_int E_tl1 g_tl2 lrs_tl2 n) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hv_hd1].
+      dcase (mk_env_shl_int E_tl2 g_tl2 lrs_tl2 n) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hv_hd2].
+      case=> ? ? ? ?; case=> ? ? ? ?; subst.
+      move: (mk_env_shl_int_env_equal Heq1 Hv_hd1 Hv_hd2) => [Heq2 [? [? ?]]]; subst.
+      done.
+    + case: (nhd == lit_ff).
+      * case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+      * dcase (mk_env_shl_int E_tl1 g_tl2 lrs_tl2 n) => [[[[E_hd1 g_hd1] cs_hd1] lrs_hd1] Hv_hd1].
+        dcase (mk_env_shl_int E_tl2 g_tl2 lrs_tl2 n) => [[[[E_hd2 g_hd2] cs_hd2] lrs_hd2] Hv_hd2].
+        move: (mk_env_shl_int_env_equal Heq1 Hv_hd1 Hv_hd2) => [Heq2 [? [? ?]]]; subst.
+        dcase (mk_env_ite E_hd1 g_hd2 nhd lrs_hd2 lrs_tl2) =>
+        [[[[E_ite1 g_ite1] cs_ite1] lrs_ite1] Hv_ite1].
+        dcase (mk_env_ite E_hd2 g_hd2 nhd lrs_hd2 lrs_tl2) =>
+        [[[[E_ite2 g_ite2] cs_ite2] lrs_ite2] Hv_ite2].
+        case=> ? ? ? ?; case=> ? ? ? ?; subst.
+        move: (mk_env_ite_env_equal Heq2 Hv_ite1 Hv_ite2) => [Heq3 [? [? ?]]]; subst.
+        done.
+Qed.
+
+Lemma mk_env_shl_env_equal E1 E2 g ls ns E1' E2' g1 g2 cs1 cs2 lrs1 lrs2 :
+  env_equal E1 E2 ->
+  mk_env_shl E1 g ls ns = (E1', g1, cs1, lrs1) ->
+  mk_env_shl E2 g ls ns = (E2', g2, cs2, lrs2) ->
+  env_equal E1' E2' /\ g1 = g2 /\ cs1 = cs2 /\ lrs1 = lrs2.
+Proof.
+  rewrite /mk_env_shl => Heq.
+  case: (1 < size ls).
+  - dcase (mk_env_const
+             E1 g (size ns - Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) -bits of (0)%bits)
+    => [[[[E_zh1 g_zh1] cs_zh1] lrs_zh1] Hbb_zh1]. case: Hbb_zh1=> ? ? ? ?; subst.
+    dcase (mk_env_const
+             E2 g_zh1 (size ns - Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) -bits of (0)%bits)
+    => [[[[E_zh2 g_zh2] cs_zh2] lrs_zh2] Hbb_zh2]. case: Hbb_zh2=> ? ? ? ?; subst.
+    dcase (mk_env_const E_zh1 g_zh2 (size ls) -bits of (0)%bits)
+    => [[[[E_z1 g_z1] cs_z1] lrs_z1] Hbb_z1]. case: Hbb_z1=> ? ? ? ?; subst.
+    dcase (mk_env_const E_zh2 g_z1 (size ls) -bits of (0)%bits)
+    => [[[[E_z2 g_z2] cs_z2] lrs_z2] Hbb_z2]. case: Hbb_z2=> ? ? ? ?; subst.
+    dcase (mk_env_extract
+             E_z1 g_z2 (size ns).-1 (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) ns)
+    => [[[[E_hi1 g_hi1] cs_hi1] lrs_hi1] Hbb_hi1].
+    dcase (mk_env_extract
+             E_z2 g_z2 (size ns).-1 (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) ns)
+    => [[[[E_hi2 g_hi2] cs_hi2] lrs_hi2] Hbb_hi2].
+    move: (mk_env_extract_env_equal Heq Hbb_hi1 Hbb_hi2) => [Heq1 [? [? ?]]]; subst.
+    dcase (mk_env_extract E_hi1 g_hi2 (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))).-1 0 ns)
+    => [[[[E_lo1 g_lo1] cs_lo1] lrs_lo1] Hbb_lo1].
+    dcase (mk_env_extract E_hi2 g_hi2 (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))).-1 0 ns)
+    => [[[[E_lo2 g_lo2] cs_lo2] lrs_lo2] Hbb_lo2].
+    move: (mk_env_extract_env_equal Heq1 Hbb_lo1 Hbb_lo2) => [Heq2 [? [? ?]]]; subst.
+    set ls1 := [seq lit_of_bool i
+               | i <- (size ns - Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) -bits of (0)%bits].
+    dcase (mk_env_eq E_lo1 g_lo2 lrs_hi2 ls1) => [[[[E_eq1 g_eq1] cs_eq1] lrs_eq1] Hbb_eq1].
+    dcase (mk_env_eq E_lo2 g_lo2 lrs_hi2 ls1) => [[[[E_eq2 g_eq2] cs_eq2] lrs_eq2] Hbb_eq2].
+    move: (mk_env_eq_env_equal Heq2 Hbb_eq1 Hbb_eq2) => [Heq3 [? [? ?]]]; subst.
+    dcase (mk_env_shl_rec E_eq1 g_eq2 ls lrs_lo2 1) =>
+    [[[[E_shl1 g_shl1] cs_shl1] lrs_shl1] Hbb_shl1].
+    dcase (mk_env_shl_rec E_eq2 g_eq2 ls lrs_lo2 1) =>
+    [[[[E_shl2 g_shl2] cs_shl2] lrs_shl2] Hbb_shl2].
+    move: (mk_env_shl_rec_env_equal Heq3 Hbb_shl1 Hbb_shl2) => [Heq4 [? [? ?]]]; subst.
+    set ls2 := [seq lit_of_bool i | i <- (size ls) -bits of (0)%bits].
+    dcase (mk_env_ite E_shl1 g_shl2 lrs_eq2 lrs_shl2 ls2) =>
+    [[[[E_ite1 g_ite1] cs_ite1] lrs_ite1] Hv_ite1].
+    dcase (mk_env_ite E_shl2 g_shl2 lrs_eq2 lrs_shl2 ls2) =>
+    [[[[E_ite2 g_ite2] cs_ite2] lrs_ite2] Hv_ite2].
+    move: (mk_env_ite_env_equal Heq4 Hv_ite1 Hv_ite2) => [Heq5 [? [? ?]]]; subst.
+    case=> ? ? ? ?; case=> ? ? ? ?; subst. done.
+  - exact: (mk_env_shl_rec_env_equal Heq).
+Qed.

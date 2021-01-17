@@ -185,6 +185,18 @@ Proof.
   exact: (newer_than_lits_le_newer Hnew Hle).
 Qed.
 
+Lemma newer_than_vm_add m ig og v lrs :
+  (ig <=? og)%positive ->
+  newer_than_lits og lrs ->
+  newer_than_vm ig m ->
+  newer_than_vm og (SSAVM.add v lrs m).
+Proof.
+  move=> Hg Hnewls Hnewvm x rs. case Hxv: (x == v).
+  - rewrite (SSAVM.Lemmas.find_add_eq Hxv). case=> ?; subst. assumption.
+  - move/negP: Hxv=> Hxv. rewrite (SSAVM.Lemmas.find_add_neq Hxv) => Hfind.
+    move: (Hnewvm x rs Hfind) => Hnew. exact: (newer_than_lits_le_newer Hnew Hg).
+Qed.
+
 
 
 (* ===== Consistent ===== *)

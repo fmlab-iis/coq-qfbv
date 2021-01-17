@@ -100,6 +100,7 @@ Definition et_compatible (ft : expm) (t : CompTable.expm) :=
                 ExpMap.find e ft = Some (fcs, flrs) ->
                 ExpMap.find e t = Some (cs, lrs) ->
                 cnf_eqsat (tflatten fcs) cs /\
+                cnf_eqnew (tflatten fcs) cs /\
                 flrs = lrs).
 
 Definition bt_compatible (ft : bexpm) (t : CompTable.bexpm) :=
@@ -108,6 +109,7 @@ Definition bt_compatible (ft : bexpm) (t : CompTable.bexpm) :=
                 BexpMap.find e ft = Some (fcs, flr) ->
                 BexpMap.find e t = Some (cs, lr) ->
                 cnf_eqsat (tflatten fcs) cs /\
+                cnf_eqnew (tflatten fcs) cs /\
                 flr = lr).
 
 Definition comptable_compatible (fc : comptable) (c : CompTable.comptable) :=
@@ -136,4 +138,42 @@ Lemma comptable_of_fcomptable_compatible t :
   comptable_compatible t (comptable_of_fcomptable t).
 Proof.
   split; [exact: expm_of_fexpm_compatible | exact: bexpm_of_fbexpm_compatible].
+Qed.
+
+Lemma et_compatible_empty : et_compatible (ExpMap.empty (seq cnf * word))
+                                          (CompTable.ExpMap.empty (cnf * word)).
+Proof. done. Qed.
+
+Lemma bt_compatible_empty : bt_compatible (BexpMap.empty (seq cnf * literal))
+                                          (CompTable.BexpMap.empty (cnf * literal)).
+Proof. done. Qed.
+
+Lemma et_compatible_add ft ct e ecs cs lrs :
+  et_compatible ft ct ->
+  cnf_eqsat (tflatten ecs) cs ->
+  cnf_eqnew (tflatten ecs) cs ->
+  et_compatible (ExpMap.add e (ecs, lrs) ft) (CompTable.ExpMap.add e (cs, lrs) ct).
+Proof.
+  move=> Hc Heqs Hewn f. case Hfe: (f == e).
+  - rewrite !(ExpMap.Lemmas.mem_add_eq Hfe) !(ExpMap.Lemmas.find_add_eq Hfe).
+    split; first reflexivity. move=> ? ? ? ? [] ? ? [] ? ?; subst.
+    split; first assumption. split; first assumption. reflexivity.
+  - move/negP: Hfe=> Hfe.
+    rewrite !(ExpMap.Lemmas.mem_add_neq Hfe) !(ExpMap.Lemmas.find_add_neq Hfe).
+    exact: (Hc f).
+Qed.
+
+Lemma bt_compatible_add ft ct e ecs cs lr :
+  bt_compatible ft ct ->
+  cnf_eqsat (tflatten ecs) cs ->
+  cnf_eqnew (tflatten ecs) cs ->
+  bt_compatible (BexpMap.add e (ecs, lr) ft) (CompTable.BexpMap.add e (cs, lr) ct).
+Proof.
+  move=> Hc Heqs Hewn f. case Hfe: (f == e).
+  - rewrite !(BexpMap.Lemmas.mem_add_eq Hfe) !(BexpMap.Lemmas.find_add_eq Hfe).
+    split; first reflexivity. move=> ? ? ? ? [] ? ? [] ? ?; subst.
+    split; first assumption. split; first assumption. reflexivity.
+  - move/negP: Hfe=> Hfe.
+    rewrite !(BexpMap.Lemmas.mem_add_neq Hfe) !(BexpMap.Lemmas.find_add_neq Hfe).
+    exact: (Hc f).
 Qed.
