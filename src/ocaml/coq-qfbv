@@ -1,0 +1,143 @@
+#!/bin/bash
+
+SAT_SOLVER=kissat
+GRATGEN=gratgen
+GRATCHK=gratchk
+COQBB=_build/default/coqbb.exe
+OUTPUT_PATH=./results
+MINOR_HEAP=2G
+MEMORY=60000000
+SET_MEMORY_LIMIT=no
+VERBOSE=no
+
+gnudate() {
+    if hash gdate 2>/dev/null; then
+        gdate "$@"
+    else
+        date "$@"
+    fi
+}
+
+FILE=$1
+if [[ "${FILE}" == "-v" ]]; then
+  VERBOSE=yes
+  FILE=$2
+fi
+
+if [[ "${FILE}" == "" ]]; then
+  echo "Usage $0 [-v] SMTLIB_FILE"
+  exit
+fi
+
+if [[ ! -f ${FILE} ]]; then
+  echo "File ${FILE} is not found."
+  exit
+fi
+
+mkdir -p ${OUTPUT_PATH}
+
+FN=`basename ${FILE}`
+CNF=${OUTPUT_PATH}/${FN/.smt2/.cnf}
+DRAT=${OUTPUT_PATH}/${FN/.smt2/.${SAT_SOLVER}.drat}
+GRATL=${OUTPUT_PATH}/${FN/.smt2/.${SAT_SOLVER}.gratl}
+GRATP=${OUTPUT_PATH}/${FN/.smt2/.${SAT_SOLVER}.gratp}
+
+if [[ "${SET_MEMORY_LIMIT}" == "yes" ]]; then
+  ulimit -v ${MEMORY}
+fi
+
+BBTIME=0
+SATTIME=0
+GRATTIME=0
+
+# ///// Bit-blasting
+
+if [[ "${VERBOSE}" == "yes" ]]; then
+  echo -n "Bit-Blasting..."
+fi
+
+T0=$(gnudate +%s.%N)
+OCAMLRUNPARAM="s=${MINOR_HEAP}" ${COQBB} "${FILE}" > ${CNF}
+T1=$(gnudate +%s.%N)
+BBTIME=$(echo "$T1 - $T0" | bc)
+if [[ "${VERBOSE}" == "yes" ]]; then
+  echo "done [$BBTIME s]"
+fi
+
+# ///// Run SAT solver
+
+if [[ -f ${CNF} ]]; then
+  if [[ "${VERBOSE}" == "yes" ]]; then
+    echo -n "SAT Solving with ${SAT_SOLVER}..."
+  fi
+
+  T0=$(gnudate +%s.%N)
+  if [[ "${SAT_SOLVER}" == "cryptominisat5-linux-amd64-nogauss" ]]; then
+    sat_res=`${SAT_SOLVER} --drat=${DRAT} --verb=0 ${CNF} 2>1`
+  elif [[ "${SAT_SOLVER}" == "kissat" ]]; then
+    sat_res=`${SAT_SOLVER} -q -n ${CNF} ${DRAT} 2>1`
+  else
+    #echo "Unrecognized SAT solver. The argument passed to the solver for proof generation may be incorrect."
+    sat_res=`${SAT_SOLVER} ${CNF} ${DRAT} 2>1`
+  fi
+  T1=$(gnudate +%s.%N)
+  SATTIME=$(echo "$T1 - $T0" | bc)
+  if [[ "${sat_res}" != "s SATISFIABLE" && "${sat_res}" != "s UNSATISFIABLE" ]]; then
+    sat_res="Error: unrecognized output from SAT solver: ${sat_res}"
+  fi
+  if [[ "${VERBOSE}" == "yes" ]]; then
+    echo "${sat_res} [$SATTIME s]"
+  fi
+else
+  echo "Error: CNF file not found"
+  exit
+fi
+
+# ///// Run grat
+
+if [[ "${sat_res}" == "s UNSATISFIABLE" ]]; then
+  if [[ "${VERBOSE}" == "yes" ]]; then
+    echo -n "Proof Certifying with GRAT..."
+  fi
+
+  T0=$(gnudate +%s.%N)
+  gratgen_res=`${GRATGEN} ${CNF} ${DRAT} -b -l ${GRATL} -o ${GRATP} 2>1`
+  gratchk_res=`${GRATCHK} unsat ${CNF} ${GRATL} ${GRATP} 2>1`
+  T1=$(gnudate +%s.%N)
+  GRATTIME=$(echo "$T1 - $T0" | bc)
+  verified=`echo "${gratchk_res}" | grep "s VERIFIED UNSAT"`
+  if [[ "${verified}" == "" ]]; then
+    grat_res="failed"
+  else
+    grat_res="certified"
+  fi
+  if [[ "${VERBOSE}" == "yes" ]]; then
+    echo "${grat_res} [$GRATTIME s]"
+  fi
+fi
+
+smt_res=unknown
+if [[ "${VERBOSE}" == "yes" ]]; then
+  if [[ "${sat_res}" == "s SATISFIABLE" ]]; then
+    smt_res="sat"
+  elif [[ "${sat_res}" == "s UNSATISFIABLE" && "${grat_res}" == "certified" ]]; then
+    smt_res="certified unsat"
+  elif [[ "${sat_res}" == "s UNSATISFIABLE" ]]; then
+    smt_res="unsat"
+  fi
+else
+  if [[ "${sat_res}" == "s SATISFIABLE" ]]; then
+    smt_res="sat"
+  elif  [[ "${sat_res}" == "s UNSATISFIABLE" && "${grat_res}" == "certified" ]]; then
+    smt_res="unsat"
+  fi
+fi
+
+if [[ "${VERBOSE}" == "yes" ]]; then
+  echo "Result: ${smt_res}"
+
+  TOTALTIME=$(echo "$BBTIME + $SATTIME + $GRATTIME" | bc)
+  echo "Total Time [$TOTALTIME s]"
+else
+  echo "${smt_res}"
+fi
