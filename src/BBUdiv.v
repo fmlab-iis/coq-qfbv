@@ -127,18 +127,6 @@ Proof.
   case Hhdff :(lrs_hd == lit_ff); case => _ _ <- <-; done.
 Qed.
 
-Lemma bit_blast_ite_size_ss : forall g l ls1 ls2 g' cs rlrs ,
-    bit_blast_ite g l ls1 ls2 = (g', cs, rlrs) -> size ls1 = size ls2->
-    size rlrs = size ls1.
-Proof.
-Admitted.
-
-Lemma bit_blast_or_size_ss : forall g ls1 ls2 g' cs rlrs ,
-    bit_blast_or g ls1 ls2 = (g', cs, rlrs) -> size ls1 = size ls2->
-    size rlrs = size ls1.
-Proof.
-Admitted.
-
 Lemma bit_blast_udiv_size_ss : forall g ls1 ls2 g' cs qlrs rlrs ,
     bit_blast_udiv g ls1 ls2 = (g', cs, qlrs, rlrs) -> size ls1 = size ls2->
     (size qlrs = size ls2 /\ size rlrs = size ls2).

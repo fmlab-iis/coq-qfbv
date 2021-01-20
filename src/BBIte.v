@@ -60,6 +60,24 @@ Definition bit_blast_ite g c ls1 ls2 := bit_blast_ite_zip g c (extzip_ff ls1 ls2
 
 Definition mk_env_ite E g c ls1 ls2 := mk_env_ite_zip E g c (extzip_ff ls1 ls2) .
 
+Lemma bit_blast_ite_zip_size_ss g l lsp g' cs rlrs :
+  bit_blast_ite_zip g l lsp = (g', cs, rlrs) ->
+  size rlrs = size lsp.
+Proof.
+  elim: lsp g l g' cs rlrs => [| [l1 l2] lsp IH] l g g' cs rlrs //=.
+  - case=> ? ? ?; subst. reflexivity.
+  - dcase (bit_blast_ite_zip (l + 1)%positive g lsp) => [[[g_tl cs_tl] lrs_tl] Hbb_tl].
+    case=> ? ? ?; subst. rewrite /=. rewrite (IH _ _ _ _ _ Hbb_tl). reflexivity.
+Qed.
+
+Lemma bit_blast_ite_size_ss g l ls1 ls2 g' cs rlrs :
+  bit_blast_ite g l ls1 ls2 = (g', cs, rlrs) -> size ls1 = size ls2->
+  size rlrs = size ls1.
+Proof.
+  rewrite /bit_blast_ite. move=> Hbb Hs12. move: (bit_blast_ite_zip_size_ss Hbb).
+  rewrite /extzip_ff. rewrite size_extzip. rewrite Hs12 maxnn. by apply.
+Qed.
+
 Lemma bit_blast_ite1_correct E g bc b1 b2 lc l1 l2 g' cs lr :
   bit_blast_ite1 g lc l1 l2 = (g', cs, lr) ->
   enc_bit E lc bc -> enc_bit E l1 b1 -> enc_bit E l2 b2 ->

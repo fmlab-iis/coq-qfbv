@@ -411,7 +411,8 @@ Qed .
 Lemma Z2Nat_expn m n :
   (0 < m)%Z -> (0 <= n)%Z ->
   Z.to_nat (m ^ n) = (Z.to_nat m) ^ (Z.to_nat n) .
-Admitted .
+  move=> Hm Hn. apply: Z2Nat_inj_pow => //=. exact: (Z.lt_le_incl _ _ Hm).
+Qed.
 
 Lemma shlB_log2 bs ns :
   size bs > 1 ->

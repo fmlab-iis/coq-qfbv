@@ -55,6 +55,25 @@ Definition bit_blast_or g ls1 ls2 := bit_blast_or_zip g (extzip_ff ls1 ls2).
 
 Definition mk_env_or E g ls1 ls2 := mk_env_or_zip E g (extzip_ff ls1 ls2).
 
+Lemma bit_blast_or_zip_size_ss g lsp g' cs rlrs :
+  bit_blast_or_zip g lsp = (g', cs, rlrs) ->
+  size rlrs = size lsp.
+Proof.
+  elim: lsp g g' cs rlrs => [| [l1 l2] lsp IH] g g' cs rlrs //=.
+  - case=> ? ? ?; subst. reflexivity.
+  - dcase (bit_blast_or1 g l1 l2) => [[[g_hd cs_hd] lrs_hd] Hbb_hd].
+    dcase (bit_blast_or_zip g_hd lsp) => [[[g_tl cs_tl] lrs_tl] Hbb_tl].
+    case=> ? ? ?; subst. rewrite /=. rewrite (IH _ _ _ _ Hbb_tl). reflexivity.
+Qed.
+
+Lemma bit_blast_or_size_ss g ls1 ls2 g' cs rlrs :
+  bit_blast_or g ls1 ls2 = (g', cs, rlrs) -> size ls1 = size ls2->
+  size rlrs = size ls1.
+Proof.
+  rewrite /bit_blast_or. move=> Hbb Hs12. move: (bit_blast_or_zip_size_ss Hbb).
+  rewrite /extzip_ff. rewrite size_extzip. rewrite Hs12 maxnn. by apply.
+Qed.
+
 Lemma bit_blast_or1_correct E g b1 b2 l1 l2 g' cs lr:
     bit_blast_or1 g l1 l2 = (g', cs, lr) ->
     enc_bit E l1 b1 -> enc_bit E l2 b2 ->
