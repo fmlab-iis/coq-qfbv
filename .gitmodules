@@ -1,6 +1,3 @@
-[submodule "lib/coq-bits"]
-	path = lib/coq-bits
-	url = https://github.com/mht208/coq-bits
 [submodule "lib/coq-ssrlib"]
 	path = lib/coq-ssrlib
 	url = https://github.com/mht208/coq-ssrlib.git
