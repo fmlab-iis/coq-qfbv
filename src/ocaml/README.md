@@ -1,3 +1,3 @@
 Requirements:
-- OCaml 4.09.x
-- dolmen dev version
+- OCaml 4.07.1
+- menhir 20201201
