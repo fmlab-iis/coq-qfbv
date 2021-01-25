@@ -18,6 +18,14 @@ Definition bit_blast_zeroextend n (g: generator) (ls: word) : generator * cnf * 
 Definition mk_env_zeroextend n (E: env) (g: generator) (ls: word) : env * generator * cnf * word :=
   (E, g, [::], cat ls (nseq n lit_ff)) .
 
+Lemma bit_blast_zeroextend_size :
+  forall n l g g' cs lrs,
+    bit_blast_zeroextend n g l = (g', cs, lrs) -> size lrs = (size l) + n.
+Proof.
+  rewrite /bit_blast_zeroextend. intros; move : H.
+  case => _ _ <-; rewrite seq.size_cat/= size_nseq//.
+Qed.
+
 Lemma bit_blast_zeroextend_correct n g bs E ls g' cs lrs :
   bit_blast_zeroextend n g ls = (g', cs, lrs) ->
   enc_bits E ls bs ->

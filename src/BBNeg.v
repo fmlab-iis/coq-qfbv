@@ -8,40 +8,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-
-Lemma addB1 bs:
-  addB bs (from_nat (size bs) 1) = succB bs.
-Proof.
-Admitted.
-
-Lemma invB_size_ss bs :
-  size bs = size (invB bs).
-Proof.
-  elim : bs => [|b_hd b_tl IH].
-  - by done.
-  - by rewrite /= IH.
-Qed.
-
-Lemma bit_blast_not_size_ss :
-  forall ls g g' (cs: cnf) (lrs: seq literal),
-    bit_blast_not g ls = (g', cs, lrs) ->
-    size ls = size lrs.
-Proof.
-  move => ls.
-  elim : ls=> [| ls_hd ls_tl IH] g g' cs lrs.
-  - by case => _ _ <-. 
-  - rewrite /=. case Hbbnot : (bit_blast_not (g + 1)%positive ls_tl) => [[gnot csnot] lrsnot].
-    case => _ _ <-. move : (IH _ _ _ _ Hbbnot) => Hszeq.
-    by rewrite Hszeq /=.
-Qed.
-
-Lemma bit_blast_const_size_ss ls g g' (cs: cnf) (lrs: seq literal):
-    bit_blast_const g ls = (g', cs, lrs) ->
-    size ls = size lrs.
-Proof.
-  rewrite /bit_blast_const/=. case => _ _ <-. by rewrite size_map.
-Qed.
-
 (* ===== bit_blast_neg ===== *)
 
 Definition bit_blast_neg g ls : generator * cnf * word :=
@@ -55,6 +21,20 @@ Definition mk_env_neg E g ls : env * generator * cnf * word :=
   let '(E_con, g_con, cs_con, lrs_con) := mk_env_const E_not g_not (from_nat (size ls) 1) in
   let '(E_add, g_add, cs_add, lrs_add) := mk_env_add E_con g_con lrs_not lrs_con in
   (E_add, g_add, catrev cs_not (catrev cs_con cs_add), lrs_add).
+
+Lemma bit_blast_neg_size_ss ls g g' (cs: cnf) (lrs: seq literal) :
+  bit_blast_neg g ls = (g', cs, lrs) ->
+  size ls = size lrs.
+Proof.
+  rewrite /bit_blast_neg. dcase (bit_blast_not g ls) => [[[g_not cs_not] lrs_not] Hbb_not].
+  dcase (BBConst.bit_blast_const g_not (size ls) -bits of (1)%bits) =>
+  [[[g_con cs_con] lrs_con] Hbb_con].
+  dcase (bit_blast_add g_con lrs_not lrs_con) => [[[g_add cs_add] lrs_add] Hbb_add].
+  case=> ? ? ?; subst. case: Hbb_con => ? ? ?; subst.
+  move: (bit_blast_not_size_ss Hbb_not) => H. rewrite H.
+  apply: (bit_blast_add_size_ss Hbb_add). rewrite size_map. rewrite size_from_nat.
+  symmetry. assumption.
+Qed.
 
 Lemma bit_blast_neg_correct :
   forall g bs E ls g' cs lrs,
@@ -73,12 +53,12 @@ Proof.
   move => Hencbs Hcnf.
   move/andP : Hcnf => [Hcnfnot /andP [Hcnfcon Hcnfadd]].
   move : (bit_blast_not_correct  Hnot Hencbs Hcnfnot) => Henclrs_not.
-  move : (bit_blast_const_correct Hcons Hcnfcon) => Henclrs_con. 
+  move : (bit_blast_const_correct Hcons Hcnfcon) => Henclrs_con.
   move : (addB1 (invB bs))=> Hencbr. rewrite /negB.
   move : (enc_bits_size Hencbs) => Hszeqls.
   move : (enc_bits_size Henclrs_not) => Hszeqlrsnot.
   move : (enc_bits_size Henclrs_con) => Hszeqlrscon. rewrite size_from_nat in Hszeqlrscon.
-  rewrite invB_size_ss in Hszeqls. rewrite -Hszeqls in Hencbr. rewrite -Hszeqls -Hszeqlrscon in Hszeqlrsnot. 
+  rewrite -size_invB in Hszeqls. rewrite -Hszeqls in Hencbr. rewrite -Hszeqls -Hszeqlrscon in Hszeqlrsnot.
   exact : (bit_blast_add_correct Hadd Henclrs_not Henclrs_con Hencbr Hcnfadd Hszeqlrsnot).
 Qed.
 
@@ -118,7 +98,7 @@ Proof.
   move : (mk_env_const_newer_gen Hmkcon) => Hgnotgcon.
   move : (mk_env_not_newer_res Hmknot Hnewls) => Hnotres.
   move : (mk_env_const_newer_res Hmkcon (newer_than_lit_le_newer Hnewtt Hggnot)) => Hconres.
-  move : (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Hmknot)) => Hbbnotss. 
+  move : (bit_blast_not_size_ss (mk_env_not_is_bit_blast_not Hmknot)) => Hbbnotss.
   move : (mk_env_add_sat Hmkadd  (newer_than_lits_le_newer Hnotres Hgnotgcon) Hconres (newer_than_lit_le_newer Hnewtt (pos_leb_trans Hggnot Hgnotgcon))) => Hcnfadd.
   move : (mk_env_not_newer_cnf Hmknot Hnewls).
   rewrite /mk_env_const in Hmkcon.
@@ -128,7 +108,7 @@ Proof.
   move : (mk_env_add_newer_gen Hmkadd) => Hgcongadd.
   move : (mk_env_add_preserve Hmkadd) => HEconEadd.
   rewrite (env_preserve_cnf HEconEadd Hnewcnfnot).
-  by rewrite /= Hcnfnot Hcnfadd. 
+  by rewrite /= Hcnfnot Hcnfadd.
 Qed.
 
 Lemma mk_env_neg_preserve :

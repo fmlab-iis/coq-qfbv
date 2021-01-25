@@ -19,6 +19,13 @@ Definition bit_blast_const g (bs : bits) : generator * cnf * word :=
 Definition mk_env_const E g (bs : bits) : env * generator * cnf * word :=
   (E, g, [::], map lit_of_bool bs).
 
+Lemma bit_blast_const_size_ss ls g g' (cs: cnf) (lrs: seq literal):
+    bit_blast_const g ls = (g', cs, lrs) ->
+    size ls = size lrs.
+Proof.
+  rewrite /bit_blast_const/=. case => _ _ <-. by rewrite size_map.
+Qed.
+
 Lemma bit_blast_const_correct g bs E g' cs ls :
   bit_blast_const g bs = (g', cs, ls) -> interp_cnf E (add_prelude cs) ->
   enc_bits E ls bs.

@@ -47,6 +47,26 @@ Definition bit_blast_xor g ls1 ls2 := bit_blast_xor_zip g (extzip_ff ls1 ls2).
 
 Definition mk_env_xor E g ls1 ls2 := mk_env_xor_zip E g (extzip_ff ls1 ls2).
 
+
+Lemma bit_blast_xor_zip_size_ss : forall lsp g g' cs rls,
+  bit_blast_xor_zip g lsp = (g', cs, rls) ->
+  size rls = size lsp.
+Proof.
+  elim => [|lhd ltl IH] g g' cs rls.
+  - rewrite/=. by case => _ _ <-.
+  - rewrite/=. case Hbbxorz : (bit_blast_xor_zip (g + 1)%positive ltl) => [[g_xor cs_xor] rls_xor].
+    case lhd => [lhd1 lhd2]. case => _ _ <-. rewrite/=.
+    by rewrite(IH _ _ _ _ Hbbxorz).
+Qed.
+
+Lemma bit_blast_xor_size_max : forall ls1 ls2 g g' cs rls,
+  bit_blast_xor g ls1 ls2 = (g', cs, rls) ->
+  size rls = maxn (size ls1) (size ls2).
+Proof.
+  rewrite/bit_blast_xor. move =>  ls1 ls2 g g' cs rls Hbbxor.
+  by rewrite (bit_blast_xor_zip_size_ss Hbbxor) /extzip_ff size_extzip.
+Qed.
+
 Lemma bit_blast_xor1_correct E g b1 b2 l1 l2 g' cs lr:
     bit_blast_xor1 g l1 l2 = (g', cs, lr) ->
     enc_bit E l1 b1 -> enc_bit E l2 b2 ->

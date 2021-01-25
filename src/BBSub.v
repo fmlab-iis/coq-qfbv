@@ -8,24 +8,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-(* Lemma subB_equiv_addB_negB (p q : bits) : subB p q = addB p (negB q). *)
-(* Proof. *)
-(* Admitted. *)
-
-Lemma bit_blast_neg_size_ss ls g g' (cs: cnf) (lrs: seq literal) :
-  bit_blast_neg g ls = (g', cs, lrs) ->
-  size ls = size lrs.
-Proof.
-  rewrite /bit_blast_neg. dcase (bit_blast_not g ls) => [[[g_not cs_not] lrs_not] Hbb_not].
-  dcase (BBConst.bit_blast_const g_not (size ls) -bits of (1)%bits) =>
-  [[[g_con cs_con] lrs_con] Hbb_con].
-  dcase (bit_blast_add g_con lrs_not lrs_con) => [[[g_add cs_add] lrs_add] Hbb_add].
-  case=> ? ? ?; subst. case: Hbb_con => ? ? ?; subst.
-  move: (bit_blast_not_size_ss Hbb_not) => H. rewrite H.
-  apply: (bit_blast_add_size_ss Hbb_add). rewrite size_map. rewrite size_from_nat.
-  symmetry. assumption.
-Qed.
-
 
 (* ===== bit_blast_sbb ===== *)
 
@@ -38,20 +20,6 @@ Definition mk_env_sbb E g l_bin ls1 ls2 : env * generator * cnf * literal * word
   let '(E_not, g_not, cs_not, lrs_not) := mk_env_not E g ls2 in
   let '(E_add, g_add, cs_add, l_bout, lrs_add) := mk_env_full_adder E_not g_not (neg_lit l_bin) ls1 lrs_not in
   (E_add, g_add, catrev cs_not cs_add, neg_lit l_bout, lrs_add).
-
-Lemma bit_blast_not_size_ss g l g' cs lr:
-    bit_blast_not g l = (g', cs, lr) ->
-    size l = size lr.
-Proof.
-  elim: l g g' cs lr => [|l_hd l_tl IH] g g' cs lr.
-  - by case => _ _ <-.
-  - rewrite /bit_blast_not -/bit_blast_not. 
-    dcase (bit_blast_not1 g l_hd) => [[[g_not1 cs_not1] lrs_not1] Hbb_not1].
-    dcase (bit_blast_not g_not1 l_tl) => [[[g_not cs_not] lrs_not] Hbb_not].
-    case => _ _ <-.
-    rewrite/= -Nat.add_1_r; symmetry; rewrite -Nat.add_1_r Nat.add_cancel_r; symmetry.
-    exact : (IH _ _ _ _ Hbb_not).
-Qed.
 
 Lemma bit_blast_sbb_correct :
   forall g bin bs1 bs2 E l_bin ls1 ls2 bout brs g' cs l_bout lrs,
@@ -69,7 +37,7 @@ Proof.
   dcase (bit_blast_not g ls2) => [[[g_not cs_not] lrs_not] Hbb_not].
   dcase (bit_blast_full_adder g_not (neg_lit l_bin) ls1 lrs_not) =>
   [[[[g_add cs_add] l_bout_add] lrs_add] Hbb_add]. case=> _ <- <- <-.
-  move=> Hencb Henc1 Henc2 Hcs. rewrite /sbbB/=. 
+  move=> Hencb Henc1 Henc2 Hcs. rewrite /sbbB/=.
   dcase (adcB (~~ bin) bs1 (~~# bs2)%bits) => [[b_out b_rs] HadcB].
   case => <- <- Hszeq.
   rewrite add_prelude_catrev in Hcs. move/andP: Hcs => [Hcs_not Hcs_add].
@@ -77,8 +45,8 @@ Proof.
   rewrite enc_bit_not in Hencb.
   rewrite (bit_blast_not_size_ss Hbb_not) in Hszeq.
   move: (bit_blast_full_adder_correct Hbb_add Henc1 Henc_inv2 Hencb Hcs_add HadcB Hszeq) => [Hbout_add Hlrs_add].
-  rewrite -enc_bit_not. 
-  split; by done. 
+  rewrite -enc_bit_not.
+  split; by done.
 Qed.
 
 Lemma mk_env_sbb_is_bit_blast_sbb :
@@ -217,7 +185,15 @@ Definition bit_blast_sub g ls1 ls2 : generator * cnf * word :=
   let '(g_add, cs_add, lrs_add) := bit_blast_add g_neg ls1 lrs_neg in
   (g_add, catrev cs_neg cs_add, lrs_add).
 
-  
+Lemma bit_blast_sub_size_ss : forall g ls1 ls2 g' cs' lrs,
+    bit_blast_sub g ls1 ls2  = (g', cs', lrs) -> size ls1 = size ls2 -> size lrs = size ls2.
+Proof.
+  move => g ls1 ls2 g' cs lrs. rewrite/bit_blast_sub.
+  case Hbbneg : (BBNeg.bit_blast_neg g ls2) => [[g_neg cs_neg] lrs_neg].
+  case Hbbadd : (bit_blast_add g_neg ls1 lrs_neg) => [[ g_add cs_add] lrs_add].
+  case => _ _ <- Hsz12. move: (bit_blast_neg_size_ss Hbbneg)=>Hszneg; rewrite Hszneg in Hsz12. rewrite-( bit_blast_add_size_ss Hbbadd Hsz12). by rewrite Hszneg Hsz12.
+Qed.
+
 Lemma bit_blast_sub_correct :
   forall g bs1 bs2 E ls1 ls2 g' cs lrs,
     bit_blast_sub g ls1 ls2 = (g', cs, lrs) ->

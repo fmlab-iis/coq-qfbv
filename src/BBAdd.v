@@ -135,22 +135,30 @@ Fixpoint mk_env_full_adder_zip E g lcin lp : env * generator * cnf * literal * w
 Definition mk_env_full_adder E g lcin ls1 ls2 :=
   mk_env_full_adder_zip E g lcin (extzip_ff ls1 ls2).
 
-Lemma bit_blast_full_adder_size_ss :
-  forall ls1 ls2 lcin g g' cs lrs lcout,
-    bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs) ->
-    size ls1 = size ls2 -> size ls1 = size lrs.
+Lemma bit_blast_full_adder_zip_size_ss lsp lcin g g' cs lrs lcout :
+  bit_blast_full_adder_zip g lcin lsp = (g', cs, lcout, lrs) -> size lsp = size lrs.
 Proof.
-  elim => [| ls1_hd ls1_tl IH] ls2 lcin g g' cs lrs lcout.
-  - move => /=Hbbadd Hnil. symmetry in Hnil; rewrite (size0nil Hnil) in Hbbadd. by case :Hbbadd => _ _ _ <-.
-  -
-    rewrite /bit_blast_full_adder/bit_blast_full_adder_zip (lock bit_blast_full_adder1) /= -!lock -/bit_blast_full_adder_zip.
-    case ls2 =>[|ls2_ht ls2_tl]; try discriminate.
-    rewrite /bit_blast_full_adder_zip (lock bit_blast_full_adder1) /= -!lock -/bit_blast_full_adder_zip.
-    dcase (bit_blast_full_adder1 g ls1_hd ls2_ht lcin) => [[[[g_hd cs_hd] lcout_hd] lrs_hd] Hbbfa1].
-    dcase (bit_blast_full_adder_zip g_hd lcout_hd (extzip_ff ls1_tl ls2_tl)) => [[[[g_tl cs_tl] lcout_tl] lrs_tl] Hbbfaz].
-    move => Hres Hsz. rewrite -addn1 in Hsz; symmetry in Hsz; rewrite -addn1 in Hsz. move : (addIn Hsz) => Hszeq; symmetry in Hszeq.
-    rewrite /bit_blast_full_adder in IH; rewrite (IH _ _ _ _ _ _ _ Hbbfaz Hszeq).
-    by case : Hres => _ _ _ <-.
+  elim: lsp lcin g g' cs lrs lcout => [| lhd ltl IH] lcin g g' cs lrs lcout.
+  - rewrite/=. by case => _ _ _ <-.
+  - rewrite/=. case lhd => [lhd1 lhd2].
+    case Hbbfa : (bit_blast_full_adder_zip (g + 1 + 1)%positive (Pos (g + 1)%positive) ltl)
+    => [[[gtl cstl] lcouttl] lrstl]. case => _ _ _ <-. by rewrite (IH _ _ _ _ _ _ Hbbfa).
+Qed.
+
+Lemma bit_blast_full_adder_size_max ls1 ls2 lcin g g' cs lrs lcout :
+  bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs) ->
+  maxn (size ls1) (size ls2) = size lrs.
+Proof.
+  move=> Hbb. move: (bit_blast_full_adder_zip_size_ss Hbb) => Hszip.
+  rewrite size_extzip in Hszip. assumption.
+Qed.
+
+Lemma bit_blast_full_adder_size_ss ls1 ls2 lcin g g' cs lrs lcout :
+  bit_blast_full_adder g lcin ls1 ls2 = (g', cs, lcout, lrs) ->
+  size ls1 = size ls2 -> size ls1 = size lrs.
+Proof.
+  move=> Hbb Hs. rewrite -(bit_blast_full_adder_size_max Hbb).
+  rewrite Hs maxnn. reflexivity.
 Qed.
 
 Lemma bit_blast_full_adder_zip_correct E g bp bcin bcout lp lcin lcout g' cs lrs brs :
@@ -512,13 +520,19 @@ Definition bit_blast_add g ls1 ls2 : generator * cnf * word :=
   let '(g', cs, cout, lrs) := bit_blast_full_adder g lit_ff ls1 ls2 in
   (g', cs, lrs).
 
-Lemma bit_blast_add_size_ss ls1 ls2 g g' cs lrs :
-  bit_blast_add g ls1 ls2 = (g', cs, lrs) -> size ls1 = size ls2 -> size ls1 = size lrs.
+Lemma bit_blast_add_size_max ls1 ls2 g g' cs lrs :
+  bit_blast_add g ls1 ls2 = (g', cs, lrs) -> maxn (size ls1) (size ls2) = size lrs.
 Proof.
   rewrite /bit_blast_add.
   dcase (bit_blast_full_adder g lit_ff ls1 ls2) => [[[[ga csa] couta] lrsa] Hbbfa].
-  case => _ _ <-.
-  exact : (bit_blast_full_adder_size_ss Hbbfa).
+  case => _ _ <-. exact: (bit_blast_full_adder_size_max Hbbfa).
+Qed.
+
+Lemma bit_blast_add_size_ss ls1 ls2 g g' cs lrs :
+  bit_blast_add g ls1 ls2 = (g', cs, lrs) -> size ls1 = size ls2 -> size ls1 = size lrs.
+Proof.
+  move=> Hbb Hs. rewrite -(bit_blast_add_size_max Hbb).
+  rewrite Hs maxnn. reflexivity.
 Qed.
 
 Lemma bit_blast_add_correct :

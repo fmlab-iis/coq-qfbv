@@ -161,12 +161,12 @@ Section BBSmulo.
       rewrite !size_behead /=; f_equal.
       rewrite (enc_bits_size Henc_xls1).
       rewrite (enc_bits_size Henc_xls2).
-      move: (size_belastd Hsz) => Hsz_wsign.
-      rewrite (eqP Hsz_wsign).
+      move: (size_belastd_eq (eqP Hsz)) => Hsz_wsign.
+      rewrite Hsz_wsign.
       rewrite /xorB.
       rewrite !size_lift.
-      move: (size_belastd HszB) => Hsz_wsignB.
-      rewrite (eqP Hsz_wsignB).
+      move: (size_belastd_eq (eqP HszB)) => Hsz_wsignB.
+      rewrite Hsz_wsignB.
       f_equal.
         by rewrite !size_copy.
     }
@@ -189,14 +189,12 @@ Section BBSmulo.
     move: (bit_blast_xor1_correct Hblast_xor1 Henc_muln Henc_muln1 Hcnf_xor1) => Henc_xor1.
     have -> : size (belastd bs1) = size (belastd ls1).
     {
-      apply /eqP.
-      apply size_belastd.
+      apply size_belastd_eq.
         by rewrite Hsz1.
     }
     have -> : size (belastd bs2) = size (belastd ls2).
     {
-      apply /eqP.
-      apply size_belastd.
+      apply size_belastd_eq.
         by rewrite Hsz2.
     }
     exact: (bit_blast_or1_correct Hblast_or1 Henc_rec Henc_xor1 Hcnf_or1).

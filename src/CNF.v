@@ -137,6 +137,12 @@ Proof .
   - by rewrite subn1 -pred_Sn size_belast .
 Qed .
 
+Lemma size_splitmsl ls : (size (splitmsl ls).1) = size ls -1.
+Proof.
+  intros. rewrite /splitmsl /split_last /=.
+  elim ls => [|lshd lstl IH]; try done. rewrite /= size_belast subn1//.
+Qed.
+
 
 (* interp_lit *)
 

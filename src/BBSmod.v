@@ -8,11 +8,6 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
-(* Definition smodB bs1 bs2 : bits := *)
-(*   let r_sdiv := sremB' bs1 bs2 in  *)
-(*   if (msb bs1 == msb bs2) || (r_sdiv == (zeros (size r_sdiv))) then *)
-(*     r_sdiv *)
-(*   else addB r_sdiv bs2. *)
 
 (* ===== bit_blast_smod ===== *)
 
@@ -32,25 +27,6 @@ Definition bit_blast_smod g ls1 ls2 : generator * cnf * word :=
             let '(g_and2, cs_and2, lrs_and2) := bit_blast_and g_not ls2 lrs_not in
             let '(g_add2, cs_add2, lrs_add2) := bit_blast_add g_and2 lrs_srem lrs_and2 in
             (g_add2, catrev cs_srem (catrev cs_eq (catrev cs_eq2 (catrev cs_or (catrev cs_not (catrev cs_and2 cs_add2))))), lrs_add2).
-
-
-Lemma bit_blast_srem_size_ss g ls1 ls2 g' cs lrs_r:
-  bit_blast_srem g ls1 ls2 = (g', cs, lrs_r) ->
-  size lrs_r = size ls1.
-Proof. Admitted.
-
-Lemma bit_blast_or_size_ss g ls1 ls2 g' cs lrs_r:
-  bit_blast_or g ls1 ls2 = (g', cs, lrs_r) ->
-  size lrs_r = size ls1.
-Proof. Admitted.
-
-(*
-Lemma or1B: forall (bs : bits), (ones (size bs) ||# bs)%bits = ones (size bs).
-Proof. Admitted.
-
-Lemma orB0: forall (n : nat) (bs : bits), (bs||# zeros n)%bits = bs.
-Proof. Admitted.
- *)
 
 Lemma bit_blast_smod_correct g ls1 ls2 g' cs rlrs E bs1 bs2 :
   bit_blast_smod g ls1 ls2 = (g', cs, rlrs) ->
@@ -152,10 +128,11 @@ Proof.
         rewrite size_sremB add0B unzip2_zip; first by rewrite -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1).
         by rewrite 2!size_zeros -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1).
         rewrite -(eqP HsremB0) in Haddr.
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
-        move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
+        move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2.
+        rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
       * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
         rewrite -/(msb bs1) -/(msb bs2) Seqs.singleton_eq Hmsb12f (enc_bits_size Hencr) HsremB0 -/(zeros (size ls2)).
@@ -165,9 +142,9 @@ Proof.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.
         move => Hencand2r.
         move/eqP : (eq_refl (addB  (sremB bs1 bs2) bs2)) => Haddr.
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
     + rewrite /=. case => _ <- <-. move => Hsz12 Hgt02 Henc1 Henc2.
@@ -202,9 +179,9 @@ Proof.
         have Haddr :(addB  (sremB bs1 bs2) (zeros (size bs2)) = (sremB bs1 bs2)).
         rewrite addB0 unzip1_zip; first done.
         by rewrite size_sremB size_zeros -(enc_bits_size Henc2)-Hsz12 (enc_bits_size Henc1).
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
       * move : (bit_blast_or_correct Hbbor (enc_bits_copy (size ls2) Henceqr) (enc_bits_copy (size ls2) Henceq2r) Hcsor).
@@ -216,9 +193,9 @@ Proof.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.
         move => Hencand2r.
         move/eqP :(eq_refl (addB  (sremB bs1 bs2) bs2)) => Haddr.
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
     + rewrite /=. case => _ <- <-. move => Hsz12 Hgt02 Henc1 Henc2.
@@ -250,9 +227,9 @@ Proof.
         have Haddr :(addB  (sremB bs1 bs2) (zeros (size bs2)) = (sremB bs1 bs2)).
         rewrite addB0 unzip1_zip; first done.
         by rewrite size_sremB -(enc_bits_size Henc2) -Hsz12 (enc_bits_size Henc1) size_zeros.
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
       * rewrite/=.
@@ -269,9 +246,9 @@ Proof.
         have Haddr :(addB  (sremB bs1 bs2) (zeros (size bs2)) = (sremB bs1 bs2)).
         rewrite addB0 unzip1_zip; first done.
         by rewrite size_sremB size_zeros -(enc_bits_size Henc2)-Hsz12 (enc_bits_size Henc1).
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
       * rewrite/=.
@@ -285,9 +262,9 @@ Proof.
         move : (bit_blast_and_correct Hbband2 Henc2 Hencnotr Hcsand). rewrite (enc_bits_size Henc2) andB1.
         move => Hencand2r.
         have Haddr :(addB  (sremB bs1 bs2) bs2 = addB (sremB bs1 bs2) bs2) by done.
-        move : (bit_blast_srem_size_ss Hbbsrem) => Hszsrem.
-        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite size_nseq in Hszor.
-        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot.
+        move : (bit_blast_srem_size_ss Hbbsrem Hsz12) => Hszsrem.
+        move : (bit_blast_or_size_ss Hbbor) => Hszor. rewrite !size_nseq in Hszor.
+        move : (bit_blast_not_size_ss Hbbnot) => Hsznot. rewrite Hszor in Hsznot; last reflexivity.
         move : (bit_blast_and_size_ss Hbband2 Hsznot) => Hszand2. rewrite -Hsz12 -Hszsrem in Hszand2.
         exact : (bit_blast_add_correct Hbbadd2 Hencr Hencand2r Haddr Hcsadd2 Hszand2).
 Qed.
@@ -321,7 +298,7 @@ Definition mk_env_smod E g ls1 ls2 : env * generator * cnf * word :=
             let '(E_add2, g_add2, cs_add2, lrs_add2) := mk_env_add E_and2 g_and2 lrs_srem lrs_and2 in
             (E_add2, g_add2, catrev cs_srem (catrev cs_eq (catrev cs_eq2 (catrev cs_or (catrev cs_not (catrev cs_and2 cs_add2))))), lrs_add2).
 
-  
+
 Lemma mk_env_smod_is_bit_blast_smod E g ls1 ls2 E' g' cs lrs :
   mk_env_smod E g ls1 ls2 = (E', g', cs, lrs) ->
   bit_blast_smod g ls1 ls2  = (g', cs, lrs).

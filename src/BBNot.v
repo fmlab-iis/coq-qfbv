@@ -42,6 +42,19 @@ Fixpoint mk_env_not E g ls : env * generator * cnf * word :=
     (E_tl, g_tl, catrev cs_hd cs_tl, lrs_hd :: lrs_tl)
   end.
 
+Lemma bit_blast_not_size_ss :
+  forall ls g g' (cs: cnf) (lrs: seq literal),
+    bit_blast_not g ls = (g', cs, lrs) ->
+    size ls = size lrs.
+Proof.
+  move => ls.
+  elim : ls=> [| ls_hd ls_tl IH] g g' cs lrs.
+  - by case => _ _ <-.
+  - rewrite /=. case Hbbnot : (bit_blast_not (g + 1)%positive ls_tl) => [[gnot csnot] lrsnot].
+    case => _ _ <-. move : (IH _ _ _ _ Hbbnot) => Hszeq.
+    by rewrite Hszeq /=.
+Qed.
+
 Lemma bit_blast_not1_correct g b br E l g' cs lr :
     bit_blast_not1 g l = (g', cs, lr) ->
     enc_bit E l b ->
@@ -52,7 +65,7 @@ Proof.
   rewrite /bit_blast_not1 /enc_bit. case=> _ <- <- /=.
   rewrite add_prelude_expand /= interp_lit_neg_lit /=. move/eqP ->.
   move/andP => [Htt Hcs] ->; t_clear.
-  move: Hcs. by case (E g); case b. 
+  move: Hcs. by case (E g); case b.
 Qed.
 
 Lemma bit_blast_not_correct g bs E ls g' cs lrs:
@@ -65,7 +78,7 @@ Proof.
   - move=> g bs E g' cs lr /=. case=> _ <- <- /=.
     rewrite enc_bits_nil_l. move/eqP ->. done.
   - move=> ls_hd ls_tl IH g bs E g' cs lrs.
-    rewrite /bit_blast_not -/bit_blast_not. 
+    rewrite /bit_blast_not -/bit_blast_not.
     case Hbb_hd : (bit_blast_not1 g ls_hd) => [[g_hd cs_hd] lrs_hd].
     case Hbb_tl : (bit_blast_not g_hd ls_tl) => [[g_tl cs_tl] lrs_tl].
     case=> _ <- <-. case: bs => [| bs_hd bs_tl] //=.
@@ -115,7 +128,7 @@ Proof.
     case Hmk_hd : (mk_env_not1 E g ls_hd) => [[[E_hd g_hd] cs_hd] lrs_hd].
     case Hmk_tl : (mk_env_not E_hd g_hd ls_tl) => [[[E_tl g_tl] cs_tl] lrs_tl].
     case=> _ <- _ _.
-    move: (mk_env_not1_newer_gen Hmk_hd) => Hggh. 
+    move: (mk_env_not1_newer_gen Hmk_hd) => Hggh.
     move: (IH _ _ _ _ _ _ Hmk_tl) => Hghgt.
     by apply: (pos_leb_trans Hggh Hghgt).
 Qed.
@@ -170,7 +183,7 @@ Proof.
     case Hmk_hd : (mk_env_not1 E g ls_hd) => [[[E_hd g_hd] cs_hd] lrs_hd].
     case Hmk_tl : (mk_env_not E_hd g_hd ls_tl) => [[[E_tl g_tl] cs_tl] lrs_tl].
     case=> _ <- <- _ /=. move/andP => [Hglh Hglt].
-    rewrite newer_than_cnf_catrev. 
+    rewrite newer_than_cnf_catrev.
     move: (mk_env_not_newer_gen Hmk_tl) => Hghgt.
     apply/andP; split.
     + move: (mk_env_not1_newer_cnf Hmk_hd Hglh) => Hghch.
@@ -197,7 +210,7 @@ Proof.
   - rewrite /mk_env_not -/mk_env_not.
     case Hmk_hd : (mk_env_not1 E g ls_hd) => [[[E_hd g_hd] cs_hd] lrs_hd].
     case Hmk_tl : (mk_env_not E_hd g_hd ls_tl) => [[[E_tl g_tl] cs_tl] lrs_tl].
-    case=> <- _ _ _ /=. 
+    case=> <- _ _ _ /=.
     move: (mk_env_not1_preserve Hmk_hd) => HEEhg.
     move: (IH _ _ _ _ _ _ Hmk_tl) => HEhEtgh.
     move: (mk_env_not1_newer_gen Hmk_hd) => Hggh.
