@@ -56,14 +56,6 @@ src/BBSdiv.v
 src/BBSmod.v
 src/BBExport.v
 src/AdhereConform.v
-# src/BitBlastingDef.v
-# src/BitBlastingNewer.v
-# src/BitBlastingPreserve.v
-# src/BitBlastingConsistent.v
-# src/BitBlastingCorrect.v
-# src/BitBlastingSat.v
-# src/BitBlastingMkEnv.v
-# src/BitBlasting.v
 src/bbcache/CompTable.v
 src/bbcache/CompCache.v
 src/bbcache/SimpTable.v
