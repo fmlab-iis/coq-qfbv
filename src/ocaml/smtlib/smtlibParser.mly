@@ -13,7 +13,8 @@
 %token TRUE FALSE
 %token EOF
 
-%start<Ast.file> file
+%start file
+%type <Ast.file> file
 
 %%
 
@@ -27,7 +28,7 @@ script
 ;
 
 
-(* Commands *)
+/* Commands */
 
 command
   : PAR_OPEN CMD_SET_LOGIC symbol PAR_CLOSE
@@ -61,7 +62,7 @@ sorted_var
   : PAR_OPEN symbol sort PAR_CLOSE      { ($2, $3) }
 ;
 
-(* Sorts *)
+/* Sorts */
 
 sort
   : identifier                          { SIdentifier $1 }
@@ -80,7 +81,7 @@ sort_list_nonempty
 ;
 
 
-(* Terms *)
+/* Terms */
 
 term
   : spec_constant                       { TConstant $1 }
@@ -97,7 +98,7 @@ term_list_nontmpey
 ;
 
 
-(* Variable binding *)
+/* Variable binding */
 
 var_binding_list_nonempty
   : var_binding                         { [$1] }
@@ -110,7 +111,7 @@ var_binding
 ;
 
 
-(* Identifiers *)
+/* Identifiers */
 
 qual_identifier
   : identifier                          { QIdentifier $1 }
@@ -136,7 +137,7 @@ index_list_nonempty
 
 
 
-(* Attributes *)
+/* Attributes */
 
 keyword
   : KEYWORD                             { $1 }
@@ -149,7 +150,7 @@ attribute
 ;
 
 
-(* Solver Options *)
+/* Solver Options */
 
 solver_option :
   keyword                               { OKeyword $1 }
@@ -158,7 +159,7 @@ solver_option :
 ;
 
 
-(* Symbols *)
+/* Symbols */
 
 symbol
   : SYMBOL                              { $1 }
@@ -167,7 +168,7 @@ symbol
 ;
 
 
-(* spec_constant *)
+/* spec_constant */
 
 spec_constant
   : numeral                             { CNumeral $1 }

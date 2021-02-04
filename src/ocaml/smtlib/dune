@@ -2,10 +2,8 @@
   (modules         smtlibLexer)
 )
 
-(menhir
+(ocamlyacc
   (modules         smtlibParser)
-  (flags           --explain --dump)
-  (infer           true)
 )
 
 (library
