@@ -44,7 +44,7 @@ Proof.
       case Heq : (u == v) .
       * rewrite (eqP Heq) => _ .
         have Hfind : (SSAVM.M.find v (SSAVM.M.add v vs m) = Some vs) .
-        { apply : SSAVM.Lemmas.find_add_eq; done . }
+        { apply : SSAVM.Lemmas.find_add_eq. reflexivity. }
         exists vs .
         rewrite Hfind (size_bit_blast_var' Hbbr) // .
       * have Hneq : ~(SSAVM.E.eq u v) .

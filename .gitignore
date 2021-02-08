@@ -2,6 +2,8 @@ Makefile.coq.conf
 .coqdeps.d
 *.glob
 *.vo
+*.vok
+*.vos
 *.aux
 src/extraction/*.ml
 src/extraction/*.mli

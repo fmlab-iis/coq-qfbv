@@ -32,7 +32,7 @@ Proof.
       rewrite -bound_add_cet; by apply bound_add_het.
     + dcase (bit_blast_var te g v) => [[[gv csv] lsv] Hbbv] .
       case => <- <- _ _ _  Hwfc Hbcm.
-      have Hmem : SSAVM.mem v (SSAVM.add v lsv m) by apply SSAVM.Lemmas.mem_add_eq .
+      have Hmem : SSAVM.mem v (SSAVM.add v lsv m) by apply: SSAVM.Lemmas.mem_add_eq; reflexivity.
       split; first done. 
       rewrite -bound_add_cet; apply bound_add_het; try done.
       apply (@vm_preserve_bound m); try done; by apply vm_preserve_add_diag.
