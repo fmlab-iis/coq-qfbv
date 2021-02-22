@@ -12,6 +12,7 @@ open Extraction.Seqs
 open Extraction.QFBVHash
 open Extraction.BitBlastingInit
 open Extraction.BitBlastingCacheHash
+open Extraction.State
 open Util
 open Smtlib.Ast
 
@@ -20,11 +21,40 @@ open Smtlib.Ast
 
 (** Options and exceptions *)
 
+let option_kissat_path = ref "kissat"
+
+let option_gratgen_path = ref "grategn"
+
+let option_gratchk_path = ref "gratchk"
+
 let option_debug = ref false
 
 let option_split_conjs = ref false
 
-let option_expand_let = false
+let option_expand_let = ref false
+
+let option_verbose = ref false
+
+let option_keep_temp_files = ref false
+
+let option_cnf_file = ref None
+let option_drat_file = ref None
+let option_sat_log_file = ref None
+let option_gratl_file = ref None
+let option_gratp_file = ref None
+let option_grat_log_file = ref None
+
+let option_tmpdir = ref None
+
+let tmpfile prefix suffix =
+  match !option_tmpdir with
+  | None -> Filename.temp_file prefix suffix
+  | Some dir -> Filename.temp_file ~temp_dir:dir prefix suffix
+
+let unlink' file = if Sys.file_exists file then Unix.unlink file
+
+let cleanup files = if not !option_keep_temp_files then List.iter unlink' files
+
 
 exception IllFormedException
 
@@ -135,9 +165,6 @@ let string_of_bbinop (op : QFBV.bbinop) =
   | QFBV.Bsaddo -> "saddo"
   | QFBV.Bssubo -> "ssubo"
   | QFBV.Bsmulo -> "smulo"
-
-let string_of_bits bs =
-  String.concat "" (List.map (fun b -> if b then "1" else "0") (List.rev bs))
 
 let rec string_of_exp (e : QFBV.exp) : string =
   match e with
@@ -369,7 +396,7 @@ let rec convert_exp_application es vm tm fm env g fqi factuals : SSATE.env * int
       failwith ("Undefined exp function in function application: " ^ string_of_term (TApplication (fqi, factuals)))
 
 and convert_exp_let es vm tm fm env g vbs t : SSATE.env * int * QFBV.bexp list * QFBV.exp =
-  if option_expand_let then
+  if !option_expand_let then
     begin
       let t' = List.fold_left (
                    fun t (v, p) -> subst_term v p t
@@ -483,7 +510,7 @@ and convert_bexp_application es vm tm fm env g fqi factuals : SSATE.env * int * 
       failwith ("Undefined bexp function in function application: " ^ fn)
 
 and convert_bexp_let es vm tm fm env g vbs t : SSATE.env * int * QFBV.bexp list * QFBV.bexp =
-  if option_expand_let then
+  if !option_expand_let then
     begin
       let t' = List.fold_left (
                    fun t (v, p) -> subst_term v p t
@@ -550,6 +577,7 @@ let bexps_of_command es vm tm fm env g c : vm * tm * fm * SSATE.env * int * QFBV
   | CAssert t -> let (env', g', es', e) = convert_bexp_term es vm tm fm env g t in
                  (vm, tm, fm, env', g', List.rev (e::es'))
   | CCheckSat -> (vm, tm, fm, env, g, es)
+  | CGetModel -> (vm, tm, fm, env, g, es)
   | CExit -> (vm, tm, fm, env, g, es)
   | CComment _ -> (vm, tm, fm, env, g, es)
 
@@ -592,8 +620,12 @@ let string_of_ssavar v =
   let (svar, sidx) = Obj.magic v in
   string_of_int (int_of_n svar) ^ " " ^ string_of_int (int_of_n sidx)
 
-let bb_file file =
-  let (vm, tm, env, es) = bexps_of_file file in
+(*
+ * vm: from var in SMTLIB to var in Coq QFBV
+ * env: typing environment in Coq
+ * returns a map from QFBV var to its corresponding literals
+ *)
+let bb_bexps_conj vm env es =
   let _ =
     if !option_debug then
       let _ = List.iter (
@@ -608,16 +640,21 @@ let bb_file file =
       () in
   if QFBV.well_formed_bexps es env then
     if !option_split_conjs then
-      let cnf = bit_blast_bexps_hcache_conjs env es in
-      cnf
+      let (((m, c), g), cnf) = bit_blast_bexps_hcache_conjs env es in
+      (m, cnf)
     else
       let e = make_qfbv_conjs es in
       let ((((m, c), g), cnf), lr) = bit_blast_bexp_hcache_tflatten env init_vm init_hcache init_gen (hash_bexp e) in
       let cnf = CNF.add_prelude ([lr]::cnf) in
-      cnf
+      (m, cnf)
   else
     raise IllFormedException
 
+let bb_file file =
+  (* vm: from var in SMTLIB to var in Coq QFBV *)
+  let (vm, tm, env, es) = bexps_of_file file in
+  let (_, cnf) = bb_bexps_conj vm env es in
+  cnf
 
 
 (** Output to DIMACS *)
@@ -637,43 +674,274 @@ let coq_output_dimacs ch cs =
   let _ = output_string ch ("p cnf " ^ string_of_int nvars ^ " " ^ string_of_int nclauses ^ "\n") in
   let _ = coq_output_cnf ch cs in
   let _ = flush ch in
-  ()
+  (nvars, nclauses)
 
-let coq_string_of_literal_reorder m g l =
-  let (neg, var) =
-    match l with
-    | CNF.Pos v -> (false, v)
-    | CNF.Neg v -> (true, v) in
-  try
-    (g, (if neg then "-" else "") ^ (Hashtbl.find m var))
-  with Not_found ->
-    let g' = g + 1 in
-    let var_reorder = string_of_int g' in
-    let _ = Hashtbl.add m var var_reorder in
-    (g', (if neg then "-" else "") ^ var_reorder)
 
-let coq_string_of_clause_reorder m g c =
-  let (g', strs) = List.fold_left
-                     (fun (g, strs) l ->
-                       let (g', str) = coq_string_of_literal_reorder m g l in
-                       (g', str::strs)
-                     ) (g, []) c in
-  (g', String.concat " " (List.rev strs) ^ " 0\n")
 
-let coq_output_dimacs_reorder ch cs =
-  let m = Hashtbl.create 10 in
+(** Check SAT *)
+
+type literal_assignments = bool array
+
+type qfbv_assignments = SSAStore.t
+
+type smtlib_assignments = (ttyp * string) M.t
+
+type sat_solving_result = SAT of literal_assignments | UNSAT
+
+type check_sat_result = CERTIFIED_SAT of smtlib_assignments | CERTIFIED_UNSAT
+
+type 'a result = OK of 'a | ERROR of string
+
+let string_of_check_sat_result res =
+  match res with
+  | CERTIFIED_UNSAT -> "unsat"
+  | CERTIFIED_SAT m -> "sat"
+
+(*
+ * vm: from var in SMTLIB to var in Coq QFBV
+ * env: typing environment in Coq
+ *)
+let check_sat_bexps_conj vm tm env es =
+  let base_file = tmpfile "coqqfbv_" "" in
+  let cnf_file =
+    match !option_cnf_file with
+    | None -> base_file ^ ".cnf"
+    | Some fn -> fn in
+  let drat_file =
+    match !option_drat_file with
+    | None -> base_file ^ ".drat"
+    | Some fn -> fn in
+  let sat_log_file =
+    match !option_sat_log_file with
+    | None -> base_file ^ ".sat.log"
+    | Some fn -> fn in
+  let gratl_file =
+    match !option_gratl_file with
+    | None -> base_file ^ ".gratl"
+    | Some fn -> fn in
+  let gratp_file =
+    match !option_gratp_file with
+    | None -> base_file ^ ".gratp"
+    | Some fn -> fn in
+  let grat_log_file =
+    match !option_grat_log_file with
+    | None -> base_file ^ ".grat.log"
+    | Some fn -> fn in
+  let _ = cleanup [base_file] in
+  let do_bit_blasting vm env es =
+    let _ = if !option_verbose then print_string ("Bit-blasting: ") in
+    let t1 = Unix.gettimeofday() in
+    let (lm, cnf) = bb_bexps_conj vm env es in
+    let t2 = Unix.gettimeofday() in
+    let _ = if !option_verbose then print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+    (lm, cnf) in
+  let do_output_cnf_file cnf =
+    let _ = if !option_verbose then print_string ("Saving CNF file: ") in
+    let t1 = Unix.gettimeofday() in
+    let (nvars, nclauses) =
+      let outch = open_out cnf_file in
+      let (nvars, nclauses) = coq_output_dimacs outch cnf in
+      let _ = close_out outch in
+      (nvars, nclauses) in
+    let t2 = Unix.gettimeofday() in
+    let _ =
+      if !option_verbose then
+        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("CNF file: " ^ cnf_file) in
+        let _ = print_endline ("Size of CNF file: " ^ Int64.to_string (Unix.LargeFile.stat cnf_file).Unix.LargeFile.st_size ^ " bytes") in
+        let _ = print_endline ("Number of variables in CNF file: " ^ string_of_int nvars) in
+        let _ = print_endline ("Number of clauses in CNF file: " ^ string_of_int nclauses) in
+        () in
+    nvars in
+  let do_sat_solving () =
+    let _ = if !option_verbose then print_string ("Solving CNF file: ") in
+    let t1 = Unix.gettimeofday() in
+    let _ =
+      let cmd = !option_kissat_path ^ " -q " ^ cnf_file ^ " " ^ drat_file ^ " 2>&1 1>" ^ sat_log_file in
+      match Unix.system cmd with
+      | Unix.WEXITED 10 -> () (* sat *)
+      | Unix.WEXITED 20 -> () (* unsat *)
+      | _ -> raise (Failure "Failed to solve CNF file") in
+    let t2 = Unix.gettimeofday() in
+    let _ =
+      if !option_verbose then
+        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = if Sys.file_exists drat_file then print_endline ("DRAT file: " ^ drat_file ^ "\n"
+                                                                 ^ "Size of DRAT file: " ^ Int64.to_string (Unix.LargeFile.stat drat_file).Unix.LargeFile.st_size ^ " bytes") in
+        () in
+    () in
+  let do_parse_sat_result nvars =
+    let literal_assignments = ref (Array.make 1 false) in
+    let is_unsat =
+      let is_unsat = ref None in
+      let line = ref "" in
+      let inch = open_in sat_log_file in
+      let _ =
+        try
+          while true do
+            let _ = line := input_line inch in
+            let _ = if !option_debug then print_endline ("DEBUG: SAT result line: " ^ !line) in
+            if !line = "s SATISFIABLE" then (literal_assignments := Array.make (nvars + 1) false; is_unsat := Some false)
+            else if !line = "s UNSATISFIABLE" then is_unsat := Some true
+            else if Str.string_match (Str.regexp "v ") !line 0 then
+              let assignments = List.map int_of_string (String.split_on_char ' ' (String.sub !line 2 (String.length !line - 2))) in
+              let _ = List.iter (fun v -> !literal_assignments.(abs v) <- (v > 0)) assignments in
+              ()
+            else raise End_of_file
+          done
+        with End_of_file -> ()
+           | _ -> failwith "Failed to read the SAT solver output file." in
+      let _ = close_in inch in
+      !is_unsat in
+    match is_unsat with
+    | None ->
+       let _ = Unix.system ("cat " ^ sat_log_file) in
+       raise (Failure "Error in SAT solving")
+    | Some true -> UNSAT
+    | Some false -> SAT !literal_assignments in
+  let do_certify_unsat () =
+    let _ = if !option_verbose then print_string ("Certifying UNSAT proof: ") in
+    let t1 = Unix.gettimeofday() in
+    let _ =
+      let cmd = !option_gratgen_path ^ " " ^ cnf_file ^ " " ^ drat_file ^ " -b -l " ^ gratl_file ^ " -o " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED'" in
+      match Unix.system cmd with
+      | Unix.WEXITED 1 -> () (* grep found *)
+      | _ -> raise (Failure "Failed to generate auxiliary lemmas from UNSAT proof") in
+    let certified =
+      let cmd = !option_gratchk_path ^ " unsat " ^ cnf_file ^ " " ^ gratl_file ^ " " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED UNSAT'" in
+      match Unix.system cmd with
+      | Unix.WEXITED 1 -> true (* grep found *)
+      | _ -> false in
+    let t2 = Unix.gettimeofday() in
+    let _ =
+      if !option_verbose then
+        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = if Sys.file_exists gratl_file then print_endline ("GRATL file: " ^ gratl_file ^ "\n"
+                                                                  ^ "Size of GRATL file: " ^ Int64.to_string (Unix.LargeFile.stat gratl_file).Unix.LargeFile.st_size ^ " bytes") in
+        let _ = if Sys.file_exists gratp_file then print_endline ("GRATP file: " ^ gratp_file ^ "\n"
+                                                                  ^ "Size of GRATP file: " ^ Int64.to_string (Unix.LargeFile.stat gratp_file).Unix.LargeFile.st_size ^ " bytes") in
+        let _ = print_endline ("UNSAT proof certified: " ^ string_of_bool certified) in
+        () in
+    certified in
+  let qfbv_assignments_of_literal_assignments lm literal_assignments =
+    let _ = if !option_debug then Array.iteri (fun i b -> print_endline ("DEBUG: " ^ "cnf var " ^ string_of_int i ^ ": " ^ string_of_bool b)) literal_assignments in
+    let int_of_lit l = int_of_pos (CNF.var_of_lit l) in
+    SSAVM.fold
+      (fun ssavar lits store ->
+        let bv = List.map (fun l -> literal_assignments.(int_of_lit l)) (lits) in
+        let _ = if !option_debug then print_endline ("DEBUG: ssavar " ^ string_of_ssavar ssavar ^ " -> lits "
+                                                     ^ (String.concat " " (List.map string_of_int (List.map int_of_lit lits))) ^ ": value " ^ string_of_bits bv) in
+        SSAStore.upd ssavar bv store
+      ) lm (SSAStore.empty) in
+  let smtlib_assignments_of_qfbv_assignments vm tm qfbv_assignments =
+    M.mapi (
+        fun v coq_v ->
+        let ty = M.find v tm in
+        let bv = SSAStore.acc coq_v qfbv_assignments in
+        let _ = if !option_debug then print_endline ("DEBUG: smtlib var " ^ v ^ " -> ssavar " ^ string_of_ssavar coq_v ^ ": value " ^ string_of_bits bv) in
+        (ty, match ty with
+             | TBool -> string_of_bool (List.hd bv)
+             | TNumeral -> Z.to_string (Z.of_string ("0b" ^ string_of_bits bv))
+             | TBitVec w -> "#b" ^ string_of_bits bv)
+      ) vm
+  in
+  let do_certify_sat es qfbv_assignments =
+    let _ = if !option_verbose then print_string ("Certifying SAT assignments: ") in
+    let t1 = Unix.gettimeofday() in
+    let certified = List.for_all (fun e -> QFBV.eval_bexp e qfbv_assignments) es in
+    let t2 = Unix.gettimeofday() in
+    let _ =
+      if !option_verbose then
+        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("SAT assignments certified: " ^ string_of_bool certified) in
+        () in
+    certified in
+  let res =
+    try
+      (* == Bit-blasting == *)
+      let (lm, cnf) = do_bit_blasting vm env es in
+      (* == Output CNF file == *)
+      let nvars = do_output_cnf_file cnf in
+      (* == Run SAT solver == *)
+      let _ = do_sat_solving () in
+      (* == Parse SAT solving results == *)
+      let sat_res = do_parse_sat_result nvars in
+      (* == Certify unsat proof or sat assignments == *)
+      match sat_res with
+      | UNSAT -> if do_certify_unsat ()
+                 then OK CERTIFIED_UNSAT
+                 else raise (Failure "Failed to certify UNSAT proof")
+      | SAT literal_assignments -> let qfbv_assignments = qfbv_assignments_of_literal_assignments lm literal_assignments in
+                                   if do_certify_sat es qfbv_assignments
+                                   then OK (CERTIFIED_SAT (smtlib_assignments_of_qfbv_assignments vm tm qfbv_assignments))
+                                   else raise (Failure "Failed to certify SAT assignments")
+    with (Failure msg) -> ERROR msg
+       | _ -> ERROR "Error" in
+  let _ = cleanup [cnf_file; drat_file; sat_log_file; gratl_file; gratp_file; grat_log_file] in
+  match res with
+  | OK r -> r
+  | ERROR msg -> failwith msg
+
+let check_sat_command sat_res_rev es vm tm fm env g c : check_sat_result list * vm * tm * fm * SSATE.env * int * QFBV.bexp list =
+  match c with
+  | CSetLogic _ -> (sat_res_rev, vm, tm, fm, env, g, es)
+  | CSetInfo _ -> (sat_res_rev, vm, tm, fm, env, g, es)
+  | CSetOption _ -> (sat_res_rev, vm, tm, fm, env, g, es)
+  | CDeclareFun (fn, fargs, fsort) ->
+     let (vm', tm', fm', env', g') = declare_fun vm tm fm env g fn fargs fsort in
+     (sat_res_rev, vm', tm', fm', env', g', es)
+  | CDefineFun (fn, fargs, fsort, fterm) ->
+     let (vm', tm', fm', env', g', es') = define_fun es vm tm fm env g fn fargs fsort fterm in
+     (sat_res_rev, vm', tm', fm', env', g', es')
+  | CAssert (TApplication (QIdentifier (ISimple v), factuals)) when v = fn_and ->
+     let (env', g', es) = List.fold_left (
+                              fun (env, g, es) a ->
+                              let (env1, g1, es1, e1) = convert_bexp_term es vm tm fm env g a in
+                              (env1, g1, e1::es1)
+                            ) (env, g, es) factuals in
+     (sat_res_rev, vm, tm, fm, env', g', es)
+  | CAssert t -> let (env', g', es', e) = convert_bexp_term es vm tm fm env g t in
+                 (sat_res_rev, vm, tm, fm, env', g', List.rev (e::es'))
+  | CCheckSat ->
+     let sat_res = check_sat_bexps_conj vm tm env es in
+     let _ = print_endline (string_of_check_sat_result sat_res) in
+     (sat_res::sat_res_rev, vm, tm, fm, env, g, es)
+  | CGetModel ->
+     begin
+       match sat_res_rev with
+       | (CERTIFIED_SAT model)::_ ->
+          let _ = print_string ("(model\n") in
+          let _ = M.iter (
+                      fun var (typ, value) ->
+                      let typ_str =
+                        match typ with
+                        | TBool -> "Bool"
+                        | TNumeral -> "Int"
+                        | TBitVec w -> "(_ BitVec " ^ string_of_int w ^ ")" in
+                      print_endline ("(define-fun " ^ var ^ " () " ^ typ_str ^ " " ^ value ^ ")")
+                    ) model in
+          let _ = print_string (")\n") in
+          (sat_res_rev, vm, tm, fm, env, g, es)
+       | _ -> (sat_res_rev, vm, tm, fm, env, g, es)
+     end
+  | CExit -> (sat_res_rev, vm, tm, fm, env, g, es)
+  | CComment _ -> (sat_res_rev, vm, tm, fm, env, g, es)
+
+let check_sat_script vm tm fm env g script =
+  let (sat_res_rev, ex', vm', tm', fm', env', g', es_rev) =
+    List.fold_left (
+        fun (sat_res_rev, ex, vm, tm, fm, env, g, res) c ->
+        if ex then (sat_res_rev, ex, vm, tm, fm, env, g, res)
+        else let (sat_res_rev', vm', tm', fm', env', g', es) = check_sat_command sat_res_rev res vm tm fm env g c in
+             (sat_res_rev', is_exit c, vm', tm', fm', env', g', es)
+      ) ([], false, vm, tm, fm, env, g, []) script in
+  (List.rev sat_res_rev, vm', tm', fm', env', g', List.rev es_rev)
+
+let check_sat_file file =
+  let vm = M.empty in
+  let tm = M.empty in
+  let fm = M.empty in
+  let env = SSATE.empty in
   let g = 0 in
-  let (g', cnf) = List.fold_left
-                    (fun (g, strs) c ->
-                      let (g', str) = coq_string_of_clause_reorder m g c in
-                      (g', str::strs)) (g, []) cs in
-  let nvars = g' in
-  let nclauses = List.length cnf in
-  let _ = output_string ch ("p cnf " ^ string_of_int nvars ^ " " ^ string_of_int nclauses ^ "\n") in
-  let _ = List.iter (output_string ch) cnf in
-  let _ = flush ch in
-  ()
-
-let coq_output_dimacs ch cs =
-  (*if !sat_certificate = Grat then coq_output_dimacs_reorder ch cs
-  else*) coq_output_dimacs ch cs
+  let (sat_res, vm', tm', fm', env', g', es) = check_sat_script vm tm fm env g file in
+  (sat_res, vm', tm', env', es)

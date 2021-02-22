@@ -1,5 +1,6 @@
 open Datatypes
 open NBitsDef
+open PeanoNat
 open Eqtype
 open Seq
 open Ssrnat
@@ -291,6 +292,24 @@ let shrB1 bs =
 let shrB n bs =
   iter n shrB1 bs
 
+(** val shrBB : bits -> bits -> bits **)
+
+let shrBB bs ns =
+  let szbs = size bs in
+  let szns = size ns in
+  let log2szbs = Nat.log2_up szbs in
+  if leq szbs (Pervasives.succ 0)
+  then if eq_op bitseq_eqType (Obj.magic ns) (Obj.magic zeros szns)
+       then bs
+       else zeros szbs
+  else if leq szns log2szbs
+       then shrB (to_nat ns) bs
+       else let zero_hi = zeros (subn szns log2szbs) in
+            let ns_hi = high (subn szns log2szbs) ns in
+            if eq_op bitseq_eqType (Obj.magic ns_hi) (Obj.magic zero_hi)
+            then let ns_lo = low log2szbs ns in shrB (to_nat ns_lo) bs
+            else from_nat szbs 0
+
 (** val sarB1 : bits -> bits **)
 
 let sarB1 bs =
@@ -301,6 +320,25 @@ let sarB1 bs =
 let sarB n bs =
   iter n sarB1 bs
 
+(** val sarBB : bits -> bits -> bits **)
+
+let sarBB bs ns =
+  let szbs = size bs in
+  let szns = size ns in
+  let log2szbs = Nat.log2_up szbs in
+  let msb_bs = msb bs in
+  if leq szbs (Pervasives.succ 0)
+  then if eq_op bitseq_eqType (Obj.magic ns) (Obj.magic zeros szns)
+       then bs
+       else nseq szbs msb_bs
+  else if leq szns log2szbs
+       then sarB (to_nat ns) bs
+       else let zero_hi = zeros (subn szns log2szbs) in
+            let ns_hi = high (subn szns log2szbs) ns in
+            if eq_op bitseq_eqType (Obj.magic ns_hi) (Obj.magic zero_hi)
+            then let ns_lo = low log2szbs ns in sarB (to_nat ns_lo) bs
+            else nseq szbs msb_bs
+
 (** val shlB1 : bits -> bits **)
 
 let shlB1 bs =
@@ -310,6 +348,24 @@ let shlB1 bs =
 
 let shlB n bs =
   iter n shlB1 bs
+
+(** val shlBB : bits -> bits -> bits **)
+
+let shlBB bs ns =
+  let szbs = size bs in
+  let szns = size ns in
+  let log2szbs = Nat.log2_up szbs in
+  if leq szbs (Pervasives.succ 0)
+  then if eq_op bitseq_eqType (Obj.magic ns) (Obj.magic zeros szns)
+       then bs
+       else zeros szbs
+  else if leq szns log2szbs
+       then shlB (to_nat ns) bs
+       else let zero_hi = zeros (subn szns log2szbs) in
+            let ns_hi = high (subn szns log2szbs) ns in
+            if eq_op bitseq_eqType (Obj.magic ns_hi) (Obj.magic zero_hi)
+            then let ns_lo = low log2szbs ns in shlB (to_nat ns_lo) bs
+            else from_nat szbs 0
 
 (** val udivB_rec : bits -> bits -> bits -> bits -> bits * bits **)
 

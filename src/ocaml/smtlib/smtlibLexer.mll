@@ -38,6 +38,7 @@ rule token = parse
 | "set-option"                          { upd_cnum lexbuf; CMD_SET_OPTION }
 | "assert"                              { upd_cnum lexbuf; CMD_ASSERT }
 | "check-sat"                           { upd_cnum lexbuf; CMD_CHECK_SAT }
+| "get-model"                           { upd_cnum lexbuf; CMD_GET_MODEL }
 | "declare-fun"                         { upd_cnum lexbuf; CMD_DECLARE_FUN }
 | "define-fun"                          { upd_cnum lexbuf; CMD_DEFINE_FUN }
 | "exit"                                { upd_cnum lexbuf; CMD_EXIT }

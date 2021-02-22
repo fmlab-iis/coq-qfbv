@@ -958,9 +958,9 @@ module MakeQFBV =
   | Bsdiv -> sdivB
   | Bsrem -> sremB
   | Bsmod -> smodB
-  | Bshl -> (fun b1 b2 -> shlB (to_nat b2) b1)
-  | Blshr -> (fun b1 b2 -> shrB (to_nat b2) b1)
-  | Bashr -> (fun b1 b2 -> sarB (to_nat b2) b1)
+  | Bshl -> shlBB
+  | Blshr -> shrBB
+  | Bashr -> sarBB
   | Bconcat -> (fun b1 b2 -> cat b2 b1)
   | Bcomp ->
     (fun b1 b2 -> (eq_op bitseq_eqType (Obj.magic b1) (Obj.magic b2)) :: [])

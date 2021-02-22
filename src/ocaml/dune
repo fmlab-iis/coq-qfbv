@@ -5,8 +5,8 @@
     (flags         (:standard -O3))))
 
 (executables
- (names            coqbb trans)
+ (names            coqbb coqQFBV trans)
  (libraries        main)
- (public_names     coqbb trans)
- (package          coqbb)
+ (public_names     coqbb coqQFBV trans)
+ (package          CoqQFBV)
 )

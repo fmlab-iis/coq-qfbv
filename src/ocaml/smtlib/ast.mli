@@ -67,6 +67,7 @@ type command =
   | CDefineFun of symbol * sorted_var list * sort * term
   | CAssert of term
   | CCheckSat
+  | CGetModel
   | CExit
   | CComment of string
 

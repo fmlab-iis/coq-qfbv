@@ -1,5 +1,5 @@
 (lang dune 2.7)
-(name coqbb)
+(name CoqQFBV)
 (package
-  (name coqbb)
+  (name CoqQFBV)
 )

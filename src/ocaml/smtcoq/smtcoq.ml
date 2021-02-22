@@ -88,6 +88,7 @@ let norm_ite_command g tm fm c =
   | CAssert t -> let (g', cmds, t') = norm_ite_term g tm fm t in
                  (g', tm, fm, cmds, CAssert t')
   | CCheckSat -> (g, tm, fm, [], c)
+  | CGetModel -> (g, tm, fm, [], c)
   | CExit -> (g, tm, fm, [], c)
   | CComment _ -> (g, tm, fm, [], c)
 
@@ -172,6 +173,7 @@ let norm_name_command g tm c =
   | CAssert t -> let t' = norm_name_term g tm t in
                  (g, tm, CAssert t')
   | CCheckSat -> (g, tm, c)
+  | CGetModel -> (g, tm, c)
   | CExit -> (g, tm, c)
   | CComment _ -> (g, tm, c)
 

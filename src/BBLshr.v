@@ -342,7 +342,7 @@ Proof .
   move => Hlog2szbsprednaddn1 .
   dcase (extract (size ns).-1 log2szbs ns == (size ns - log2szbs) -bits of (0)%bits); case => /eqP Hcon .
   - rewrite -to_nat_bounded_high_zeros; trivial .
-    + by rewrite Hlog2szbsprednaddn1 . 
+    + by rewrite Hlog2szbsprednaddn1 .
     + by rewrite Hlog2szbsprednaddn1 Hcon .
   - rewrite -zeros_from_nat .
     apply shrB_oversize .
@@ -363,7 +363,7 @@ Proof .
   - by apply Nats.le_leq .
   - done .
   - by apply Z.log2_up_nonneg .
-Qed .        
+Qed .
 
 Corollary bit_blast_lshr_correct g bs ns E ls lns g' cs lrs :
   size ls > 0 ->
@@ -372,9 +372,9 @@ Corollary bit_blast_lshr_correct g bs ns E ls lns g' cs lrs :
   enc_bits E ls bs ->
   enc_bits E lns ns ->
   interp_cnf E (add_prelude cs) ->
-  enc_bits E lrs (shrB (to_nat ns) bs) .
+  enc_bits E lrs (shrBB bs ns) .
 Proof .
-  move => Hszgt0 Hszeq Hlshr Hlsbs Hlnsns Hcnf.
+  move => Hszgt0 Hszeq Hlshr Hlsbs Hlnsns Hcnf. rewrite shrBB_shrB.
   rewrite -(muln1 (to_nat ns)).
   move : Hlshr; rewrite /bit_blast_lshr .
   remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .

@@ -362,9 +362,9 @@ Module MakeQFBV
     | Bsdiv => sdivB
     | Bsrem => sremB
     | Bsmod => smodB
-    | Bshl => fun b1 b2 => shlB (to_nat b2) b1
-    | Blshr => fun b1 b2 => shrB (to_nat b2) b1
-    | Bashr => fun b1 b2 => sarB (to_nat b2) b1
+    | Bshl => fun b1 b2 => shlBB b1 b2
+    | Blshr => fun b1 b2 => shrBB b1 b2
+    | Bashr => fun b1 b2 => sarBB b1 b2
     | Bconcat => fun b1 b2 => cat b2 b1
     | Bcomp => fun b1 b2 => [:: eq_op b1 b2]
     end.
@@ -1546,9 +1546,9 @@ Module MakeQFBV
         + rewrite size_smodB_ss.
           * rewrite (IH0 _ _ Hwf0 Hcon). reflexivity.
           * rewrite (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). exact: (eqP Hsize).
-        + rewrite size_shlB (IH0 _ _ Hwf0 Hcon). reflexivity.
-        + rewrite size_shrB (IH0 _ _ Hwf0 Hcon). reflexivity.
-        + rewrite size_sarB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite shlBB_shlB size_shlB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite shrBB_shrB size_shrB (IH0 _ _ Hwf0 Hcon). reflexivity.
+        + rewrite sarBB_sarB size_sarB (IH0 _ _ Hwf0 Hcon). reflexivity.
         + rewrite size_cat (IH0 _ _ Hwf0 Hcon) (IH1 _ _ Hwf1 Hcon). rewrite addnC.
           reflexivity.
         + reflexivity.

@@ -37,4 +37,4 @@ val bit_blast_hbexps_hcache_conjs :
   (((vm * cache) * generator) * cnf list) * cnf
 
 val bit_blast_bexps_hcache_conjs :
-  TypEnv.SSATE.env -> QFBV.QFBV.bexp list -> cnf
+  TypEnv.SSATE.env -> QFBV.QFBV.bexp list -> ((vm * cache) * generator) * cnf

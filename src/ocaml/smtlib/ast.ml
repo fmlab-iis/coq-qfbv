@@ -67,6 +67,7 @@ type command =
   | CDefineFun of symbol * sorted_var list * sort * term
   | CAssert of term
   | CCheckSat
+  | CGetModel
   | CExit
   | CComment of string
 
@@ -156,6 +157,7 @@ let string_of_command c =
                                             ^ string_of_sort fsort ^ " " ^ string_of_term fterm ^ ")"
   | CAssert t -> "(assert " ^ string_of_term t ^ ")"
   | CCheckSat -> "(check-sat)"
+  | CGetModel -> "(get-model)"
   | CExit -> "(exit)"
   | CComment s -> ";" ^ s
 
@@ -211,6 +213,7 @@ let pp_command out c =
      output_string out ")";
   | CAssert t -> output_string out "(assert "; pp_term out t; output_string out ")"
   | CCheckSat -> output_string out "(check-sat)"
+  | CGetModel -> output_string out "(get-model)"
   | CExit -> output_string out "(exit)"
   | CComment s -> output_string out ";"; output_string out s
 
@@ -430,13 +433,7 @@ let size_of_ttyp t : int =
   | TNumeral -> 0 (* ? *)
   | TBitVec n -> n
 
-module StringOrder =
-  struct
-    type t = string
-    let compare = Stdlib.compare
-  end
-
-module M = Map.Make(StringOrder)
+module M = Map.Make(String)
 
 (* A map from a variable symbol to its type *)
 type tm = ttyp M.t
@@ -565,7 +562,7 @@ let is_bool_term tm fm t =
 
 (** Convert extensions to core functions *)
 
-module SS = Set.Make(StringOrder)
+module SS = Set.Make(String)
 
 let rec convert_defined_extensions_term ?skip:(ops=SS.empty) tm fm term =
   match term with
@@ -791,6 +788,7 @@ let convert_defined_extensions_command ?skip:(ops=SS.empty) tm fm c =
      end
   | CAssert t -> (tm, fm, CAssert (convert_defined_extensions_term ~skip:ops tm fm t))
   | CCheckSat -> (tm, fm, c)
+  | CGetModel -> (tm, fm, c)
   | CExit -> (tm, fm, c)
   | CComment _ -> (tm, fm, c)
 

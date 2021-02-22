@@ -1981,23 +1981,24 @@ Qed.
 
 
 
-Definition bit_blast_bexps_hcache_conjs TE es : cnf :=
+Definition bit_blast_bexps_hcache_conjs TE es : vm * cache * generator * cnf :=
   let '(m', c', g', cs, lrs) :=
       bit_blast_hbexps_hcache_conjs
         TE init_vm init_hcache init_gen (mapr hash_bexp es) in
-  add_prelude (tflatten (lrs::cs)).
+  (m', c', g', add_prelude (tflatten (lrs::cs))).
 
 Theorem bit_blast_bexps_hcache_conjs_sat_sound TE es :
+  let '(m, c, g, cs) := bit_blast_bexps_hcache_conjs TE es in
   QFBV.well_formed_bexps es TE ->
-  (sat (bit_blast_bexps_hcache_conjs TE es)) ->
+  sat cs ->
   (exists s, AdhereConform.conform_bexps es s TE /\
              QFBV.eval_bexp (mk_conjs es) s).
 Proof.
-  move=> Hwf. rewrite /bit_blast_bexps_hcache_conjs.
+  rewrite /bit_blast_bexps_hcache_conjs.
   dcase (bit_blast_hbexps_hcache_conjs
            TE init_vm init_hcache init_gen
            (mapr hash_bexp es)) => [[[[[m c] g] cs] lrs] Hbb].
-  move=> Hsat. exact: (bit_blast_hbexps_hcache_conjs_sat_sound Hbb Hwf Hsat).
+  move=> Hwf Hsat. exact: (bit_blast_hbexps_hcache_conjs_sat_sound Hbb Hwf Hsat).
 Qed.
 
 
@@ -2380,16 +2381,15 @@ Proof.
 Qed.
 
 Theorem bit_blast_bexps_hcache_conjs_sat_complete TE es :
+  let '(m, c, g, cs) := bit_blast_bexps_hcache_conjs TE es in
   QFBV.well_formed_bexps es TE ->
   (exists s, AdhereConform.conform_bexps es s TE /\
              QFBV.eval_bexp (mk_conjs es) s) ->
-  (sat (bit_blast_bexps_hcache_conjs TE es)).
+  sat cs.
 Proof.
-  move=> Hwf. rewrite /bit_blast_bexps_hcache_conjs.
+  rewrite /bit_blast_bexps_hcache_conjs.
   dcase (bit_blast_hbexps_hcache_conjs
            TE init_vm init_hcache init_gen
            (mapr hash_bexp es)) => [[[[[m c] g] cs] lrs] Hbb].
-  move=> Hev.
-  exact: (bit_blast_hbexps_hcache_conjs_sat_complete Hbb Hwf Hev).
+  move=> Hwf Hev. exact: (bit_blast_hbexps_hcache_conjs_sat_complete Hbb Hwf Hev).
 Qed.
-

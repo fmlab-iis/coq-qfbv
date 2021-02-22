@@ -8,7 +8,7 @@
 %token<string> BINARY HEX_DECIMAL DECIMAL NUMERAL STRING SYMBOL KEYWORD
 %token PAR_OPEN PAR_CLOSE UNDERSCORE AS
 %token CMD_SET_LOGIC CMD_SET_INFO CMD_SET_OPTION CMD_DECLARE_FUN CMD_DEFINE_FUN
-%token CMD_ASSERT CMD_CHECK_SAT CMD_EXIT
+%token CMD_ASSERT CMD_CHECK_SAT CMD_GET_MODEL CMD_EXIT
 %token BOOL LET
 %token TRUE FALSE
 %token EOF
@@ -44,6 +44,7 @@ command
  										  CDefineFun (a, b, c, d) }
   | PAR_OPEN CMD_ASSERT term PAR_CLOSE  { CAssert $3 }
   | PAR_OPEN CMD_CHECK_SAT PAR_CLOSE    { CCheckSat }
+  | PAR_OPEN CMD_GET_MODEL PAR_CLOSE    { CGetModel }
   | PAR_OPEN CMD_EXIT PAR_CLOSE         { CExit }
   | COMMENT                             { CComment $1 }
 ;

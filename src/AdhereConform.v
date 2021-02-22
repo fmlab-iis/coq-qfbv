@@ -89,9 +89,9 @@ Section Conform .
       + rewrite size_smodB_ss.
         * rewrite (IH0 Hwf0 Hcf0). reflexivity.
         * rewrite (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1). exact: (eqP Hsize).
-      + rewrite size_shlB (IH0 Hwf0 Hcf0) . reflexivity.
-      + rewrite size_shrB (IH0 Hwf0 Hcf0) . reflexivity.
-      + rewrite size_sarB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite shlBB_shlB size_shlB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite shrBB_shrB size_shrB (IH0 Hwf0 Hcf0) . reflexivity.
+      + rewrite sarBB_sarB size_sarB (IH0 Hwf0 Hcf0) . reflexivity.
       + rewrite size_cat (IH0 Hwf0 Hcf0) (IH1 Hwf1 Hcf1) addnC // .
       + reflexivity.
     - move => b e0 IH0 e1 IH1

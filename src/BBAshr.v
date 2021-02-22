@@ -397,9 +397,9 @@ Corollary bit_blast_ashr_correct g bs ns E ls lns g' cs lrs :
   enc_bits E ls bs ->
   enc_bits E lns ns ->
   interp_cnf E (add_prelude cs) ->
-  enc_bits E lrs (sarB (to_nat ns) bs) .
+  enc_bits E lrs (sarBB bs ns) .
 Proof .
-  move => Hszgt0 Hszeq Hlshr Hlsbs Hlnsns Hcnf.
+  move => Hszgt0 Hszeq Hlshr Hlsbs Hlnsns Hcnf. rewrite sarBB_sarB.
   rewrite -(muln1 (to_nat ns)).
   move : Hlshr; rewrite /bit_blast_ashr .
   remember (Z.to_nat (Z.log2_up (Z.of_nat (size ls)))) as log2szls .

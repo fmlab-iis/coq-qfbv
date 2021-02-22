@@ -10,7 +10,7 @@ let args = [
     ("-s", Set option_split_conjs, "\t\tSplit top-level conjunctions")
   ]
 
-let usage = "Usage: coqsmt OPTIONS FILE\n"
+let usage = "Usage: coqbb OPTIONS FILE\n"
 
 let anon file =
   let f = (Parser.parse file) in

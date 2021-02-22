@@ -236,11 +236,12 @@ let bit_blast_hbexps_hcache_conjs e m c g es =
   bit_blast_hbexps_hcache_conjs_rec e m c g [] [] es
 
 (** val bit_blast_bexps_hcache_conjs :
-    TypEnv.SSATE.env -> QFBV.QFBV.bexp list -> cnf **)
+    TypEnv.SSATE.env -> QFBV.QFBV.bexp list ->
+    ((vm * cache) * generator) * cnf **)
 
 let bit_blast_bexps_hcache_conjs tE es =
   let (p, lrs) =
     bit_blast_hbexps_hcache_conjs tE init_vm init_hcache init_gen
       (mapr hash_bexp es)
   in
-  let (_, cs) = p in add_prelude (tflatten (lrs :: cs))
+  let (p0, cs) = p in (p0, (add_prelude (tflatten (lrs :: cs))))

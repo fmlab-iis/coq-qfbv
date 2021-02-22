@@ -168,9 +168,9 @@ Proof.
       rewrite smtlib_bvsdiv_sdivB |
       rewrite smtlib_bvsrem_sremB |
       rewrite smtlib_bvsmod_smodB |
-      rewrite smtlib_bvshl_shlB |
-      rewrite smtlib_bvlshr_shrB |
-      rewrite smtlib_bvashr_sarB |
+      rewrite shlBB_shlB smtlib_bvshl_shlB |
+      rewrite shrBB_shrB smtlib_bvlshr_shrB |
+      rewrite sarBB_sarB smtlib_bvashr_sarB |
       rewrite smtlib_concat_cat |
       rewrite smtlib_bvcomp_eqop ]; done.
 Qed.

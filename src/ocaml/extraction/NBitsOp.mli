@@ -1,5 +1,6 @@
 open Datatypes
 open NBitsDef
+open PeanoNat
 open Eqtype
 open Seq
 open Ssrnat
@@ -88,13 +89,19 @@ val shrB1 : bits -> bits
 
 val shrB : int -> bits -> bits
 
+val shrBB : bits -> bits -> bits
+
 val sarB1 : bits -> bits
 
 val sarB : int -> bits -> bits
 
+val sarBB : bits -> bits -> bits
+
 val shlB1 : bits -> bits
 
 val shlB : int -> bits -> bits
+
+val shlBB : bits -> bits -> bits
 
 val udivB_rec : bits -> bits -> bits -> bits -> bits * bits
 
