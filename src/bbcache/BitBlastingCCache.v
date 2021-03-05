@@ -85,7 +85,7 @@ Proof.
 Qed.
 
 (* TypEnv.deftyp is Tuint 0. *)
-Definition init_state : SSAStore.t := fun _ => from_nat 0 0.
+Definition init_state : SSAStore.t := SSAStore.empty.
 
 Definition mk_state (E : env) (m : vm) : SSAStore.t :=
   (SSAVM.fold (fun v ls s => SSAStore.upd v (lits_as_bits E ls) s) m init_state).

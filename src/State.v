@@ -118,7 +118,7 @@ End BitsStore.
 Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   BitsStore V TE.
 
-  Include RealizableTStoreAdapter V BitsValueType.
+  Include MakeTStoreMap V BitsValueType.
   Module Lemmas := FMapLemmas TE.
 
   (* A store conforms to a typing environment if for every variable in the typing
@@ -218,18 +218,16 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   Proof.
     move=> Heq. split.
     - move=> H1. apply: conform_def. move=> v Hmem.
-      rewrite (conform_mem H1 Hmem). rewrite /acc. rewrite (Heq v).
-      reflexivity.
+      rewrite (conform_mem H1 Hmem). rewrite (Heq v). reflexivity.
     - move=> H2. apply: conform_def. move=> v Hmem.
-      rewrite (conform_mem H2 Hmem). rewrite /acc. rewrite (Heq v).
-      reflexivity.
+      rewrite (conform_mem H2 Hmem). rewrite (Heq v). reflexivity.
   Qed.
 
 End MakeBitsStore.
 
 Module Store := MakeBitsStore VarOrder TE.
 Module SSAStore := MakeBitsStore SSAVarOrder SSATE.
-Module ZSSAStore := RealizableTStoreAdapter SSAVarOrder ZValueType.
+Module ZSSAStore := MakeTStoreMap SSAVarOrder ZValueType.
 
 Section State.
 
