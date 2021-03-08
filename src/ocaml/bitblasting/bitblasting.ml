@@ -575,7 +575,7 @@ let bexps_of_command es vm tm fm env g c : vm * tm * fm * SSATE.env * int * QFBV
                             ) (env, g, es) factuals in
      (vm, tm, fm, env', g', es)
   | CAssert t -> let (env', g', es', e) = convert_bexp_term es vm tm fm env g t in
-                 (vm, tm, fm, env', g', List.rev (e::es'))
+                 (vm, tm, fm, env', g', e::es')
   | CCheckSat -> (vm, tm, fm, env, g, es)
   | CGetModel -> (vm, tm, fm, env, g, es)
   | CExit -> (vm, tm, fm, env, g, es)
@@ -901,9 +901,9 @@ let check_sat_command sat_res_rev es vm tm fm env g c : check_sat_result list * 
                             ) (env, g, es) factuals in
      (sat_res_rev, vm, tm, fm, env', g', es)
   | CAssert t -> let (env', g', es', e) = convert_bexp_term es vm tm fm env g t in
-                 (sat_res_rev, vm, tm, fm, env', g', List.rev (e::es'))
+                 (sat_res_rev, vm, tm, fm, env', g', e::es')
   | CCheckSat ->
-     let sat_res = check_sat_bexps_conj vm tm env es in
+     let sat_res = check_sat_bexps_conj vm tm env (List.rev es) in
      let _ = print_endline (string_of_check_sat_result sat_res) in
      (sat_res::sat_res_rev, vm, tm, fm, env, g, es)
   | CGetModel ->
