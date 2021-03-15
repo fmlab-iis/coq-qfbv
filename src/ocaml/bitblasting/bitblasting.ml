@@ -803,12 +803,12 @@ let check_sat_bexps_conj vm tm env es =
     let _ = if !option_verbose then print_string ("Certifying UNSAT proof: ") in
     let t1 = Unix.gettimeofday() in
     let _ =
-      let cmd = !option_gratgen_path ^ " " ^ cnf_file ^ " " ^ drat_file ^ " -b -l " ^ gratl_file ^ " -o " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED' &> /dev/null" in
+      let cmd = !option_gratgen_path ^ " " ^ cnf_file ^ " " ^ drat_file ^ " -b -l " ^ gratl_file ^ " -o " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED' 2>&1 1>/dev/null" in (* &>/dev/null does not work on Linux *)
       match Unix.system cmd with
       | Unix.WEXITED 0 -> () (* grep found *)
       | _ -> raise (Failure "Failed to generate auxiliary lemmas from UNSAT proof") in
     let certified =
-      let cmd = !option_gratchk_path ^ " unsat " ^ cnf_file ^ " " ^ gratl_file ^ " " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED UNSAT' &> /dev/null" in
+      let cmd = !option_gratchk_path ^ " unsat " ^ cnf_file ^ " " ^ gratl_file ^ " " ^ gratp_file ^ " 2>&1 | grep 's VERIFIED UNSAT' 2>&1 1>/dev/null" in (* &>/dev/null does not work on Linux *)
       match Unix.system cmd with
       | Unix.WEXITED 0 -> true (* grep found *)
       | _ -> false in
