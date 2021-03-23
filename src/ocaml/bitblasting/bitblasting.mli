@@ -10,6 +10,9 @@ open Extraction.State
 
 val option_debug : bool ref
 
+val option_certify_sat : bool ref
+val option_certify_unsat : bool ref
+
 val option_split_conjs : bool ref
 
 val option_expand_let : bool ref
@@ -53,11 +56,11 @@ type qfbv_assignments = SSAStore.t
 
 type smtlib_assignments = (ttyp * string) M.t
 
-type sat_solving_result = SAT of literal_assignments | UNSAT
+type certified_status = CERTIFIED | UNCERTIFIED
 
-type check_sat_result = CERTIFIED_SAT of smtlib_assignments | CERTIFIED_UNSAT
+type 'a sat_result = SAT of certified_status * 'a | UNSAT of certified_status
 
-val string_of_check_sat_result : check_sat_result -> string
+type 'a result = OK of 'a | ERROR of string
 
-val check_sat_file : file -> check_sat_result list * vm * tm * SSATE.env * QFBV.bexp list
+val check_sat_file : file -> smtlib_assignments sat_result list * vm * tm * SSATE.env * QFBV.bexp list
 

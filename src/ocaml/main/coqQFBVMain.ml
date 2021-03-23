@@ -15,6 +15,9 @@ let args = [
     ("-gratp", String (fun str -> option_gratp_file := Some str), "FILE\tOutput GRATP to a specified file");
     ("-kissat", String (fun str -> option_kissat_path := str), "PATH\tSpecify path to kissat (default is " ^ !option_kissat_path ^ ")");
     ("-keep-temps", Set option_keep_temp_files, "\tKeep temporary files");
+    ("-no-certify", Unit (fun () -> option_certify_sat := false; option_certify_unsat := false), "\tThis implies -no-certify-unsat and -no-certify-sat");
+    ("-no-certify-unsat", Clear option_certify_unsat, "\n\t\tDo not certify unsat proofs");
+    ("-no-certify-sat", Clear option_certify_sat, "\n\t\tDo not certify sat assignments");
     ("-sat-log", String (fun str -> option_sat_log_file := Some str), "FILE\n\t\tOutput log of SAT solver to a specified file");
     ("-split-conjs", Set option_split_conjs, "\tBit-blast top-level conjunctions separately");
     ("-tmpdir", String (fun str -> option_tmpdir := Some str), "PATH\tSpecify tmp directory");

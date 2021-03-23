@@ -21,6 +21,9 @@ open Smtlib.Ast
 
 (** Options and exceptions *)
 
+let option_certify_sat = ref true
+let option_certify_unsat = ref true
+
 let option_kissat_path = ref "kissat"
 
 let option_gratgen_path = ref "gratgen"
@@ -686,16 +689,12 @@ type qfbv_assignments = SSAStore.t
 
 type smtlib_assignments = (ttyp * string) M.t
 
-type sat_solving_result = SAT of literal_assignments | UNSAT
+type certified_status = CERTIFIED | UNCERTIFIED
 
-type check_sat_result = CERTIFIED_SAT of smtlib_assignments | CERTIFIED_UNSAT
+type 'a sat_result = SAT of certified_status * 'a | UNSAT of certified_status
 
 type 'a result = OK of 'a | ERROR of string
 
-let string_of_check_sat_result res =
-  match res with
-  | CERTIFIED_UNSAT -> "unsat"
-  | CERTIFIED_SAT m -> "sat"
 
 (*
  * vm: from var in SMTLIB to var in Coq QFBV
@@ -797,8 +796,8 @@ let check_sat_bexps_conj vm tm env es =
     | None ->
        let _ = Unix.system ("cat " ^ sat_log_file) in
        raise (Failure "Error in SAT solving")
-    | Some true -> UNSAT
-    | Some false -> SAT !literal_assignments in
+    | Some true -> UNSAT UNCERTIFIED
+    | Some false -> SAT (UNCERTIFIED, !literal_assignments) in
   let do_certify_unsat () =
     let _ = if !option_verbose then print_string ("Certifying UNSAT proof: ") in
     let t1 = Unix.gettimeofday() in
@@ -868,13 +867,22 @@ let check_sat_bexps_conj vm tm env es =
       let sat_res = do_parse_sat_result nvars in
       (* == Certify unsat proof or sat assignments == *)
       match sat_res with
-      | UNSAT -> if do_certify_unsat ()
-                 then OK CERTIFIED_UNSAT
-                 else raise (Failure "Failed to certify UNSAT proof")
-      | SAT literal_assignments -> let qfbv_assignments = qfbv_assignments_of_literal_assignments lm literal_assignments in
-                                   if do_certify_sat es qfbv_assignments
-                                   then OK (CERTIFIED_SAT (smtlib_assignments_of_qfbv_assignments vm tm qfbv_assignments))
-                                   else raise (Failure "Failed to certify SAT assignments")
+      | UNSAT _ ->
+         if !option_certify_unsat then
+           if do_certify_unsat ()
+           then OK (UNSAT CERTIFIED)
+           else raise (Failure "Failed to certify UNSAT proof")
+         else
+           OK (UNSAT UNCERTIFIED)
+      | SAT (_, literal_assignments) ->
+         let qfbv_assignments = qfbv_assignments_of_literal_assignments lm literal_assignments in
+         let smtlib_assignments = smtlib_assignments_of_qfbv_assignments vm tm qfbv_assignments in
+         if !option_certify_sat then
+           if do_certify_sat es qfbv_assignments
+           then OK (SAT (CERTIFIED, smtlib_assignments))
+           else raise (Failure "Failed to certify SAT assignments")
+         else
+           OK (SAT (UNCERTIFIED, smtlib_assignments))
     with (Failure msg) -> ERROR msg
        | _ -> ERROR "Error" in
   let _ = cleanup [cnf_file; drat_file; sat_log_file; gratl_file; gratp_file; grat_log_file] in
@@ -882,7 +890,7 @@ let check_sat_bexps_conj vm tm env es =
   | OK r -> r
   | ERROR msg -> failwith msg
 
-let check_sat_command sat_res_rev es vm tm fm env g c : check_sat_result list * vm * tm * fm * SSATE.env * int * QFBV.bexp list =
+let check_sat_command sat_res_rev es vm tm fm env g c : smtlib_assignments sat_result list * vm * tm * fm * SSATE.env * int * QFBV.bexp list =
   match c with
   | CSetLogic _ -> (sat_res_rev, vm, tm, fm, env, g, es)
   | CSetInfo _ -> (sat_res_rev, vm, tm, fm, env, g, es)
@@ -904,12 +912,14 @@ let check_sat_command sat_res_rev es vm tm fm env g c : check_sat_result list * 
                  (sat_res_rev, vm, tm, fm, env', g', e::es')
   | CCheckSat ->
      let sat_res = check_sat_bexps_conj vm tm env (List.rev es) in
-     let _ = print_endline (string_of_check_sat_result sat_res) in
+     let _ = print_endline (match sat_res with
+                            | UNSAT _ -> "unsat"
+                            | SAT _ -> "sat") in
      (sat_res::sat_res_rev, vm, tm, fm, env, g, es)
   | CGetModel ->
      begin
        match sat_res_rev with
-       | (CERTIFIED_SAT model)::_ ->
+       | (SAT (_, model))::_ ->
           let _ = print_string ("(model\n") in
           let _ = M.iter (
                       fun var (typ, value) ->
