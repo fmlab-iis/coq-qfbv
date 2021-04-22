@@ -792,6 +792,11 @@ let check_sat_bexps_conj vm tm env es =
            | _ -> failwith "Failed to read the SAT solver output file." in
       let _ = close_in inch in
       !is_unsat in
+    let _ = print_endline ("SAT solving result: "
+                           ^ match is_unsat with
+                             | None -> "error"
+                             | Some true -> "unsat"
+                             | Some false -> "sat") in
     match is_unsat with
     | None ->
        let _ = Unix.system ("cat " ^ sat_log_file) in
