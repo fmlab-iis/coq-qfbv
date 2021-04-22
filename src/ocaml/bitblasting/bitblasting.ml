@@ -732,7 +732,7 @@ let check_sat_bexps_conj vm tm env es =
     let t1 = Unix.gettimeofday() in
     let (lm, cnf) = bb_bexps_conj vm env es in
     let t2 = Unix.gettimeofday() in
-    let _ = if !option_verbose then print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+    let _ = if !option_verbose then print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
     (lm, cnf) in
   let do_output_cnf_file cnf =
     let _ = if !option_verbose then print_string ("Saving CNF file: ") in
@@ -745,7 +745,7 @@ let check_sat_bexps_conj vm tm env es =
     let t2 = Unix.gettimeofday() in
     let _ =
       if !option_verbose then
-        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
         let _ = print_endline ("CNF file: " ^ cnf_file) in
         let _ = print_endline ("Size of CNF file: " ^ Int64.to_string (Unix.LargeFile.stat cnf_file).Unix.LargeFile.st_size ^ " bytes") in
         let _ = print_endline ("Number of variables in CNF file: " ^ string_of_int nvars) in
@@ -764,7 +764,7 @@ let check_sat_bexps_conj vm tm env es =
     let t2 = Unix.gettimeofday() in
     let _ =
       if !option_verbose then
-        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
         let _ = if Sys.file_exists drat_file then print_endline ("DRAT file: " ^ drat_file ^ "\n"
                                                                  ^ "Size of DRAT file: " ^ Int64.to_string (Unix.LargeFile.stat drat_file).Unix.LargeFile.st_size ^ " bytes") in
         () in
@@ -819,7 +819,7 @@ let check_sat_bexps_conj vm tm env es =
     let t2 = Unix.gettimeofday() in
     let _ =
       if !option_verbose then
-        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
         let _ = if Sys.file_exists gratl_file then print_endline ("GRATL file: " ^ gratl_file ^ "\n"
                                                                   ^ "Size of GRATL file: " ^ Int64.to_string (Unix.LargeFile.stat gratl_file).Unix.LargeFile.st_size ^ " bytes") in
         let _ = if Sys.file_exists gratp_file then print_endline ("GRATP file: " ^ gratp_file ^ "\n"
@@ -856,7 +856,7 @@ let check_sat_bexps_conj vm tm env es =
     let t2 = Unix.gettimeofday() in
     let _ =
       if !option_verbose then
-        let _ = print_endline ("done [" ^ string_of_float (t2 -. t1) ^ " seconds]") in
+        let _ = print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
         let _ = print_endline ("SAT assignments certified: " ^ string_of_bool certified) in
         () in
     certified in
