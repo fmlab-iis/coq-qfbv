@@ -1,0 +1,177 @@
+#!/bin/bash
+
+inside_coqqfbv=no
+read -n 1 -p "Are you running this script inside CoqQFBV source code directory (y/n)? " answer
+case ${answer} in
+  y|Y )
+    inside_coqqfbv=yes
+    ;;
+  * )
+    inside_coqqfbv=no
+    ;;
+esac
+echo
+echo
+
+
+install_kissat=no
+read -n 1 -p "The SAT solver kissat is required to run the certified SMT
+QF_BV solver of CoqQFBV. You don't have to install kissat if there is
+already one available (but make sure that kissat can be found in the
+search path). Install the SAT solver kissat version sc2020 (y/n)? " answer
+case ${answer} in
+  y|Y )
+    install_kissat=yes
+    ;;
+  * )
+    install_kissat=no
+    ;;
+esac
+echo
+echo
+
+
+install_grat=no
+read -n 1 -p "The SAT solver certificate checking tool chain GRAT is required to run
+the certified SMT QF_BV solver of CoqQFBV with unsat proof verified.
+You don't have to install GRAT if it is already available (but make
+sure that both gratgen and gratchk can be found in the search path).
+Install the SAT solver certificate checking tool chain GRAT (y/n)? " answer
+case ${answer} in
+  y|Y )
+    install_grat=yes
+    ;;
+  * )
+    install_grat=no
+    ;;
+esac
+echo
+echo
+
+compile_coq=no
+read -n 1 -p "Compilation of the Coq source code of CoqQFBV is not required
+for running the certified SMT QF_BV solver. It takes much more
+memory to compile the Coq source code of CoqQFBV. Do you want
+to compile the Coq source code of CoqQFBV (y/n)? " answer
+case ${answer} in
+  y|Y )
+    compile_coq=yes
+    ;;
+  * )
+    compile_coq=no
+    ;;
+esac
+echo
+echo
+
+echo "Below is the configuration."
+echo "* Some required Ubuntu packages will be installed."
+if [[ "${install_kissat}" == "yes" ]]; then
+  echo "* SAT solver kissat will be installed to /usr/local/bin."
+else
+  echo "* SAT solver kissat will not be installed."
+fi
+if [[ "${install_grat}" == "yes" ]]; then
+  echo "* SAT solver certificate checking tool chain GRAT will be installed"
+  echo "  to /usr/local/bin."
+else
+  echo "* SAT solver certificate checking tool chain GRAT will not be installed."
+fi
+if [[ "${inside_coqqfbv}" == "yes" ]]; then
+  echo "* Use the source code of CoqQFBV in ${PWD}."
+else
+  echo "* The CoqQFBV project will be installed to ~/."
+fi
+if [[ "${compile_coq}" == "yes" ]]; then
+  echo "* Both Coq source code for certified bit-blasting procedure and"
+  echo "  OCaml source code for certified SMT QF_BV solver will be compiled."
+else
+  echo "* Compilation of the Coq source code will be skipped."
+  echo "* OCaml source code for certified SMT QF_BV solver will be compiled."
+fi
+
+doit=no
+read -n 1 -p "Continue (y/n)? " answer
+case ${answer} in
+  y|Y )
+    doit=yes
+    ;;
+  * )
+    doit=no
+    ;;
+esac
+echo
+echo
+if [[ "${doit}" != "yes" ]]; then
+  exit
+fi
+
+echo "# Installing Ubuntu packages #"
+
+sudo apt -y install \
+	build-essential git ocaml ocaml-dune libzarith-ocaml-dev \
+	coq libssreflect-coq \
+	cmake mlton libboost-timer-dev
+
+if [[ "${install_kissat}" == "yes" ]]; then
+  echo "# Installing kissat to /usr/local/bin #"
+
+  wget https://github.com/arminbiere/kissat/archive/refs/tags/sc2020.tar.gz
+  tar zxf sc2020.tar.gz
+  pushd kissat-sc2020
+  ./configure
+  make
+  sudo install build/kissat /usr/local/bin
+  popd
+  [[ -d "kissat-sc2020" ]] && rm -rf kissat-sc2020
+  [[ -f "sc2020.tar.gz" ]] && rm -f sc2020.tar.gz
+fi
+
+if [[ "${install_grat}" == "yes" ]]; then
+  echo "# Installing grat to /usr/local/bin #"
+
+  wget https://www21.in.tum.de/~lammich/grat/gratgen.tgz
+  wget https://www21.in.tum.de/~lammich/grat/gratchk.tgz
+  tar zxf gratgen.tgz
+  tar zxf gratchk.tgz
+  pushd gratgen
+  cmake .
+  make
+  sudo install gratgen /usr/local/bin
+  popd
+  [[ -d "gratgen" ]] && rm -rf gratgen
+  [[ -f "gratgen.tgz" ]] && rm -f gratgen.tgz
+  pushd gratchk/code
+  make
+  sudo install gratchk /usr/local/bin
+  popd
+  [[ -d "gratchk" ]] && rm -rf gratchk
+  [[ -f "gratchk.tgz" ]] && rm -rf gratchk.tgz
+fi
+
+if [[ "${inside_coqqfbv}" == "no" ]]; then
+  echo "# Installing CoqQFBV project to ~/."
+else
+  echo "# Compiling CoqQFBV at ${PWD} #"
+fi
+
+if [[ "${inside_coqqfbv}" == "no" ]]; then
+  pushd ~/
+  git clone https://github.com/fmlab-iis/coq-qfbv.git
+  pushd ~/coq-qfbv
+fi
+git submodule init
+git submodule update
+if [[ "${compile_coq}" == "yes" ]]; then
+  make -C lib/coq-nbits
+  make -C lib/coq-ssrlib
+  make
+fi
+pushd ./src/ocaml
+dune build
+popd
+if [[ "${inside_coqqfbv}" == "no" ]]; then
+  popd
+  popd
+fi
+
