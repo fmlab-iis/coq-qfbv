@@ -24,28 +24,18 @@ src/ocaml.
 Installation
 ============
 
-To compile CoqQFBV, the following packages are required.
+To compile the formalization of the certified bit-blasting procedure in
+CoqQFBV, the following packages are required.
+
+* [Coq](https://coq.inria.fr) 8.11.0
+* [MathComp](https://github.com/math-comp/math-comp) 1.10.0
+
+To compile the certified SMT QF_BV solver of CoqQFBV, the following packages
+are required.
 
 * [OCaml](https://ocaml.org) 4.08.1
 * [Dune](https://dune.build) 2.1.3 (or newer versions)
 * [Zarith](https://github.com/ocaml/Zarith) 1.9.1 (or newer versions)
-
-On Ubuntu 20.04 LTS, these packages can be installed by the following command.
-
-    $ sudo apt install ocaml ocaml-dune libzarith-ocaml-dev
-
-The packages can also be installed via [opam](http://opam.ocaml.org).
-
-    $ opam switch create ocaml-base-compiler.4.08.1
-    $ eval `opam env`
-    $ opam install dune zarith
-
-Once the packages are installed, switch the current directory to src/ocaml
-and run the following command to compile CoqQFBV.
-
-    $ dune build
-
-The binary of CoqQFBV can be found in _build/default (relative to src/ocaml).
 
 To run CoqQFBV, the following tools are required.
 
@@ -56,8 +46,51 @@ To run CoqQFBV, the following tools are required.
 Make sure that the tools are installed and can be found in the PATH
 environment variable.
 
+
+On Ubuntu
+---------
+
+On Ubuntu 20.04 LTS, the packages for compilation can be installed by the
+following command.
+
+    $ sudo apt install ocaml ocaml-dune libzarith-ocaml-dev coq libssreflect-coq
+
 The script setup-ubuntu can be used to install all required packages
 and external tools on Ubuntu 20.04.
+
+
+With OPAM
+---------
+
+The packages for compilation can also be installed via
+[opam](http://opam.ocaml.org).
+
+    $ opam switch create ocaml-base-compiler.4.08.1
+    $ eval `opam env`
+    $ opam install dune zarith
+    $ opam pin coq 8.11.0
+    $ opam pin coq-mathcomp-ssreflect 1.10.0
+    $ opam install coq-mathcomp-algebra
+
+
+Compilation
+-----------
+
+Run the following commands in the root directory of the CoqQFBV project to
+compile the Coq formalization of the certified bit-blasting procedure.
+
+    $ git submodule init
+    $ git submodule update
+    $ make -C lib/coq-nbits
+    $ make -C lib/coq-ssrlib
+    $ make
+
+Run the following command in the directory src/ocaml to compile the
+certified SMT QF_BV solver of CoqQFBV.
+
+    $ dune build
+
+The binary of CoqQFBV can be found in src/ocaml/_build/default.
 
 
 Usage
