@@ -8,6 +8,7 @@ open State
 open Var
 open Eqtype
 open Seq
+open Ssrbool
 open Ssrnat
 
 type __ = Obj.t
@@ -1254,6 +1255,10 @@ module MakeQFBV :
   val split_conj : bexp -> bexp list
 
   val simplify_bexp : bexp -> bexp
+
+  val bexp_is_implied : bexp -> bool
+
+  val simplify_bexp2 : bexp -> bexp
  end
 
 module QFBV :
@@ -2189,6 +2194,10 @@ module QFBV :
   val split_conj : bexp -> bexp list
 
   val simplify_bexp : bexp -> bexp
+
+  val bexp_is_implied : bexp -> bool
+
+  val simplify_bexp2 : bexp -> bexp
  end
 
 val eunop_eqType : Equality.coq_type

@@ -2,6 +2,7 @@ open Bool
 open Datatypes
 open Eqtype
 open Ssrbool
+open Ssrbool0
 open Ssrnat
 
 val size : 'a1 list -> int
@@ -38,6 +39,14 @@ val eqseqP : Equality.coq_type -> Equality.sort list Equality.axiom
 val seq_eqMixin : Equality.coq_type -> Equality.sort list Equality.mixin_of
 
 val seq_eqType : Equality.coq_type -> Equality.coq_type
+
+val mem_seq : Equality.coq_type -> Equality.sort list -> Equality.sort -> bool
+
+type seq_eqclass = Equality.sort list
+
+val pred_of_seq : Equality.coq_type -> seq_eqclass -> Equality.sort pred_sort
+
+val seq_predType : Equality.coq_type -> Equality.sort predType
 
 type bitseq = bool list
 

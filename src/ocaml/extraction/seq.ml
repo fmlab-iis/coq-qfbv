@@ -2,6 +2,7 @@ open Bool
 open Datatypes
 open Eqtype
 open Ssrbool
+open Ssrbool0
 open Ssrnat
 
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -143,6 +144,26 @@ let seq_eqMixin t =
 
 let seq_eqType t =
   Obj.magic seq_eqMixin t
+
+(** val mem_seq :
+    Equality.coq_type -> Equality.sort list -> Equality.sort -> bool **)
+
+let rec mem_seq t = function
+| [] -> (fun _ -> false)
+| y :: s' -> let p = mem_seq t s' in (fun x -> (||) (eq_op t x y) (p x))
+
+type seq_eqclass = Equality.sort list
+
+(** val pred_of_seq :
+    Equality.coq_type -> seq_eqclass -> Equality.sort pred_sort **)
+
+let pred_of_seq t s =
+  Obj.magic mem_seq t s
+
+(** val seq_predType : Equality.coq_type -> Equality.sort predType **)
+
+let seq_predType t =
+  coq_PredType (Obj.magic pred_of_seq t)
 
 type bitseq = bool list
 

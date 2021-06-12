@@ -8,6 +8,7 @@ open State
 open Var
 open Eqtype
 open Seq
+open Ssrbool
 open Ssrnat
 
 type __ = Obj.t
@@ -1559,6 +1560,47 @@ module MakeQFBV =
         | Bfalse -> x
         | Btrue -> Btrue
         | x0 -> Bdisj (x, x0)))
+  | _ -> e
+
+  (** val bexp_is_implied : bexp -> bool **)
+
+  let bexp_is_implied = function
+  | Bdisj (b, e2) ->
+    (match b with
+     | Blneg e1 ->
+       in_mem (Obj.magic e2)
+         (mem (seq_predType bexp_eqType) (Obj.magic split_conj e1))
+     | _ -> false)
+  | _ -> false
+
+  (** val simplify_bexp2 : bexp -> bexp **)
+
+  let rec simplify_bexp2 e = match e with
+  | Blneg e0 ->
+    (match simplify_bexp2 e0 with
+     | Bfalse -> Btrue
+     | Btrue -> Bfalse
+     | Blneg e1 -> e1
+     | x -> Blneg x)
+  | Bconj (e1, e2) ->
+    (match simplify_bexp2 e1 with
+     | Bfalse -> Bfalse
+     | Btrue -> simplify_bexp2 e2
+     | x ->
+       (match simplify_bexp2 e2 with
+        | Bfalse -> Bfalse
+        | Btrue -> x
+        | x0 -> Bconj (x, x0)))
+  | Bdisj (e1, e2) ->
+    (match simplify_bexp2 e1 with
+     | Bfalse -> simplify_bexp2 e2
+     | Btrue -> Btrue
+     | x ->
+       (match simplify_bexp2 e2 with
+        | Bfalse -> x
+        | Btrue -> Btrue
+        | x0 ->
+          if bexp_is_implied (Bdisj (x, x0)) then Btrue else Bdisj (x, x0)))
   | _ -> e
  end
 
