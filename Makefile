@@ -1,4 +1,4 @@
-LIBS=lib/coq-bits lib/coq-ssrlib lib/coq-nbits
+LIBS=lib/coq-ssrlib lib/coq-nbits
 COQMAKEFILE=Makefile.coq
 MAKE=make
 
