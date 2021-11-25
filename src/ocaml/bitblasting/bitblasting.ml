@@ -701,6 +701,7 @@ type 'a result = OK of 'a | ERROR of string
  * env: typing environment in Coq
  *)
 let check_sat_bexps_conj vm tm env es =
+  let int_of_lit l = int_of_pos (CNF.var_of_lit l) in
   let base_file = tmpfile "coqqfbv_" "" in
   let cnf_file =
     match !option_cnf_file with
@@ -733,6 +734,12 @@ let check_sat_bexps_conj vm tm env es =
     let (lm, cnf) = bb_bexps_conj vm env es in
     let t2 = Unix.gettimeofday() in
     let _ = if !option_verbose then print_endline ("done [" ^ Printf.sprintf "%.9f" (t2 -. t1) ^ " seconds]") in
+    let _ = if !option_debug then
+              List.iter
+                (fun (ssavar, lits) ->
+                  print_endline ("DEBUG: ssavar " ^ string_of_ssavar ssavar ^ " -> lits "
+                                 ^ (String.concat " " (List.map string_of_int (List.map int_of_lit lits))))
+                ) (SSAVM.elements lm) in
     (lm, cnf) in
   let do_output_cnf_file cnf =
     let _ = if !option_verbose then print_string ("Saving CNF file: ") in
@@ -830,7 +837,6 @@ let check_sat_bexps_conj vm tm env es =
     certified in
   let qfbv_assignments_of_literal_assignments lm literal_assignments =
     let _ = if !option_debug then Array.iteri (fun i b -> print_endline ("DEBUG: " ^ "cnf var " ^ string_of_int i ^ ": " ^ string_of_bool b)) literal_assignments in
-    let int_of_lit l = int_of_pos (CNF.var_of_lit l) in
     SSAVM.fold
       (fun ssavar lits store ->
         let bv = List.map (fun l -> literal_assignments.(int_of_lit l)) (lits) in
