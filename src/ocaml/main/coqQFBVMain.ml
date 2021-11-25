@@ -7,6 +7,7 @@ open Bitblasting
 
 let args = [
     ("-cnf", String (fun str -> option_cnf_file := Some str), "FILE\tOutput CNF to a specified file");
+    ("-debug", Set option_debug, "\tOutput debugging messages");
     ("-drat", String (fun str -> option_drat_file := Some str), "FILE\tOutput DRAT (unsat proof) to a specified file");
     ("-grat-log", String (fun str -> option_grat_log_file := Some str), "FILE\n\t\tOutput log of GRAT to a specified file");
     ("-gratchk", String (fun str -> option_gratchk_path := str), "PATH\n\t\tSpecify path to gratchk (default is " ^ !option_gratchk_path ^ ")");
