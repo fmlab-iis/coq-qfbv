@@ -631,15 +631,15 @@ let string_of_ssavar v =
 let bb_bexps_conj vm env es =
   let _ =
     if !option_debug then
-      let _ = List.iter (
-                  fun (v, ty) ->
-                  print_endline (string_of_ssavar v ^ ": BitVec " ^ string_of_ty ty)
-                ) (SSATE.elements env) in
       let _ = M.iter (
                   fun v ssav ->
-                  print_endline (v ^ " => " ^ string_of_ssavar ssav)
+                  print_endline ("DEBUG: " ^ v ^ " => ssavar " ^ string_of_ssavar ssav)
                 ) vm in
-      let _ = print_endline (String.concat "\n" (List.map string_of_bexp es)) in
+      let _ = List.iter (
+                  fun (v, ty) ->
+                  print_endline ("DEBUG: ssavar " ^ string_of_ssavar v ^ ": BitVec " ^ string_of_ty ty)
+                ) (SSATE.elements env) in
+      let _ = print_endline ("DEBUG: QF_BV predicates: " ^ String.concat "\n" (List.map string_of_bexp es)) in
       () in
   if QFBV.well_formed_bexps es env then
     if !option_split_conjs then
