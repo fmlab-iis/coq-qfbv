@@ -3,6 +3,7 @@ open Datatypes
 open Eqtype
 open Ssrbool
 open Ssrbool0
+open Ssreflect
 open Ssrnat
 
 val size : 'a1 list -> int

@@ -3,6 +3,7 @@ open Datatypes
 open Eqtype
 open Ssrbool
 open Ssrbool0
+open Ssreflect
 open Ssrnat
 
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -119,11 +120,12 @@ let eqseqP t _top_assumption_ =
   let _evar_0_0 = fun x1 s1 iHs __top_assumption_ ->
     let _evar_0_0 = ReflectF in
     let _evar_0_1 = fun x2 s2 ->
-      let _evar_0_1 = fun _ -> iffP (eqseq t s1 s2) (iHs s2) in
-      let _evar_0_2 = fun _ -> ReflectF in
-      (match eqP t x1 x2 with
-       | ReflectT -> _evar_0_1 __
-       | ReflectF -> _evar_0_2 __)
+      ssr_have (eqP t x1 x2) (fun __top_assumption_0 ->
+        let _evar_0_1 = fun _ -> iffP (eqseq t s1 s2) (iHs s2) in
+        let _evar_0_2 = fun _ -> ReflectF in
+        (match __top_assumption_0 with
+         | ReflectT -> _evar_0_1 __
+         | ReflectF -> _evar_0_2 __))
     in
     (match __top_assumption_ with
      | [] -> _evar_0_0

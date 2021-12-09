@@ -19,7 +19,7 @@ let rec int_of_pos = function
 
 (** val int_of_n : coq_N -> int **)
 
-let rec int_of_n = function
+let int_of_n = function
 | N0 -> 0
 | Npos p -> int_of_pos p
 

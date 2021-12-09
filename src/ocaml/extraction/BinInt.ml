@@ -131,7 +131,7 @@ module Z =
 
   (** val eqb : coq_Z -> coq_Z -> bool **)
 
-  let rec eqb x y =
+  let eqb x y =
     match x with
     | Z0 -> (match y with
              | Z0 -> true

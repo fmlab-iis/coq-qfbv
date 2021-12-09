@@ -845,7 +845,7 @@ Proof.
   dcase (mk_env_add E_z g_z lrs_xor lrs_z) => [[[[E_add g_add] cs_add] lrs_add] Hmkadd].
   move : (pos_leb_trans (mk_env_abs_newer_gen Hmkabs1) (mk_env_abs_newer_gen Hmkabs2)) => Hggabs2.
   move : (pos_leb_trans Hggabs2 (mk_env_udiv_newer_gen' Hmkudiv)) => Hggudiv.
-  move : (pos_leb_trans Hggudiv (mk_env_neg_newer_gen Hmkneg)) => Hgudivgneg. SearchAbout mk_env_eq.
+  move : (pos_leb_trans Hggudiv (mk_env_neg_newer_gen Hmkneg)) => Hgudivgneg.
   move : (pos_leb_trans Hggudiv (pos_leb_trans (mk_env_eq_newer_gen Hmkeq) (mk_env_lneg_newer_gen Hmklneg))) => Hgglneg.
   move : (pos_leb_trans Hgglneg (pos_leb_trans (mk_env_xor_newer_gen Hmkxor) (mk_env_zeroextend_newer_gen Hmkz))) => Hggz.
   move : (pos_leb_trans Hggz (mk_env_add_newer_gen Hmkadd)) => Hggadd.

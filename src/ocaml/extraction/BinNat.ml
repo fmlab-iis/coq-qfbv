@@ -55,7 +55,7 @@ module N =
 
   (** val eqb : coq_N -> coq_N -> bool **)
 
-  let rec eqb n m =
+  let eqb n m =
     match n with
     | N0 -> (match m with
              | N0 -> true
