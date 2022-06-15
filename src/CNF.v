@@ -2152,9 +2152,8 @@ Section EqSat.
   Lemma interp_cnf_tflatten_cons E c cs :
     interp_cnf E (tflatten (c::cs)) = interp_cnf E c && interp_cnf E (tflatten cs).
   Proof.
-    rewrite /tflatten /=. rewrite -/(rev c). rewrite tflatten_rec_expand.
-    rewrite interp_cnf_cat. rewrite interp_cnf_rev_eqsat. rewrite andbC.
-    reflexivity.
+    rewrite tflatten_cons. rewrite interp_cnf_cat. rewrite andbC.
+    rewrite interp_cnf_rev_eqsat. reflexivity.
   Qed.
 
   Lemma interp_cnf_add_prelude_tflatten_cons E cs css :
