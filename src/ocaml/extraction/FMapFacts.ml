@@ -124,10 +124,10 @@ module WProperties_fun =
       match l0 with
       | [] -> hempty m0 __
       | y :: l1 ->
-        let (k, e) = y in
-        hstep'0 k e (fold_right f0 i l1) (of_list l1) m0 __ __ __
-          (f1 l1 (fun k0 e0 a m' m'' _ _ _ x ->
-            hstep'0 k0 e0 a m' m'' __ __ __ x) (of_list l1))
+        let (a, b) = y in
+        hstep'0 a b (fold_right f0 i l1) (of_list l1) m0 __ __ __
+          (f1 l1 (fun k0 e0 a0 m' m'' _ _ _ x ->
+            hstep'0 k0 e0 a0 m' m'' __ __ __ x) (of_list l1))
     in f1 l (fun k e a m' m'' _ _ _ x -> hstep' k e a m' m'' x) m
 
   (** val fold_rec_bis :
@@ -195,7 +195,7 @@ module WProperties_fun =
     let l = M.elements m in
     (match l with
      | [] -> assert false (* absurd case *)
-     | p :: _ -> p)
+     | a :: _ -> a)
 
   (** val cardinal_inv_2b : 'a1 M.t -> (M.key * 'a1) **)
 
@@ -363,9 +363,9 @@ module OrdProperties =
         (fun _ -> x m0 __)
         (fun n1 ->
         match max_elt m0 with
-        | Some p ->
-          let (k, e) = p in
-          x0 (M.remove k m0) m0 (f n1 (M.remove k m0)) k e __ __
+        | Some a ->
+          let (a0, b) = a in
+          x0 (M.remove a0 m0) m0 (f n1 (M.remove a0 m0)) a0 b __ __
         | None -> x m0 __)
         n0
     in f n m
@@ -381,9 +381,9 @@ module OrdProperties =
         (fun _ -> x m0 __)
         (fun n1 ->
         match min_elt m0 with
-        | Some p ->
-          let (k, e) = p in
-          x0 (M.remove k m0) m0 (f n1 (M.remove k m0)) k e __ __
+        | Some a ->
+          let (a0, b) = a in
+          x0 (M.remove a0 m0) m0 (f n1 (M.remove a0 m0)) a0 b __ __
         | None -> x m0 __)
         n0
     in f n m

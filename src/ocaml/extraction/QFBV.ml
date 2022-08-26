@@ -420,14 +420,14 @@ module MakeQFBV =
   let eunop_rect f f0 f1 f2 f3 f4 f5 f6 f7 f8 = function
   | Unot -> f
   | Uneg -> f0
-  | Uextr (x, x0) -> f1 x x0
-  | Uhigh x -> f2 x
-  | Ulow x -> f3 x
-  | Uzext x -> f4 x
-  | Usext x -> f5 x
-  | Urepeat x -> f6 x
-  | Urotl x -> f7 x
-  | Urotr x -> f8 x
+  | Uextr (n, n0) -> f1 n n0
+  | Uhigh n -> f2 n
+  | Ulow n -> f3 n
+  | Uzext n -> f4 n
+  | Usext n -> f5 n
+  | Urepeat n -> f6 n
+  | Urotl n -> f7 n
+  | Urotr n -> f8 n
 
   (** val eunop_rec :
       'a1 -> 'a1 -> (int -> int -> 'a1) -> (int -> 'a1) -> (int -> 'a1) ->
@@ -437,14 +437,14 @@ module MakeQFBV =
   let eunop_rec f f0 f1 f2 f3 f4 f5 f6 f7 f8 = function
   | Unot -> f
   | Uneg -> f0
-  | Uextr (x, x0) -> f1 x x0
-  | Uhigh x -> f2 x
-  | Ulow x -> f3 x
-  | Uzext x -> f4 x
-  | Usext x -> f5 x
-  | Urepeat x -> f6 x
-  | Urotl x -> f7 x
-  | Urotr x -> f8 x
+  | Uextr (n, n0) -> f1 n n0
+  | Uhigh n -> f2 n
+  | Ulow n -> f3 n
+  | Uzext n -> f4 n
+  | Usext n -> f5 n
+  | Urepeat n -> f6 n
+  | Urotl n -> f7 n
+  | Urotr n -> f8 n
 
   type ebinop =
   | Band

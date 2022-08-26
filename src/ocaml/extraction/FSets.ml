@@ -271,7 +271,7 @@ module SsrFSetLemmas =
         let l = S.elements s in
         (match l with
          | [] -> assert false (* absurd case *)
-         | e :: _ -> e)
+         | a :: _ -> a)
 
       (** val cardinal_inv_2b : S.t -> S.elt **)
 
@@ -317,7 +317,7 @@ module SsrFSetLemmas =
           (fun _ -> x s0 __)
           (fun n1 ->
           match S.max_elt s0 with
-          | Some e -> x0 (S.remove e s0) s0 (f n1 (S.remove e s0)) e __ __
+          | Some a -> x0 (S.remove a s0) s0 (f n1 (S.remove a s0)) a __ __
           | None -> assert false (* absurd case *))
           n0
       in f n s
@@ -333,7 +333,7 @@ module SsrFSetLemmas =
           (fun _ -> x s0 __)
           (fun n1 ->
           match S.min_elt s0 with
-          | Some e -> x0 (S.remove e s0) s0 (f n1 (S.remove e s0)) e __ __
+          | Some a -> x0 (S.remove a s0) s0 (f n1 (S.remove a s0)) a __ __
           | None -> assert false (* absurd case *))
           n0
       in f n s

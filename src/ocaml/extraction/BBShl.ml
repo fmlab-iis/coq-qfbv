@@ -25,10 +25,10 @@ let bit_blast_shl_int1 g ls =
 let rec bit_blast_shl_int g ls = function
 | N0 -> ((g, []), ls)
 | Npos p ->
-  let (p1, ls_m) = bit_blast_shl_int g ls (N.sub (Npos p) (Npos Coq_xH)) in
-  let (g_m, cs_m) = p1 in
-  let (p2, ls1) = bit_blast_shl_int1 g_m ls_m in
-  let (g1, cs1) = p2 in ((g1, (catrev cs_m cs1)), ls1)
+  let (a, b) = bit_blast_shl_int g ls (N.sub (Npos p) (Npos Coq_xH)) in
+  let (a0, b0) = a in
+  let (a1, b1) = bit_blast_shl_int1 a0 b in
+  let (a2, b2) = a1 in ((a2, (catrev b0 b2)), b1)
 
 (** val bit_blast_shl_rec :
     generator -> word -> Equality.sort list -> coq_N ->

@@ -116,9 +116,9 @@ module MakeProdOrderMinimal =
          | OrderedType.EQ -> _evar_0_0 __
          | OrderedType.GT -> _evar_0_1 __)
       in
-      let (x0, x3) = Obj.magic y in _evar_0_ x0 x3
+      let (a, b) = Obj.magic y in _evar_0_ a b
     in
-    let (x0, x1) = Obj.magic x in _evar_0_ x0 x1
+    let (a, b) = Obj.magic x in _evar_0_ a b
  end
 
 module MakeProdOrderWithDefaultSucc =

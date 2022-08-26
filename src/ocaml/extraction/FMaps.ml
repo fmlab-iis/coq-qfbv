@@ -752,22 +752,22 @@ module MakeTreeMap' =
             (Equality.sort * 'a1) list -> __ -> __ -> __ -> 'a2 -> 'a2) ->
             'a1 t -> 'a2 **)
 
-        let rec mem_rect k f2 f1 f0 f s =
-          let f3 = f2 s in
-          let f4 = f1 s in
-          let f5 = f0 s in
-          let f6 = f s in
+        let rec mem_rect k f f0 f1 f2 s =
+          let f3 = f s in
+          let f4 = f0 s in
+          let f5 = f1 s in
+          let f6 = f2 s in
           (match s with
            | [] -> f3 __
-           | p :: l ->
-             let (t0, e) = p in
-             let f7 = f6 t0 e l __ in
+           | a :: l ->
+             let (a0, b) = a in
+             let f7 = f6 a0 b l __ in
              let f8 = fun _ _ ->
-               let hrec = mem_rect k f2 f1 f0 f l in f7 __ __ hrec
+               let hrec = mem_rect k f f0 f1 f2 l in f7 __ __ hrec
              in
-             let f9 = f5 t0 e l __ in
-             let f10 = f4 t0 e l __ in
-             (match X.compare k t0 with
+             let f9 = f5 a0 b l __ in
+             let f10 = f4 a0 b l __ in
+             (match X.compare k a0 with
               | OrderedType.LT -> f10 __ __
               | OrderedType.EQ -> f9 __ __
               | OrderedType.GT -> f8 __ __))
@@ -854,22 +854,22 @@ module MakeTreeMap' =
             (Equality.sort * 'a1) list -> __ -> __ -> __ -> 'a2 -> 'a2) ->
             'a1 t -> 'a2 **)
 
-        let rec find_rect k f2 f1 f0 f s =
-          let f3 = f2 s in
-          let f4 = f1 s in
-          let f5 = f0 s in
-          let f6 = f s in
+        let rec find_rect k f f0 f1 f2 s =
+          let f3 = f s in
+          let f4 = f0 s in
+          let f5 = f1 s in
+          let f6 = f2 s in
           (match s with
            | [] -> f3 __
-           | p :: l ->
-             let (t0, e) = p in
-             let f7 = f6 t0 e l __ in
+           | a :: l ->
+             let (a0, b) = a in
+             let f7 = f6 a0 b l __ in
              let f8 = fun _ _ ->
-               let hrec = find_rect k f2 f1 f0 f l in f7 __ __ hrec
+               let hrec = find_rect k f f0 f1 f2 l in f7 __ __ hrec
              in
-             let f9 = f5 t0 e l __ in
-             let f10 = f4 t0 e l __ in
-             (match X.compare k t0 with
+             let f9 = f5 a0 b l __ in
+             let f10 = f4 a0 b l __ in
+             (match X.compare k a0 with
               | OrderedType.LT -> f10 __ __
               | OrderedType.EQ -> f9 __ __
               | OrderedType.GT -> f8 __ __))
@@ -955,22 +955,22 @@ module MakeTreeMap' =
             (Equality.sort * 'a1) list -> __ -> __ -> __ -> 'a2 -> 'a2) ->
             'a1 t -> 'a2 **)
 
-        let rec add_rect k x f2 f1 f0 f s =
-          let f3 = f2 s in
-          let f4 = f1 s in
-          let f5 = f0 s in
-          let f6 = f s in
+        let rec add_rect k x f f0 f1 f2 s =
+          let f3 = f s in
+          let f4 = f0 s in
+          let f5 = f1 s in
+          let f6 = f2 s in
           (match s with
            | [] -> f3 __
-           | p :: l ->
-             let (t0, e) = p in
-             let f7 = f6 t0 e l __ in
+           | a :: l ->
+             let (a0, b) = a in
+             let f7 = f6 a0 b l __ in
              let f8 = fun _ _ ->
-               let hrec = add_rect k x f2 f1 f0 f l in f7 __ __ hrec
+               let hrec = add_rect k x f f0 f1 f2 l in f7 __ __ hrec
              in
-             let f9 = f5 t0 e l __ in
-             let f10 = f4 t0 e l __ in
-             (match X.compare k t0 with
+             let f9 = f5 a0 b l __ in
+             let f10 = f4 a0 b l __ in
+             (match X.compare k a0 with
               | OrderedType.LT -> f10 __ __
               | OrderedType.EQ -> f9 __ __
               | OrderedType.GT -> f8 __ __))
@@ -1058,22 +1058,22 @@ module MakeTreeMap' =
             (Equality.sort * 'a1) list -> __ -> __ -> __ -> 'a2 -> 'a2) ->
             'a1 t -> 'a2 **)
 
-        let rec remove_rect k f2 f1 f0 f s =
-          let f3 = f2 s in
-          let f4 = f1 s in
-          let f5 = f0 s in
-          let f6 = f s in
+        let rec remove_rect k f f0 f1 f2 s =
+          let f3 = f s in
+          let f4 = f0 s in
+          let f5 = f1 s in
+          let f6 = f2 s in
           (match s with
            | [] -> f3 __
-           | p :: l ->
-             let (t0, e) = p in
-             let f7 = f6 t0 e l __ in
+           | a :: l ->
+             let (a0, b) = a in
+             let f7 = f6 a0 b l __ in
              let f8 = fun _ _ ->
-               let hrec = remove_rect k f2 f1 f0 f l in f7 __ __ hrec
+               let hrec = remove_rect k f f0 f1 f2 l in f7 __ __ hrec
              in
-             let f9 = f5 t0 e l __ in
-             let f10 = f4 t0 e l __ in
-             (match X.compare k t0 with
+             let f9 = f5 a0 b l __ in
+             let f10 = f4 a0 b l __ in
+             (match X.compare k a0 with
               | OrderedType.LT -> f10 __ __
               | OrderedType.EQ -> f9 __ __
               | OrderedType.GT -> f8 __ __))
@@ -1145,15 +1145,15 @@ module MakeTreeMap' =
             t -> 'a2 -> Equality.sort -> 'a1 -> (Equality.sort * 'a1) list ->
             __ -> 'a3 -> 'a3) -> 'a1 t -> 'a2 -> 'a3 **)
 
-        let rec fold_rect f1 f0 f m acc =
+        let rec fold_rect f f0 f1 m acc =
           let f2 = f0 m acc in
-          let f3 = f m acc in
+          let f3 = f1 m acc in
           (match m with
            | [] -> f2 __
-           | p :: l ->
-             let (t0, e) = p in
-             let f4 = f3 t0 e l __ in
-             let hrec = fold_rect f1 f0 f l (f1 t0 e acc) in f4 hrec)
+           | a :: l ->
+             let (a0, b) = a in
+             let f4 = f3 a0 b l __ in
+             let hrec = fold_rect f f0 f1 l (f a0 b acc) in f4 hrec)
 
         (** val fold_rec :
             (key -> 'a1 -> 'a2 -> 'a2) -> ('a1 t -> 'a2 -> __ -> 'a3) -> ('a1
@@ -1252,11 +1252,11 @@ module MakeTreeMap' =
             t -> 'a1 t -> 'a1 t -> __ -> 'a1 t -> __ -> __ -> 'a2) -> 'a1 t
             -> 'a1 t -> 'a2 **)
 
-        let rec equal_rect cmp f2 f1 f0 f m m' =
-          let f3 = f2 m m' in
-          let f4 = f1 m m' in
-          let f5 = f0 m m' in
-          let f6 = f m m' in
+        let rec equal_rect cmp f f0 f1 f2 m m' =
+          let f3 = f m m' in
+          let f4 = f0 m m' in
+          let f5 = f1 m m' in
+          let f6 = f2 m m' in
           let f7 = f6 m __ in
           let f8 = f7 m' __ in
           (match m with
@@ -1264,21 +1264,21 @@ module MakeTreeMap' =
              let f9 = f3 __ in (match m' with
                                 | [] -> f9 __
                                 | _ :: _ -> f8 __)
-           | p :: l ->
-             let (t0, e) = p in
-             let f9 = f5 t0 e l __ in
-             let f10 = f4 t0 e l __ in
+           | a :: l ->
+             let (a0, b) = a in
+             let f9 = f5 a0 b l __ in
+             let f10 = f4 a0 b l __ in
              (match m' with
               | [] -> f8 __
-              | p0 :: l0 ->
-                let (t1, e0) = p0 in
-                let f11 = f9 t1 e0 l0 __ in
-                let f12 = let _x = X.compare t0 t1 in f11 _x __ in
-                let f13 = f10 t1 e0 l0 __ in
+              | a1 :: l0 ->
+                let (a2, b0) = a1 in
+                let f11 = f9 a2 b0 l0 __ in
+                let f12 = let _x = X.compare a0 a2 in f11 _x __ in
+                let f13 = f10 a2 b0 l0 __ in
                 let f14 = fun _ _ ->
-                  let hrec = equal_rect cmp f2 f1 f0 f l l0 in f13 __ __ hrec
+                  let hrec = equal_rect cmp f f0 f1 f2 l l0 in f13 __ __ hrec
                 in
-                (match X.compare t0 t1 with
+                (match X.compare a0 a2 with
                  | OrderedType.EQ -> f14 __ __
                  | _ -> f12 __)))
 
@@ -1551,21 +1551,21 @@ module MakeTreeMap' =
           -> 'a1 coq_R_bal -> 'a2 **)
 
       let coq_R_bal_rect f f0 f1 f2 f3 f4 f5 f6 f7 _ _ _ _ _ = function
-      | R_bal_0 (x, x0, x1, x2) -> f x x0 x1 x2 __ __ __
-      | R_bal_1 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f0 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __
-      | R_bal_2 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f1 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __ __
-      | R_bal_3 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f2 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __ x8 x9 x10 x11 x12 __
-      | R_bal_4 (x, x0, x1, x2) -> f3 x x0 x1 x2 __ __ __ __ __
-      | R_bal_5 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f4 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __
-      | R_bal_6 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f5 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __ __
-      | R_bal_7 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f6 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __ x8 x9 x10 x11 x12 __
-      | R_bal_8 (x, x0, x1, x2) -> f7 x x0 x1 x2 __ __ __ __
+      | R_bal_0 (l, x, d, r) -> f l x d r __ __ __
+      | R_bal_1 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f0 l x d r __ __ x0 x1 x2 x3 x4 __ __ __
+      | R_bal_2 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f1 l x d r __ __ x0 x1 x2 x3 x4 __ __ __ __
+      | R_bal_3 (l, x, d, r, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) ->
+        f2 l x d r __ __ x0 x1 x2 x3 x4 __ __ __ x5 x6 x7 x8 x9 __
+      | R_bal_4 (l, x, d, r) -> f3 l x d r __ __ __ __ __
+      | R_bal_5 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f4 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __
+      | R_bal_6 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f5 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __ __
+      | R_bal_7 (l, x, d, r, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) ->
+        f6 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __ x5 x6 x7 x8 x9 __
+      | R_bal_8 (l, x, d, r) -> f7 l x d r __ __ __ __
 
       (** val coq_R_bal_rec :
           ('a1 tree -> key -> 'a1 -> 'a1 tree -> __ -> __ -> __ -> 'a2) ->
@@ -1589,21 +1589,21 @@ module MakeTreeMap' =
           -> 'a1 coq_R_bal -> 'a2 **)
 
       let coq_R_bal_rec f f0 f1 f2 f3 f4 f5 f6 f7 _ _ _ _ _ = function
-      | R_bal_0 (x, x0, x1, x2) -> f x x0 x1 x2 __ __ __
-      | R_bal_1 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f0 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __
-      | R_bal_2 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f1 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __ __
-      | R_bal_3 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f2 x x0 x1 x2 __ __ x3 x4 x5 x6 x7 __ __ __ x8 x9 x10 x11 x12 __
-      | R_bal_4 (x, x0, x1, x2) -> f3 x x0 x1 x2 __ __ __ __ __
-      | R_bal_5 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f4 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __
-      | R_bal_6 (x, x0, x1, x2, x3, x4, x5, x6, x7) ->
-        f5 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __ __
-      | R_bal_7 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f6 x x0 x1 x2 __ __ __ __ x3 x4 x5 x6 x7 __ __ __ x8 x9 x10 x11 x12 __
-      | R_bal_8 (x, x0, x1, x2) -> f7 x x0 x1 x2 __ __ __ __
+      | R_bal_0 (l, x, d, r) -> f l x d r __ __ __
+      | R_bal_1 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f0 l x d r __ __ x0 x1 x2 x3 x4 __ __ __
+      | R_bal_2 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f1 l x d r __ __ x0 x1 x2 x3 x4 __ __ __ __
+      | R_bal_3 (l, x, d, r, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) ->
+        f2 l x d r __ __ x0 x1 x2 x3 x4 __ __ __ x5 x6 x7 x8 x9 __
+      | R_bal_4 (l, x, d, r) -> f3 l x d r __ __ __ __ __
+      | R_bal_5 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f4 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __
+      | R_bal_6 (l, x, d, r, x0, x1, x2, x3, x4) ->
+        f5 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __ __
+      | R_bal_7 (l, x, d, r, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) ->
+        f6 l x d r __ __ __ __ x0 x1 x2 x3 x4 __ __ __ x5 x6 x7 x8 x9 __
+      | R_bal_8 (l, x, d, r) -> f7 l x d r __ __ __ __
 
       type 'elt coq_R_add =
       | R_add_0 of 'elt tree
@@ -1666,9 +1666,9 @@ module MakeTreeMap' =
           'a1 coq_R_remove_min -> 'a2 **)
 
       let rec coq_R_remove_min_rect f f0 _ _ _ _ _ = function
-      | R_remove_min_0 (l, x, d, r0) -> f l x d r0 __
-      | R_remove_min_1 (l, x, d, r0, ll, lx, ld, lr, _x, _res, r1, l', m) ->
-        f0 l x d r0 ll lx ld lr _x __ _res r1
+      | R_remove_min_0 (l, x, d, r) -> f l x d r __
+      | R_remove_min_1 (l, x, d, r, ll, lx, ld, lr, _x, _res, r1, l', m) ->
+        f0 l x d r ll lx ld lr _x __ _res r1
           (coq_R_remove_min_rect f f0 ll lx ld lr _res r1) l' m __
 
       (** val coq_R_remove_min_rec :
@@ -1680,9 +1680,9 @@ module MakeTreeMap' =
           'a1 coq_R_remove_min -> 'a2 **)
 
       let rec coq_R_remove_min_rec f f0 _ _ _ _ _ = function
-      | R_remove_min_0 (l, x, d, r0) -> f l x d r0 __
-      | R_remove_min_1 (l, x, d, r0, ll, lx, ld, lr, _x, _res, r1, l', m) ->
-        f0 l x d r0 ll lx ld lr _x __ _res r1
+      | R_remove_min_0 (l, x, d, r) -> f l x d r __
+      | R_remove_min_1 (l, x, d, r, ll, lx, ld, lr, _x, _res, r1, l', m) ->
+        f0 l x d r ll lx ld lr _x __ _res r1
           (coq_R_remove_min_rec f f0 ll lx ld lr _res r1) l' m __
 
       type 'elt coq_R_merge =
@@ -1703,11 +1703,12 @@ module MakeTreeMap' =
           -> 'a2 **)
 
       let coq_R_merge_rect f f0 f1 _ _ _ = function
-      | R_merge_0 (x, x0) -> f x x0 __
-      | R_merge_1 (x, x0, x1, x2, x3, x4, x5) -> f0 x x0 x1 x2 x3 x4 x5 __ __
-      | R_merge_2 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12,
-                   x13, x14) ->
-        f1 x x0 x1 x2 x3 x4 x5 __ x6 x7 x8 x9 x10 __ x11 x12 __ x13 x14 __
+      | R_merge_0 (s1, s2) -> f s1 s2 __
+      | R_merge_1 (s1, s2, _x, _x0, _x1, _x2, _x3) ->
+        f0 s1 s2 _x _x0 _x1 _x2 _x3 __ __
+      | R_merge_2 (s1, s2, _x, _x0, _x1, _x2, _x3, l2, x2, d2, r2, _x4, s2',
+                   p, x, d) ->
+        f1 s1 s2 _x _x0 _x1 _x2 _x3 __ l2 x2 d2 r2 _x4 __ s2' p __ x d __
 
       (** val coq_R_merge_rec :
           ('a1 tree -> 'a1 tree -> __ -> 'a2) -> ('a1 tree -> 'a1 tree -> 'a1
@@ -1719,11 +1720,12 @@ module MakeTreeMap' =
           -> 'a2 **)
 
       let coq_R_merge_rec f f0 f1 _ _ _ = function
-      | R_merge_0 (x, x0) -> f x x0 __
-      | R_merge_1 (x, x0, x1, x2, x3, x4, x5) -> f0 x x0 x1 x2 x3 x4 x5 __ __
-      | R_merge_2 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12,
-                   x13, x14) ->
-        f1 x x0 x1 x2 x3 x4 x5 __ x6 x7 x8 x9 x10 __ x11 x12 __ x13 x14 __
+      | R_merge_0 (s1, s2) -> f s1 s2 __
+      | R_merge_1 (s1, s2, _x, _x0, _x1, _x2, _x3) ->
+        f0 s1 s2 _x _x0 _x1 _x2 _x3 __ __
+      | R_merge_2 (s1, s2, _x, _x0, _x1, _x2, _x3, l2, x2, d2, r2, _x4, s2',
+                   p, x, d) ->
+        f1 s1 s2 _x _x0 _x1 _x2 _x3 __ l2 x2 d2 r2 _x4 __ s2' p __ x d __
 
       type 'elt coq_R_remove =
       | R_remove_0 of 'elt tree
@@ -1789,10 +1791,12 @@ module MakeTreeMap' =
           tree -> 'a1 tree -> 'a1 tree -> 'a1 coq_R_concat -> 'a2 **)
 
       let coq_R_concat_rect f f0 f1 _ _ _ = function
-      | R_concat_0 (x, x0) -> f x x0 __
-      | R_concat_1 (x, x0, x1, x2, x3, x4, x5) -> f0 x x0 x1 x2 x3 x4 x5 __ __
-      | R_concat_2 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f1 x x0 x1 x2 x3 x4 x5 __ x6 x7 x8 x9 x10 __ x11 x12 __
+      | R_concat_0 (m1, m2) -> f m1 m2 __
+      | R_concat_1 (m1, m2, _x, _x0, _x1, _x2, _x3) ->
+        f0 m1 m2 _x _x0 _x1 _x2 _x3 __ __
+      | R_concat_2 (m1, m2, _x, _x0, _x1, _x2, _x3, l2, x2, d2, r2, _x4, m2',
+                    xd) ->
+        f1 m1 m2 _x _x0 _x1 _x2 _x3 __ l2 x2 d2 r2 _x4 __ m2' xd __
 
       (** val coq_R_concat_rec :
           ('a1 tree -> 'a1 tree -> __ -> 'a2) -> ('a1 tree -> 'a1 tree -> 'a1
@@ -1803,10 +1807,12 @@ module MakeTreeMap' =
           tree -> 'a1 tree -> 'a1 tree -> 'a1 coq_R_concat -> 'a2 **)
 
       let coq_R_concat_rec f f0 f1 _ _ _ = function
-      | R_concat_0 (x, x0) -> f x x0 __
-      | R_concat_1 (x, x0, x1, x2, x3, x4, x5) -> f0 x x0 x1 x2 x3 x4 x5 __ __
-      | R_concat_2 (x, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) ->
-        f1 x x0 x1 x2 x3 x4 x5 __ x6 x7 x8 x9 x10 __ x11 x12 __
+      | R_concat_0 (m1, m2) -> f m1 m2 __
+      | R_concat_1 (m1, m2, _x, _x0, _x1, _x2, _x3) ->
+        f0 m1 m2 _x _x0 _x1 _x2 _x3 __ __
+      | R_concat_2 (m1, m2, _x, _x0, _x1, _x2, _x3, l2, x2, d2, r2, _x4, m2',
+                    xd) ->
+        f1 m1 m2 _x _x0 _x1 _x2 _x3 __ l2 x2 d2 r2 _x4 __ m2' xd __
 
       type 'elt coq_R_split =
       | R_split_0 of 'elt tree
@@ -2367,10 +2373,10 @@ module MakeTreeMapWithNew =
             match l0 with
             | [] -> hempty m0 __
             | y :: l1 ->
-              let (k, e) = y in
-              hstep'0 k e (fold_right f0 i l1) (of_list l1) m0 __ __ __
-                (f1 l1 (fun k0 e0 a m' m'' _ _ _ x ->
-                  hstep'0 k0 e0 a m' m'' __ __ __ x) (of_list l1))
+              let (a, b) = y in
+              hstep'0 a b (fold_right f0 i l1) (of_list l1) m0 __ __ __
+                (f1 l1 (fun k0 e0 a0 m' m'' _ _ _ x ->
+                  hstep'0 k0 e0 a0 m' m'' __ __ __ x) (of_list l1))
           in f1 l (fun k e a m' m'' _ _ _ x -> hstep' k e a m' m'' x) m
 
         (** val fold_rec_bis :
@@ -2438,7 +2444,7 @@ module MakeTreeMapWithNew =
           let l = M.elements m in
           (match l with
            | [] -> assert false (* absurd case *)
-           | p :: _ -> p)
+           | a :: _ -> a)
 
         (** val cardinal_inv_2b : 'a1 M.t -> (M.key * 'a1) **)
 
@@ -2593,9 +2599,9 @@ module MakeTreeMapWithNew =
             (fun _ -> x m0 __)
             (fun n1 ->
             match max_elt m0 with
-            | Some p ->
-              let (k, e) = p in
-              x0 (M.remove k m0) m0 (f n1 (M.remove k m0)) k e __ __
+            | Some a ->
+              let (a0, b) = a in
+              x0 (M.remove a0 m0) m0 (f n1 (M.remove a0 m0)) a0 b __ __
             | None -> x m0 __)
             n0
         in f n m
@@ -2611,9 +2617,9 @@ module MakeTreeMapWithNew =
             (fun _ -> x m0 __)
             (fun n1 ->
             match min_elt m0 with
-            | Some p ->
-              let (k, e) = p in
-              x0 (M.remove k m0) m0 (f n1 (M.remove k m0)) k e __ __
+            | Some a ->
+              let (a0, b) = a in
+              x0 (M.remove a0 m0) m0 (f n1 (M.remove a0 m0)) a0 b __ __
             | None -> x m0 __)
             n0
         in f n m

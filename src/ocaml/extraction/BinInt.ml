@@ -212,12 +212,12 @@ module Z =
     | Z0 -> (match y with
              | Z0 -> true
              | _ -> false)
-    | Zpos x0 -> (match y with
-                  | Zpos p0 -> Pos.eq_dec x0 p0
-                  | _ -> false)
-    | Zneg x0 -> (match y with
-                  | Zneg p0 -> Pos.eq_dec x0 p0
-                  | _ -> false)
+    | Zpos p -> (match y with
+                 | Zpos p0 -> Pos.eq_dec p p0
+                 | _ -> false)
+    | Zneg p -> (match y with
+                 | Zneg p0 -> Pos.eq_dec p p0
+                 | _ -> false)
 
   (** val log2_up : coq_Z -> coq_Z **)
 

@@ -379,11 +379,11 @@ let rec hashed_exp_compare e1 e2 =
     let _evar_0_2 = fun _ _ _ -> OrderedType.LT in
     let _evar_0_3 = fun _ _ _ -> OrderedType.LT in
     (match e2 with
-     | HEvar x -> _evar_0_ x
-     | HEconst x -> _evar_0_0 x
-     | HEunop (x, x0) -> _evar_0_1 x x0
-     | HEbinop (x, x0, x1) -> _evar_0_2 x x0 x1
-     | HEite (x, x0, x1) -> _evar_0_3 x x0 x1)
+     | HEvar t0 -> _evar_0_ t0
+     | HEconst b -> _evar_0_0 b
+     | HEunop (e, h) -> _evar_0_1 e h
+     | HEbinop (e, h, h0) -> _evar_0_2 e h h0
+     | HEite (h, h0, h1) -> _evar_0_3 h h0 h1)
   in
   let _evar_0_0 = fun bs1 ->
     let _evar_0_0 = fun _ -> OrderedType.GT in
@@ -410,11 +410,11 @@ let rec hashed_exp_compare e1 e2 =
     let _evar_0_3 = fun _ _ _ -> OrderedType.LT in
     let _evar_0_4 = fun _ _ _ -> OrderedType.LT in
     (match e2 with
-     | HEvar x -> _evar_0_0 x
-     | HEconst x -> _evar_0_1 x
-     | HEunop (x, x0) -> _evar_0_2 x x0
-     | HEbinop (x, x0, x1) -> _evar_0_3 x x0 x1
-     | HEite (x, x0, x1) -> _evar_0_4 x x0 x1)
+     | HEvar t0 -> _evar_0_0 t0
+     | HEconst b -> _evar_0_1 b
+     | HEunop (e, h) -> _evar_0_2 e h
+     | HEbinop (e, h, h0) -> _evar_0_3 e h h0
+     | HEite (h, h0, h1) -> _evar_0_4 h h0 h1)
   in
   let _evar_0_1 = fun op1 e3 ->
     let _evar_0_1 = fun _ -> OrderedType.GT in
@@ -441,11 +441,11 @@ let rec hashed_exp_compare e1 e2 =
     let _evar_0_4 = fun _ _ _ -> OrderedType.LT in
     let _evar_0_5 = fun _ _ _ -> OrderedType.LT in
     (match e2 with
-     | HEvar x -> _evar_0_1 x
-     | HEconst x -> _evar_0_2 x
-     | HEunop (x, x0) -> _evar_0_3 x x0
-     | HEbinop (x, x0, x1) -> _evar_0_4 x x0 x1
-     | HEite (x, x0, x1) -> _evar_0_5 x x0 x1)
+     | HEvar t0 -> _evar_0_1 t0
+     | HEconst b -> _evar_0_2 b
+     | HEunop (e, h) -> _evar_0_3 e h
+     | HEbinop (e, h, h0) -> _evar_0_4 e h h0
+     | HEite (h, h0, h1) -> _evar_0_5 h h0 h1)
   in
   let _evar_0_2 = fun op1 e3 e4 ->
     let _evar_0_2 = fun _ -> OrderedType.GT in
@@ -480,11 +480,11 @@ let rec hashed_exp_compare e1 e2 =
     in
     let _evar_0_6 = fun _ _ _ -> OrderedType.LT in
     (match e2 with
-     | HEvar x -> _evar_0_2 x
-     | HEconst x -> _evar_0_3 x
-     | HEunop (x, x0) -> _evar_0_4 x x0
-     | HEbinop (x, x0, x1) -> _evar_0_5 x x0 x1
-     | HEite (x, x0, x1) -> _evar_0_6 x x0 x1)
+     | HEvar t0 -> _evar_0_2 t0
+     | HEconst b -> _evar_0_3 b
+     | HEunop (e, h) -> _evar_0_4 e h
+     | HEbinop (e, h, h0) -> _evar_0_5 e h h0
+     | HEite (h, h0, h1) -> _evar_0_6 h h0 h1)
   in
   let _evar_0_3 = fun b1 e3 e4 ->
     let _evar_0_3 = fun _ -> OrderedType.GT in
@@ -517,18 +517,18 @@ let rec hashed_exp_compare e1 e2 =
        | OrderedType.GT -> _evar_0_9 __)
     in
     (match e2 with
-     | HEvar x -> _evar_0_3 x
-     | HEconst x -> _evar_0_4 x
-     | HEunop (x, x0) -> _evar_0_5 x x0
-     | HEbinop (x, x0, x1) -> _evar_0_6 x x0 x1
-     | HEite (x, x0, x1) -> _evar_0_7 x x0 x1)
+     | HEvar t0 -> _evar_0_3 t0
+     | HEconst b -> _evar_0_4 b
+     | HEunop (e, h) -> _evar_0_5 e h
+     | HEbinop (e, h, h0) -> _evar_0_6 e h h0
+     | HEite (h, h0, h1) -> _evar_0_7 h h0 h1)
   in
   (match e1 with
-   | HEvar x -> _evar_0_ x
-   | HEconst x -> _evar_0_0 x
-   | HEunop (x, x0) -> _evar_0_1 x x0
-   | HEbinop (x, x0, x1) -> _evar_0_2 x x0 x1
-   | HEite (x, x0, x1) -> _evar_0_3 x x0 x1)
+   | HEvar t0 -> _evar_0_ t0
+   | HEconst b -> _evar_0_0 b
+   | HEunop (e, h) -> _evar_0_1 e h
+   | HEbinop (e, h, h0) -> _evar_0_2 e h h0
+   | HEite (h, h0, h1) -> _evar_0_3 h h0 h1)
 
 (** val hashed_bexp_compare :
     hashed_bexp -> hashed_bexp -> hashed_bexp OrderedType.coq_Compare **)
@@ -544,10 +544,10 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_
      | HBtrue -> _evar_0_0
-     | HBbinop (x, x0, x1) -> _evar_0_1 x x0 x1
-     | HBlneg x -> _evar_0_2 x
-     | HBconj (x, x0) -> _evar_0_3 x x0
-     | HBdisj (x, x0) -> _evar_0_4 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_1 b h h0
+     | HBlneg h -> _evar_0_2 h
+     | HBconj (h, h0) -> _evar_0_3 h h0
+     | HBdisj (h, h0) -> _evar_0_4 h h0)
   in
   let _evar_0_0 =
     let _evar_0_0 = OrderedType.GT in
@@ -559,10 +559,10 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_0
      | HBtrue -> _evar_0_1
-     | HBbinop (x, x0, x1) -> _evar_0_2 x x0 x1
-     | HBlneg x -> _evar_0_3 x
-     | HBconj (x, x0) -> _evar_0_4 x x0
-     | HBdisj (x, x0) -> _evar_0_5 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_2 b h h0
+     | HBlneg h -> _evar_0_3 h
+     | HBconj (h, h0) -> _evar_0_4 h h0
+     | HBdisj (h, h0) -> _evar_0_5 h h0)
   in
   let _evar_0_1 = fun op1 e3 e4 ->
     let _evar_0_1 = OrderedType.GT in
@@ -600,10 +600,10 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_1
      | HBtrue -> _evar_0_2
-     | HBbinop (x, x0, x1) -> _evar_0_3 x x0 x1
-     | HBlneg x -> _evar_0_4 x
-     | HBconj (x, x0) -> _evar_0_5 x x0
-     | HBdisj (x, x0) -> _evar_0_6 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_3 b h h0
+     | HBlneg h -> _evar_0_4 h
+     | HBconj (h, h0) -> _evar_0_5 h h0
+     | HBdisj (h, h0) -> _evar_0_6 h h0)
   in
   let _evar_0_2 = fun e3 ->
     let _evar_0_2 = OrderedType.GT in
@@ -623,10 +623,10 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_2
      | HBtrue -> _evar_0_3
-     | HBbinop (x, x0, x1) -> _evar_0_4 x x0 x1
-     | HBlneg x -> _evar_0_5 x
-     | HBconj (x, x0) -> _evar_0_6 x x0
-     | HBdisj (x, x0) -> _evar_0_7 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_4 b h h0
+     | HBlneg h -> _evar_0_5 h
+     | HBconj (h, h0) -> _evar_0_6 h h0
+     | HBdisj (h, h0) -> _evar_0_7 h h0)
   in
   let _evar_0_3 = fun e3 e4 ->
     let _evar_0_3 = OrderedType.GT in
@@ -654,10 +654,10 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_3
      | HBtrue -> _evar_0_4
-     | HBbinop (x, x0, x1) -> _evar_0_5 x x0 x1
-     | HBlneg x -> _evar_0_6 x
-     | HBconj (x, x0) -> _evar_0_7 x x0
-     | HBdisj (x, x0) -> _evar_0_8 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_5 b h h0
+     | HBlneg h -> _evar_0_6 h
+     | HBconj (h, h0) -> _evar_0_7 h h0
+     | HBdisj (h, h0) -> _evar_0_8 h h0)
   in
   let _evar_0_4 = fun e3 e4 ->
     let _evar_0_4 = OrderedType.GT in
@@ -685,18 +685,18 @@ and hashed_bexp_compare e1 e2 =
     (match e2 with
      | HBfalse -> _evar_0_4
      | HBtrue -> _evar_0_5
-     | HBbinop (x, x0, x1) -> _evar_0_6 x x0 x1
-     | HBlneg x -> _evar_0_7 x
-     | HBconj (x, x0) -> _evar_0_8 x x0
-     | HBdisj (x, x0) -> _evar_0_9 x x0)
+     | HBbinop (b, h, h0) -> _evar_0_6 b h h0
+     | HBlneg h -> _evar_0_7 h
+     | HBconj (h, h0) -> _evar_0_8 h h0
+     | HBdisj (h, h0) -> _evar_0_9 h h0)
   in
   (match e1 with
    | HBfalse -> _evar_0_
    | HBtrue -> _evar_0_0
-   | HBbinop (x, x0, x1) -> _evar_0_1 x x0 x1
-   | HBlneg x -> _evar_0_2 x
-   | HBconj (x, x0) -> _evar_0_3 x x0
-   | HBdisj (x, x0) -> _evar_0_4 x x0)
+   | HBbinop (b, h, h0) -> _evar_0_1 b h h0
+   | HBlneg h -> _evar_0_2 h
+   | HBconj (h, h0) -> _evar_0_3 h h0
+   | HBdisj (h, h0) -> _evar_0_4 h h0)
 
 (** val hexp_compare : hexp -> hexp -> hexp OrderedType.coq_Compare **)
 
@@ -721,9 +721,9 @@ and hexp_compare e1 e2 =
       then _evar_0_ __
       else _evar_0_0 __
     in
-    let Coq_epair (x, x0) = e2 in Obj.magic _evar_0_ x x0
+    let Coq_epair (h, z) = e2 in Obj.magic _evar_0_ h z
   in
-  let Coq_epair (x, x0) = e1 in Obj.magic _evar_0_ x x0
+  let Coq_epair (h, z) = e1 in Obj.magic _evar_0_ h z
 
 (** val hbexp_compare : hbexp -> hbexp -> hbexp OrderedType.coq_Compare **)
 
@@ -748,9 +748,9 @@ and hbexp_compare e1 e2 =
       then _evar_0_ __
       else _evar_0_0 __
     in
-    let Coq_bpair (x, x0) = e2 in Obj.magic _evar_0_ x x0
+    let Coq_bpair (h, z) = e2 in Obj.magic _evar_0_ h z
   in
-  let Coq_bpair (x, x0) = e1 in Obj.magic _evar_0_ x x0
+  let Coq_bpair (h, z) = e1 in Obj.magic _evar_0_ h z
 
 module HexpOrderMinimal =
  struct

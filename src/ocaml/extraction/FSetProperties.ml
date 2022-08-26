@@ -150,7 +150,7 @@ module WProperties_fun =
     let l = M.elements s in
     (match l with
      | [] -> assert false (* absurd case *)
-     | e :: _ -> e)
+     | a :: _ -> a)
 
   (** val cardinal_inv_2b : M.t -> M.elt **)
 
@@ -209,7 +209,7 @@ module OrdProperties =
         (fun _ -> x s0 __)
         (fun n1 ->
         match M.max_elt s0 with
-        | Some e -> x0 (M.remove e s0) s0 (f n1 (M.remove e s0)) e __ __
+        | Some a -> x0 (M.remove a s0) s0 (f n1 (M.remove a s0)) a __ __
         | None -> assert false (* absurd case *))
         n0
     in f n s
@@ -225,7 +225,7 @@ module OrdProperties =
         (fun _ -> x s0 __)
         (fun n1 ->
         match M.min_elt s0 with
-        | Some e -> x0 (M.remove e s0) s0 (f n1 (M.remove e s0)) e __ __
+        | Some a -> x0 (M.remove a s0) s0 (f n1 (M.remove a s0)) a __ __
         | None -> assert false (* absurd case *))
         n0
     in f n s

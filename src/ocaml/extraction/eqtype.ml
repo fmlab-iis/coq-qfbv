@@ -36,7 +36,7 @@ let eq_op t =
 
 let eqP t =
   let _evar_0_ = fun _ a -> a in
-  let { Equality.op = x; Equality.mixin_of__1 = x0 } = t in _evar_0_ x x0
+  let { Equality.op = op0; Equality.mixin_of__1 = a } = t in _evar_0_ op0 a
 
 (** val eqb : bool -> bool -> bool **)
 
@@ -88,9 +88,9 @@ let pair_eqP t1 t2 __top_assumption_ =
         (andP (eq_op t1 (fst (x1, x2)) (fst (y1, y2)))
           (eq_op t2 (snd (x1, x2)) (snd (y1, y2))))
     in
-    let (x, x0) = __top_assumption_0 in _evar_0_ x x0
+    let (a, b) = __top_assumption_0 in _evar_0_ a b
   in
-  let (x, x0) = __top_assumption_ in _evar_0_ x x0
+  let (a, b) = __top_assumption_ in _evar_0_ a b
 
 (** val prod_eqMixin :
     Equality.coq_type -> Equality.coq_type -> (Equality.sort * Equality.sort)

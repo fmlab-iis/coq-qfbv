@@ -115,7 +115,7 @@ let eqseqP t _top_assumption_ =
     let _evar_0_0 = fun _ _ -> ReflectF in
     (match __top_assumption_ with
      | [] -> _evar_0_
-     | x :: x0 -> _evar_0_0 x x0)
+     | a :: l -> _evar_0_0 a l)
   in
   let _evar_0_0 = fun x1 s1 iHs __top_assumption_ ->
     let _evar_0_0 = ReflectF in
@@ -129,7 +129,7 @@ let eqseqP t _top_assumption_ =
     in
     (match __top_assumption_ with
      | [] -> _evar_0_0
-     | x :: x0 -> _evar_0_1 x x0)
+     | a :: l -> _evar_0_1 a l)
   in
   let rec f = function
   | [] -> _evar_0_
