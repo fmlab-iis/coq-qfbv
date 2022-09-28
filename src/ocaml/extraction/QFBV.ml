@@ -19,6 +19,14 @@ module MakeQFBV =
  functor (VS:SsrFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
+  type t
+
+  val acc : V.t -> t -> bits
+
+  val upd : V.t -> bits -> t -> t
+
+  val upd2 : V.t -> bits -> V.t -> bits -> t -> t
+
   module Lemmas :
    sig
     module F :
@@ -388,14 +396,6 @@ module MakeQFBV =
 
     val min_key : 'a1 TE.t -> TE.key option
    end
-
-  type t
-
-  val acc : V.t -> t -> bits
-
-  val upd : V.t -> bits -> t -> t
-
-  val upd2 : V.t -> bits -> V.t -> bits -> t -> t
  end) ->
  struct
   module VSLemmas = FSetLemmas(VS)

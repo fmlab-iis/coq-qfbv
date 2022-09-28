@@ -129,10 +129,36 @@ module FSetLemmas =
     let _evar_0_0 = fun _ -> ReflectF in
     if S.mem x s then _evar_0_ __ else _evar_0_0 __
 
+  (** val equalP : S.t -> S.t -> reflect **)
+
+  let equalP s1 s2 =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.equal s1 s2 then _evar_0_ __ else _evar_0_0 __
+
+  (** val subsetP : S.t -> S.t -> reflect **)
+
+  let subsetP s1 s2 =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.subset s1 s2 then _evar_0_ __ else _evar_0_0 __
+
+  (** val emptyP : S.t -> reflect **)
+
+  let emptyP s =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.is_empty s then _evar_0_ __ else _evar_0_0 __
+
   (** val disjoint : S.t -> S.t -> bool **)
 
   let disjoint s1 s2 =
     S.is_empty (S.inter s1 s2)
+
+  (** val proper_subset : S.t -> S.t -> bool **)
+
+  let proper_subset s1 s2 =
+    (&&) (S.subset s1 s2) (negb (S.equal s1 s2))
  end
 
 module SsrFSetLemmas =
@@ -391,10 +417,36 @@ module SsrFSetLemmas =
     let _evar_0_0 = fun _ -> ReflectF in
     if S.mem x s then _evar_0_ __ else _evar_0_0 __
 
+  (** val equalP : S.t -> S.t -> reflect **)
+
+  let equalP s1 s2 =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.equal s1 s2 then _evar_0_ __ else _evar_0_0 __
+
+  (** val subsetP : S.t -> S.t -> reflect **)
+
+  let subsetP s1 s2 =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.subset s1 s2 then _evar_0_ __ else _evar_0_0 __
+
+  (** val emptyP : S.t -> reflect **)
+
+  let emptyP s =
+    let _evar_0_ = fun _ -> ReflectT in
+    let _evar_0_0 = fun _ -> ReflectF in
+    if S.is_empty s then _evar_0_ __ else _evar_0_0 __
+
   (** val disjoint : S.t -> S.t -> bool **)
 
   let disjoint s1 s2 =
     S.is_empty (S.inter s1 s2)
+
+  (** val proper_subset : S.t -> S.t -> bool **)
+
+  let proper_subset s1 s2 =
+    (&&) (S.subset s1 s2) (negb (S.equal s1 s2))
  end
 
 module MakeTreeSet' =

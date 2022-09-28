@@ -18,6 +18,14 @@ module MakeQFBV :
  functor (VS:SsrFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
+  type t
+
+  val acc : V.t -> t -> bits
+
+  val upd : V.t -> bits -> t -> t
+
+  val upd2 : V.t -> bits -> V.t -> bits -> t -> t
+
   module Lemmas :
    sig
     module F :
@@ -387,14 +395,6 @@ module MakeQFBV :
 
     val min_key : 'a1 TE.t -> TE.key option
    end
-
-  type t
-
-  val acc : V.t -> t -> bits
-
-  val upd : V.t -> bits -> t -> t
-
-  val upd2 : V.t -> bits -> V.t -> bits -> t -> t
  end) ->
  sig
   module VSLemmas :
@@ -624,7 +624,15 @@ module MakeQFBV :
 
     val memP : VS.elt -> VS.t -> reflect
 
+    val equalP : VS.t -> VS.t -> reflect
+
+    val subsetP : VS.t -> VS.t -> reflect
+
+    val emptyP : VS.t -> reflect
+
     val disjoint : VS.t -> VS.t -> bool
+
+    val proper_subset : VS.t -> VS.t -> bool
    end
 
   type eunop =
@@ -1493,7 +1501,15 @@ module QFBV :
 
     val memP : SSAVS.elt -> SSAVS.t -> reflect
 
+    val equalP : SSAVS.t -> SSAVS.t -> reflect
+
+    val subsetP : SSAVS.t -> SSAVS.t -> reflect
+
+    val emptyP : SSAVS.t -> reflect
+
     val disjoint : SSAVS.t -> SSAVS.t -> bool
+
+    val proper_subset : SSAVS.t -> SSAVS.t -> bool
    end
 
   type eunop =

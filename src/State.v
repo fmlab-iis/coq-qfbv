@@ -19,63 +19,13 @@ Module ZValueType <: HasDefaultTyp.
   Definition default : t := 0%Z.
 End ZValueType.
 
-Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V).
+Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <: TStore V BitsValueType.
 
+  Include TStore V BitsValueType.
   Module Lemmas := FMapLemmas TE.
 
   Local Notation var := V.t.
   Local Notation value := bits.
-
-  Parameter t : Type.
-  Parameter acc : var -> t -> value.
-  Parameter upd : var -> value -> t -> t.
-  Parameter upd2 : var -> value -> var -> value -> t -> t.
-  Parameter acc_upd_eq : forall {x y v s}, x == y -> acc x (upd y v s) = v.
-  Parameter acc_upd_neq : forall {x y v s}, x != y -> acc x (upd y v s) = acc x s.
-  Parameter acc_upd2_eq1 :
-    forall {x y1 v1 y2 v2 s},
-      x == y1 -> x != y2 -> acc x (upd2 y1 v1 y2 v2 s) = v1.
-  Parameter acc_upd2_eq2 :
-    forall {x y1 v1 y2 v2 s},
-      x == y2 -> acc x (upd2 y1 v1 y2 v2 s) = v2.
-  Parameter acc_upd2_neq :
-    forall {x y1 v1 y2 v2 s},
-      x != y1 -> x != y2 -> acc x (upd2 y1 v1 y2 v2 s) = acc x s.
-  Parameter Upd : var -> value -> t -> t -> Prop.
-  Definition Upd2 x1 v1 x2 v2 (s1 s2 : t) : Prop :=
-    forall y, acc y s2 = acc y (upd x2 v2 (upd x1 v1 s1)).
-  Parameter Equal : t -> t -> Prop.
-  Parameter Upd_upd : forall x v s, Upd x v s (upd x v s).
-  Parameter Upd2_upd :
-    forall x1 v1 x2 v2 s, Upd2 x1 v1 x2 v2 s (upd x2 v2 (upd x1 v1 s)).
-  Parameter Upd2_upd2 : forall x1 v1 x2 v2 s, Upd2 x1 v1 x2 v2 s (upd2 x1 v1 x2 v2 s).
-  Parameter acc_Upd_eq : forall x y v s1 s2, x == y -> Upd y v s1 s2 -> acc x s2 = v.
-  Parameter acc_Upd_neq :
-    forall x y v s1 s2, x != y -> Upd y v s1 s2 -> acc x s2 = acc x s1.
-  Parameter acc_Upd2_eq1 :
-    forall x y1 v1 y2 v2 s1 s2,
-      x == y1 -> x != y2 -> Upd2 y1 v1 y2 v2 s1 s2 -> acc x s2 = v1.
-  Parameter acc_Upd2_eq2 :
-    forall x y1 v1 y2 v2 s1 s2, x == y2 -> Upd2 y1 v1 y2 v2 s1 s2 -> acc x s2 = v2.
-  Parameter acc_Upd2_neq :
-    forall x y1 v1 y2 v2 s1 s2,
-      x != y1 -> x != y2 -> Upd2 y1 v1 y2 v2 s1 s2 -> acc x s2 = acc x s1.
-  Parameter Equal_def :
-    forall s1 s2,
-      Equal s1 s2 <-> (forall v, acc v s1 = acc v s2).
-  Parameter Equal_refl : forall s, Equal s s.
-  Parameter Equal_sym : forall s1 s2, Equal s1 s2 -> Equal s2 s1.
-  Parameter Equal_trans : forall s1 s2 s3, Equal s1 s2 -> Equal s2 s3 -> Equal s1 s3.
-  Parameter Equal_ST : RelationClasses.Equivalence Equal.
-  Parameter Equal_upd_Equal :
-    forall v e s1 s2, Equal s1 s2 -> Equal (upd v e s1) (upd v e s2).
-  Parameter Equal_Upd_Equal :
-    forall v e s1 s2 s3 s4,
-      Upd v e s1 s2 -> Upd v e s3 s4 -> Equal s1 s3 -> Equal s2 s4.
-  Parameter Upd_pred_Equal :
-    forall v e s1 s2 s, Upd v e s1 s2 -> Equal s1 s -> Upd v e s s2.
-  Parameter Upd_succ_Equal :
-    forall v e s1 s2 s, Upd v e s1 s2 -> Equal s2 s -> Upd v e s1 s.
 
   Parameter conform : t -> TE.env -> Prop.
   Parameter conform_def :
