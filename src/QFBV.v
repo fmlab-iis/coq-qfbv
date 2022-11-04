@@ -44,7 +44,7 @@ Module MakeQFBV
   (*div*)
   | Bdiv
   | Bmod
-  | Bsdiv 
+  | Bsdiv
   | Bsrem
   | Bsmod
   | Bshl
@@ -97,7 +97,7 @@ Module MakeQFBV
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
-    | Usext n1, Usext n2 
+    | Usext n1, Usext n2
     | Urepeat n1, Urepeat n2
     | Urotl n1, Urotl n2
     | Urotr n1, Urotr n2 => n1 == n2
@@ -151,7 +151,7 @@ Module MakeQFBV
     | Badd, Badd
     | Bsub, Bsub
     | Bmul, Bmul
-    | Bdiv, Bdiv 
+    | Bdiv, Bdiv
     | Bmod, Bmod
     | Bsdiv, Bsdiv
     | Bsrem, Bsrem
@@ -159,7 +159,7 @@ Module MakeQFBV
     | Bshl, Bshl
     | Blshr, Blshr
     | Bashr, Bashr
-    | Bconcat, Bconcat 
+    | Bconcat, Bconcat
     | Bcomp, Bcomp => true
     | _, _ => false
     end.
@@ -330,6 +330,102 @@ Module MakeQFBV
   Canonical exp_eqType := Eval hnf in EqType exp exp_eqMixin.
   Canonical bexp_eqType := Eval hnf in EqType bexp bexp_eqMixin.
 
+
+  (** QF_BV constructors. *)
+
+  Definition qfbv_true := Btrue.
+
+  Definition qfbv_false := Bfalse.
+
+  Definition qfbv_var v := Evar v.
+
+  Definition qfbv_const w n := Econst (NBitsDef.from_nat w n).
+
+  Definition qfbv_zero w := Econst (NBitsDef.from_nat w 0).
+
+  Definition qfbv_one w := Econst (NBitsDef.from_nat w 1).
+
+  Definition qfbv_not qe := Eunop Unot qe.
+
+  Definition qfbv_neg qe := Eunop Uneg qe.
+
+  Definition qfbv_extr i j qe := Eunop (Uextr i j) qe.
+
+  Definition qfbv_high n qe := Eunop (Uhigh n) qe.
+
+  Definition qfbv_low n qe := Eunop (Ulow n) qe.
+
+  Definition qfbv_zext n qe := Eunop (Uzext n) qe.
+
+  Definition qfbv_sext n qe := Eunop (Usext n) qe.
+
+  Definition qfbv_and qe0 qe1 := Ebinop Band qe0 qe1.
+
+  Definition qfbv_or qe0 qe1 := Ebinop Bor qe0 qe1.
+
+  Definition qfbv_xor qe0 qe1 := Ebinop Bxor qe0 qe1.
+
+  Definition qfbv_add qe0 qe1 := Ebinop Badd qe0 qe1.
+
+  Definition qfbv_sub qe0 qe1 := Ebinop Bsub qe0 qe1.
+
+  Definition qfbv_mul qe0 qe1 := Ebinop Bmul qe0 qe1.
+
+  Definition qfbv_mod qe0 qe1 := Ebinop Bmod qe0 qe1.
+
+  Definition qfbv_srem qe0 qe1 := Ebinop Bsrem qe0 qe1.
+
+  Definition qfbv_smod qe0 qe1 := Ebinop Bsmod qe0 qe1.
+
+  Definition qfbv_shl qe0 qe1 := Ebinop Bshl qe0 qe1.
+
+  Definition qfbv_lshr qe0 qe1 := Ebinop Blshr qe0 qe1.
+
+  Definition qfbv_ashr qe0 qe1 := Ebinop Bashr qe0 qe1.
+
+  Definition qfbv_concat qe0 qe1 := Ebinop Bconcat qe0 qe1.
+
+  Definition qfbv_eq qe0 qe1 := Bbinop Beq qe0 qe1.
+
+  Definition qfbv_ult qe0 qe1 := Bbinop Bult qe0 qe1.
+
+  Definition qfbv_ule qe0 qe1 := Bbinop Bule qe0 qe1.
+
+  Definition qfbv_ugt qe0 qe1 := Bbinop Bugt qe0 qe1.
+
+  Definition qfbv_uge qe0 qe1 := Bbinop Buge qe0 qe1.
+
+  Definition qfbv_slt qe0 qe1 := Bbinop Bslt qe0 qe1.
+
+  Definition qfbv_sle qe0 qe1 := Bbinop Bsle qe0 qe1.
+
+  Definition qfbv_sgt qe0 qe1 := Bbinop Bsgt qe0 qe1.
+
+  Definition qfbv_sge qe0 qe1 := Bbinop Bsge qe0 qe1.
+
+  Definition qfbv_uaddo qe0 qe1 := Bbinop Buaddo qe0 qe1.
+
+  Definition qfbv_usubo qe0 qe1 := Bbinop Busubo qe0 qe1.
+
+  Definition qfbv_umulo qe0 qe1 := Bbinop Bumulo qe0 qe1.
+
+  Definition qfbv_saddo qe0 qe1 := Bbinop Bsaddo qe0 qe1.
+
+  Definition qfbv_ssubo qe0 qe1 := Bbinop Bssubo qe0 qe1.
+
+  Definition qfbv_smulo qe0 qe1 := Bbinop Bsmulo qe0 qe1.
+
+  Definition qfbv_lneg qb := Blneg qb.
+
+  Definition qfbv_conj qb0 qb1 := Bconj qb0 qb1.
+
+  Definition qfbv_disj qb0 qb1 := Bdisj qb0 qb1.
+
+  Definition qfbv_ite qb qe0 qe1 := Eite qb qe0 qe1.
+
+  Definition qfbv_imp f g := qfbv_disj (qfbv_lneg f) g.
+
+
   (* Semantics of expressions and Boolean expressions *)
 
   Local Notation state := S.t.
@@ -410,6 +506,8 @@ Module MakeQFBV
   Definition valid E (e : bexp) : Prop :=
     forall s, S.conform s E -> eval_bexp e s.
 
+  Notation valid_bexp := valid.
+
   Definition sat E (e : bexp) : Prop :=
     exists s, S.conform s E /\ eval_bexp e s.
 
@@ -440,6 +538,31 @@ Module MakeQFBV
     | Bdisj e1 e2 => VS.union (vars_bexp e1) (vars_bexp e2)
     end.
 
+  Fixpoint vars_bexps (es : seq bexp) : VS.t :=
+    match es with
+    | [::] => VS.empty
+    | e::es => VS.union (vars_bexp e) (vars_bexps es)
+    end.
+
+  Lemma vars_bexps_cons e es : vars_bexps (e::es) = VS.union (vars_bexp e) (vars_bexps es).
+  Proof. reflexivity. Qed.
+
+  Lemma vars_bexps_rcons es e :
+    VS.Equal (vars_bexps (rcons es e)) (VS.union (vars_bexps es) (vars_bexp e)).
+  Proof.
+    elim: es => [| hd tl IH] //=.
+    - by VSLemmas.dp_Equal.
+    - rewrite IH. by VSLemmas.dp_Equal.
+  Qed.
+
+  Lemma vars_bexps_cat es1 es2 :
+    VS.Equal (vars_bexps (es1 ++ es2)) (VS.union (vars_bexps es1) (vars_bexps es2)).
+  Proof.
+    elim: es1 es2 => [| e1 es1 IH] es2 //=.
+    - by VSLemmas.dp_Equal.
+    - rewrite IH. by VSLemmas.dp_Equal.
+  Qed.
+
 
   (* Ordering on expressions *)
 
@@ -467,7 +590,7 @@ Module MakeQFBV
     | Uhigh n1, Uhigh n2
     | Ulow n1, Ulow n2
     | Uzext n1, Uzext n2
-    | Usext n1, Usext n2 
+    | Usext n1, Usext n2
     | Urepeat n1, Urepeat n2
     | Urotl n1, Urotl n2
     | Urotr n1, Urotr n2 => n1 < n2
@@ -1506,6 +1629,13 @@ Module MakeQFBV
       - rewrite IH. rewrite andbA. reflexivity.
     Qed.
 
+    Lemma well_formed_bexps_rev E es :
+      well_formed_bexps (rev es) E = well_formed_bexps es E.
+    Proof.
+      elim: es => [| e es IH] //=. rewrite rev_cons well_formed_bexps_rcons.
+      rewrite IH andbC. reflexivity.
+    Qed.
+
     Lemma eval_exp_size e te s :
       well_formed_exp e te -> S.conform s te -> size (eval_exp e s) = exp_size e te.
     Proof.
@@ -1567,7 +1697,7 @@ Module MakeQFBV
       - move=> v Hmem1. move: (TELemmas.mem_find_some Hmem1) => [ty Hfind1].
         move: (Hsub _ _ Hfind1) => Hfind2.
         move: (TE.find_some_vtyp Hfind1) (TE.find_some_vtyp Hfind2) => Hty1 Hty2.
-        rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
+        rewrite !TE.vtyp_vsize Hty1 Hty2. reflexivity.
       - move=> op e IH Hwf. move: (IH Hwf) => {IH} IH. case: op => //=.
         + move=> n. rewrite IH. reflexivity.
         + move=> n. rewrite IH. reflexivity.
@@ -1613,52 +1743,15 @@ Module MakeQFBV
                    (well_formed_bexp_submap _ _ _ Hsub Hwf2).
     Qed.
 
+    Lemma well_formed_bexps_submap E1 E2 es :
+      TELemmas.submap E1 E2 -> well_formed_bexps es E1 -> well_formed_bexps es E2.
+    Proof.
+      elim: es => [| e es IH] //=. move=> Hsub. move/andP => [He Hes].
+      by rewrite (well_formed_bexp_submap Hsub He) (IH Hsub Hes).
+    Qed.
+
+
   End WellFormed.
-
-
-  (* Check validity of a sequence of QFBV formulas *)
-
-  Definition valid_qfbv_bexps E (es : seq bexp) :=
-    forall s, S.conform s E ->
-              forall e, e \in es -> eval_bexp e s.
-
-  Lemma valid_qfbv_bexps_hd E e es :
-    valid_qfbv_bexps E (e::es) ->
-    (forall s, S.conform s E -> eval_bexp e s).
-  Proof.
-    move=> Hv s Hco. apply: (Hv _ Hco). rewrite in_cons eqxx orTb. reflexivity.
-  Qed.
-
-  Lemma valid_qfbv_bexps_tl E e es :
-    valid_qfbv_bexps E (e::es) -> valid_qfbv_bexps E es.
-  Proof.
-    move=> Hv s Hco e' Hin. apply: (Hv _ Hco). rewrite in_cons Hin orbT.
-    reflexivity.
-  Qed.
-
-  Lemma valid_qfbv_bexps_cat E es1 es2 :
-    valid_qfbv_bexps E (es1 ++ es2) ->
-    valid_qfbv_bexps E es1 /\ valid_qfbv_bexps E es2.
-  Proof.
-    move=> H; split=> s Hco e Hin.
-    - apply: (H s Hco e). rewrite mem_cat Hin /=. reflexivity.
-    - apply: (H s Hco e). rewrite mem_cat Hin orbT. reflexivity.
-  Qed.
-
-  Lemma valid_qfbv_bexps_prefix E es e :
-    valid_qfbv_bexps E (rcons es e) ->
-    valid_qfbv_bexps E es.
-  Proof.
-    move=> Hv s Hco f Hinf. apply: (Hv _ Hco). rewrite Seqs.in_rcons Hinf orTb.
-    reflexivity.
-  Qed.
-
-  Lemma valid_qfbv_bexps_last E es e :
-    valid_qfbv_bexps E (rcons es e) -> valid E e.
-  Proof.
-    move=> Hv s Hco. apply: (Hv _ Hco). rewrite Seqs.in_rcons eqxx orbT.
-    reflexivity.
-  Qed.
 
 
   (* Split conjunctions *)
@@ -1692,6 +1785,381 @@ Module MakeQFBV
       * apply: IH2. move=> f Hin. apply: H. rewrite mem_cat Hin orbT. reflexivity.
     + move=> e1 IH1 e2 IH2 H. move: (H (Bdisj e1 e2)).
        rewrite mem_seq1 eqxx. by apply.
+  Qed.
+
+
+  (**
+   * Make conjunctions of QFBV expressions.
+   * - [qfbv_conjs] is right associative and is easier for induction
+   * - [qfbv_conjs_la] is left associative and is better for bit-blasting
+   *   with cache *)
+
+  Section QFBVConjs.
+
+    (** Make conjunctions of QFBV expressions
+      (right associativity, easy for induction) *)
+
+    Fixpoint qfbv_conjs es :=
+      match es with
+      | [::] => Btrue
+      | hd::tl => qfbv_conj hd (qfbv_conjs tl)
+      end.
+
+    Lemma vars_qfbv_conjs es : vars_bexp (qfbv_conjs es) = vars_bexps es.
+    Proof. elim: es => [| e es IH] //=. rewrite IH. reflexivity. Qed.
+
+    Lemma eval_qfbv_conjs_rcons es e s :
+      eval_bexp (qfbv_conjs (rcons es e)) s =
+        eval_bexp (qfbv_conjs es) s && eval_bexp e s.
+    Proof.
+      elim: es => [| h es IH] /=.
+      - rewrite andbT. reflexivity.
+      - rewrite -(@andbA _ _ (eval_bexp e s)). rewrite -IH. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_cat es1 es2 s :
+      eval_bexp (qfbv_conjs (es1 ++ es2)) s =
+        eval_bexp (qfbv_conjs es1) s && eval_bexp (qfbv_conjs es2) s.
+    Proof.
+      elim: es1 es2 => [| e1 es1 IH] es2 //=.
+      rewrite -(@andbA _ _ (eval_bexp (qfbv_conjs es2) s)).
+      rewrite -IH. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_rev es s :
+      eval_bexp (qfbv_conjs (rev es)) s <-> eval_bexp (qfbv_conjs es) s.
+    Proof.
+      elim: es => [| e es IH] //=. rewrite rev_cons. rewrite eval_qfbv_conjs_rcons.
+      move: IH=> [IH1 IH2]. split; move/andP=> [H1 H2].
+      - by rewrite (IH1 H1) H2.
+      - by rewrite (IH2 H2) H1.
+    Qed.
+
+    Lemma qfbv_conjs_inj es1 es2 :
+      qfbv_conjs es1 = qfbv_conjs es2 -> es1 = es2.
+    Proof.
+      elim: es1 es2 => [| e1 es1 IH] [| e2 es2] //=.
+      case=> H1 H2. rewrite H1 (IH _ H2). reflexivity.
+    Qed.
+
+    Lemma well_formed_bexp_qfbv_conjs_rcons E es e :
+      well_formed_bexp (qfbv_conjs (rcons es e)) E =
+        well_formed_bexp (qfbv_conjs es) E && well_formed_bexp e E.
+    Proof.
+      elim: es => [| hd tl IH] /=.
+      - rewrite andbT. reflexivity.
+      - rewrite -andbA. rewrite -IH. reflexivity.
+    Qed.
+
+    Lemma well_formed_bexp_qfbv_conjs_rev E es :
+      well_formed_bexp (qfbv_conjs (rev es)) E = well_formed_bexp (qfbv_conjs es) E.
+    Proof.
+      elim: es => [| e es IH] //=. rewrite rev_cons.
+      rewrite well_formed_bexp_qfbv_conjs_rcons. rewrite IH. rewrite andbC.
+      reflexivity.
+    Qed.
+
+    Lemma qfbv_conjs_well_formed E es :
+      well_formed_bexp (qfbv_conjs es) E = well_formed_bexps es E.
+    Proof. elim: es => [| e es IH] //=. rewrite IH. reflexivity. Qed.
+
+    (* Make conjunctions of QFBV expressions
+     (left associativity, good for bit-blasting cache) *)
+
+    Fixpoint qfbv_conjs_rec pre_es es :=
+      match es with
+      | [::] => pre_es
+      | hd::tl => qfbv_conjs_rec (qfbv_conj pre_es hd) tl
+      end.
+
+    (* Add QFBV.Btrue at the beginning to make qfbv_conjs_la injective *)
+    Definition qfbv_conjs_la es :=
+      match es with
+      | [::] => Btrue
+      | e::es => qfbv_conjs_rec (qfbv_conj Btrue e) es
+      end.
+
+    Lemma vars_qfbv_conjs_rec pres es :
+      VS.Equal (vars_bexp (qfbv_conjs_rec pres es)) (VS.union (vars_bexp pres) (vars_bexps es)).
+    Proof.
+      elim: es pres => [| e es IH] pres //=.
+      - rewrite VSLemmas.union_emptyr. reflexivity.
+      - rewrite IH. rewrite /qfbv_conj /=. by VSLemmas.dp_Equal.
+    Qed.
+
+    Lemma vars_qfbv_conjs_la es :
+      VS.Equal (vars_bexp (qfbv_conjs_la es)) (vars_bexps es).
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e es] //=. rewrite vars_qfbv_conjs_rec /=.
+      rewrite VSLemmas.union_emptyl. reflexivity.
+    Qed.
+
+    Lemma qfbv_conjs_rec_singleton pre_es e :
+      qfbv_conjs_rec pre_es [::e] = qfbv_conj pre_es e.
+    Proof. reflexivity. Qed.
+
+    Lemma qfbv_conjs_rec_cons pre_es e es :
+      qfbv_conjs_rec pre_es (e::es) = qfbv_conjs_rec (qfbv_conj pre_es e) es.
+    Proof. reflexivity. Qed.
+
+    Lemma qfbv_conjs_rec_cat pre_es es1 es2 :
+      qfbv_conjs_rec pre_es (es1 ++ es2) =
+        qfbv_conjs_rec (qfbv_conjs_rec pre_es es1) es2.
+    Proof. elim: es1 pre_es es2 => [| e1 es1 IH] //=. Qed.
+
+    Lemma qfbv_conjs_rec_rcons pre_es es e :
+      qfbv_conjs_rec pre_es (rcons es e) = qfbv_conj (qfbv_conjs_rec pre_es es) e.
+    Proof. by elim: es pre_es e => [| hd tl IH] //=. Qed.
+
+    Lemma qfbv_conjs_rec_conj e1 es1 e2 es2 :
+      qfbv_conjs_rec (qfbv_conj Btrue e1) es1 =
+        qfbv_conjs_rec (qfbv_conj Btrue e2) es2 ->
+      e1 = e2 /\ es1 = es2.
+    Proof.
+      move: es1 es2 e1 e2. apply: last_ind => //=.
+      - case=> [| e3 es2] e1 e2 //=.
+        + case. by move=> ->.
+        + move=> H. apply: False_ind. move: H. move: {2}Btrue.
+          elim: es2 e1 e2 e3 => [| e es IH] e1 e2 e3 e4 //= H. apply: IH. exact: H.
+      - move=> es1 le1 IH. case/lastP => //=.
+        + move=> e1 e2 H. apply: False_ind. move: H. move: {1}Btrue.
+          clear IH. elim: es1 le1 e1 e2 => [| e es IH] e1 e2 e3 e4 //= H. apply: IH.
+          exact: H.
+        + move=> es2 le2 e1 e2 /= H. rewrite !qfbv_conjs_rec_rcons in H.
+          case: H. move=> H1 ->. move: (IH _ _ _ H1). case=> -> ->. done.
+    Qed.
+
+    Lemma qfbv_conjs_la_inj es1 es2 :
+      qfbv_conjs_la es1 = qfbv_conjs_la es2 -> es1 = es2.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es1 => [| e1 es1] //=.
+      - case: es2 => [| e2 es2] //=. move: {2}Btrue. move=> e1 H.
+        apply: False_ind. elim: es2 e1 e2 H => [| e es IH] e1 e2 /= H.
+        + discriminate.
+        + apply: IH. exact: H.
+      - case: es2 => [| e2 es2] //=.
+        + move: {1}Btrue. move=> e2 H. apply: False_ind.
+          elim: es1 e1 e2 H => [| e es IH] e1 e2 /= H.
+          * discriminate.
+          * apply: IH. exact: H.
+        + move=> H. move: (qfbv_conjs_rec_conj H) => [-> ->]. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_rec s pre_es es :
+      eval_bexp (qfbv_conjs_rec pre_es es) s =
+        eval_bexp pre_es s && eval_bexp (qfbv_conjs_la es) s.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e1 es] //=.
+      - rewrite andbT. reflexivity.
+      - move: es pre_es e1. apply: last_ind => //=.
+        move=> es le1 IH pre_es e1. rewrite !qfbv_conjs_rec_rcons /=.
+        rewrite IH. rewrite !andbA. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_rec_ra s pre_es es :
+      eval_bexp (qfbv_conjs_rec pre_es es) s =
+        eval_bexp pre_es s && eval_bexp (qfbv_conjs es) s.
+    Proof.
+      elim: es pre_es => [| e1 es IH] pre_es //=.
+      - rewrite andbT. reflexivity.
+      - rewrite IH. rewrite /qfbv_conj /=. rewrite andbA. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_la_rcons es e s :
+      eval_bexp (qfbv_conjs_la (rcons es e)) s =
+        eval_bexp (qfbv_conjs_la es) s && eval_bexp e s.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e1 es] //=.
+      rewrite qfbv_conjs_rec_rcons /=. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_la_cat es1 es2 s :
+      eval_bexp (qfbv_conjs_la (es1 ++ es2)) s =
+        eval_bexp (qfbv_conjs_la es1) s && eval_bexp (qfbv_conjs_la es2) s.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es1 => [| e1 es1] //=. case: es2 => [| e2 es2] //=.
+      - rewrite cats0 andbT. reflexivity.
+      - move: es2 e1 e2 es1. apply: last_ind => //=.
+        + move=> e1 e2 es1. rewrite cats1. rewrite qfbv_conjs_rec_rcons /=.
+          reflexivity.
+        + move=> es2 le2 IH. move=> e1 e2 es1. rewrite qfbv_conjs_rec_rcons /=.
+          rewrite -cat_rcons. rewrite -rcons_cat. rewrite qfbv_conjs_rec_rcons /=.
+          rewrite cat_rcons. rewrite IH. rewrite !andbA. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_ra_la s es :
+      eval_bexp (qfbv_conjs es) s = eval_bexp (qfbv_conjs_la es) s.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e1 es] //=.
+      move: es e1. apply: last_ind => //=.
+      - move=> e1. rewrite andbT. reflexivity.
+      - move=> es le IH e1. rewrite qfbv_conjs_rec_rcons /=. rewrite -IH.
+        rewrite eval_qfbv_conjs_rcons. rewrite andbA. reflexivity.
+    Qed.
+
+    Lemma eval_qfbv_conjs_la_rev es s :
+      eval_bexp (qfbv_conjs_la (rev es)) s <-> eval_bexp (qfbv_conjs_la es) s.
+    Proof.
+      elim: es => [| e es IH] //=. rewrite rev_cons.
+      rewrite eval_qfbv_conjs_la_rcons. rewrite eval_qfbv_conjs_rec /=.
+      rewrite andbC. by case: (eval_bexp e s).
+    Qed.
+
+    Lemma well_formed_bexp_qfbv_conjs_rec_rcons E pre_es es e :
+      well_formed_bexp (qfbv_conjs_rec pre_es (rcons es e)) E =
+        well_formed_bexp (qfbv_conjs_rec pre_es es) E && well_formed_bexp e E.
+    Proof.
+      case: es => [| e1 es] //=. rewrite qfbv_conjs_rec_rcons /=. reflexivity.
+    Qed.
+
+    Lemma well_formed_bexp_qfbv_conjs_la_rcons E es e :
+      well_formed_bexp (qfbv_conjs_la (rcons es e)) E =
+        well_formed_bexp (qfbv_conjs_la es) E && well_formed_bexp e E.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e1 es] //=.
+      rewrite qfbv_conjs_rec_rcons /=. reflexivity.
+    Qed.
+
+    Lemma well_formed_bexp_ra_la E es :
+      well_formed_bexp (qfbv_conjs es) E = well_formed_bexp (qfbv_conjs_la es) E.
+    Proof.
+      rewrite /qfbv_conjs_la. case: es => [| e es] //=.
+      move: es e. apply: last_ind => //=.
+      - move=> e. rewrite andbT. reflexivity.
+      - move=> es le IH e. rewrite well_formed_bexp_qfbv_conjs_rec_rcons.
+        rewrite -IH. rewrite well_formed_bexp_qfbv_conjs_rcons. rewrite andbA.
+        reflexivity.
+    Qed.
+
+    Lemma well_formed_bexp_qfbv_conjs_la_rev E es :
+      well_formed_bexp (qfbv_conjs_la (rev es)) E =
+        well_formed_bexp (qfbv_conjs_la es) E.
+    Proof.
+      rewrite -!well_formed_bexp_ra_la. exact: well_formed_bexp_qfbv_conjs_rev.
+    Qed.
+
+    Lemma qfbv_conjs_la_well_formed E es :
+      well_formed_bexp (qfbv_conjs_la es) E = well_formed_bexps es E.
+    Proof. rewrite -well_formed_bexp_ra_la. exact: qfbv_conjs_well_formed. Qed.
+
+  End QFBVConjs.
+
+
+  (* Evaluation of a sequence of QF_BV predicates *)
+
+  Definition eval_bexps (es : seq bexp) (s : state) : bool :=
+    all (eval_bexp^~ s) es.
+
+  Lemma eval_bexps_cons e es s : eval_bexps (e::es) s = (eval_bexp e s && eval_bexps es s).
+  Proof. rewrite /eval_bexps /=. reflexivity. Qed.
+
+  Lemma eval_bexps_rcons es e s : eval_bexps (rcons es e) s = (eval_bexps es s && eval_bexp e s).
+  Proof. rewrite /eval_bexps all_rcons. rewrite andbC. reflexivity. Qed.
+
+  Lemma eval_bexps_cat es1 es2 s : eval_bexps (es1 ++ es2) s = (eval_bexps es1 s && eval_bexps es2 s).
+  Proof. rewrite /eval_bexps all_cat. reflexivity. Qed.
+
+  Lemma eval_bexps_rev es s : eval_bexps (rev es) s = eval_bexps es s.
+  Proof.
+    elim: es => [| e es IH] //=. rewrite rev_cons. rewrite eval_bexps_rcons IH.
+    by rewrite andbC.
+  Qed.
+
+  Lemma eval_bexps_tflatten ess s :
+    eval_bexps (tflatten ess) s = all (eval_bexps^~ s) ess.
+  Proof.
+    elim: ess => [| es ess IH] //=. rewrite tflatten_cons. rewrite eval_bexps_cat.
+    rewrite IH. rewrite andbC. rewrite eval_bexps_rev. reflexivity.
+  Qed.
+
+  Lemma qfbv_conjs_eval es s : eval_bexp (qfbv_conjs es) s = eval_bexps es s.
+  Proof. elim: es => [| e es IH] //=. by rewrite IH. Qed.
+
+  Lemma qfbv_conj_la_eval es s : eval_bexp (qfbv_conjs_la es) s = eval_bexps es s.
+  Proof. rewrite -eval_qfbv_conjs_ra_la. exact: qfbv_conjs_eval. Qed.
+
+
+  (* Proper *)
+
+  Lemma eval_exp_equal e s1 s2 :
+    S.Equal s1 s2 -> eval_exp e s1 = eval_exp e s2
+  with eval_bexp_equal e s1 s2 :
+    S.Equal s1 s2 -> eval_bexp e s1 = eval_bexp e s2.
+  Proof.
+    (* eval_exp_equal *)
+    - move=> Heq. case: e => //=.
+      + move=> x. by rewrite -> Heq.
+      + move=> op e. by rewrite (eval_exp_equal _ _ _ Heq).
+      + move=> op e1 e2. by rewrite !(eval_exp_equal _ _ _ Heq).
+      + move=> b e1 e2. by rewrite (eval_bexp_equal _ _ _ Heq) !(eval_exp_equal _ _ _ Heq).
+    (* eval_bexp_equal *)
+    - move=> Heq. case: e => //=.
+      + move=> op e1 e2. by rewrite !(eval_exp_equal _ _ _ Heq).
+      + move=> e. by rewrite (eval_bexp_equal _ _ _ Heq).
+      + move=> e1 e2. by rewrite !(eval_bexp_equal _ _ _ Heq).
+      + move=> e1 e2. by rewrite !(eval_bexp_equal _ _ _ Heq).
+  Qed.
+
+  Global Instance add_proper_eval_exp : Proper (eq ==> S.Equal ==> eq) eval_exp.
+  Proof.
+    move=> e1 e2 ? s1 s2 Heq; subst. exact: (eval_exp_equal _ Heq).
+  Qed.
+
+  Global Instance add_proper_eval_bexp : Proper (eq ==> S.Equal ==> eq) eval_bexp.
+  Proof.
+    move=> e1 e2 ? s1 s2 Heq; subst. exact: (eval_bexp_equal _ Heq).
+  Qed.
+
+  Global Instance add_proper_eval_bexps : Proper (eq ==> S.Equal ==> eq) eval_bexps.
+  Proof.
+    move=> es1 es2 ? s1 s2 Heq; subst. elim: es2 => [| e es IH] //=.
+    rewrite -> Heq at 1. by rewrite IH.
+  Qed.
+
+
+  (* Check validity of a sequence of QFBV formulas *)
+
+  Definition valid_bexps E (es : seq bexp) :=
+    forall s, S.conform s E -> eval_bexps es s.
+
+  Lemma valid_bexps_cons E e es :
+    valid_bexps E (e::es) <-> valid E e /\ valid_bexps E es.
+  Proof.
+    split.
+    - move=> H. split.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_cons. move/andP. tauto.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_cons. move/andP. tauto.
+    - move=> [He Hes] s Hco. rewrite eval_bexps_cons. apply/andP.
+      move: (He _ Hco) (Hes _ Hco). tauto.
+  Qed.
+
+  Lemma valid_bexps_rcons E es e :
+    valid_bexps E (rcons es e) <-> valid_bexps E es /\ valid E e.
+  Proof.
+    split.
+    - move=> H; split.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_rcons. move/andP. tauto.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_rcons. move/andP. tauto.
+    - move=> [Hes He] s Hco. rewrite eval_bexps_rcons.
+      apply/andP. move: (He _ Hco) (Hes _ Hco). tauto.
+  Qed.
+
+  Lemma valid_bexps_rev E es :
+    valid_bexps E (rev es) <-> valid_bexps E es.
+  Proof.
+    elim: es => [| e es [IH1 IH2]] //=. rewrite rev_cons valid_bexps_rcons.
+    rewrite valid_bexps_cons. tauto.
+  Qed.
+
+  Lemma valid_bexps_cat E es1 es2 :
+    valid_bexps E (es1 ++ es2) <-> valid_bexps E es1 /\ valid_bexps E es2.
+  Proof.
+    split.
+    - move=> H; split.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_cat. move/andP. tauto.
+      + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_cat. move/andP. tauto.
+    - move=> [H1 H2] s Hco. rewrite eval_bexps_cat.
+      apply/andP. move: (H1 _ Hco) (H2 _ Hco). tauto.
   Qed.
 
 

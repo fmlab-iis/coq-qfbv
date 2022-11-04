@@ -5,6 +5,7 @@ open FSets
 open NBitsDef
 open NBitsOp
 open State
+open Typ
 open Var
 open Eqtype
 open Seq
@@ -395,6 +396,10 @@ module MakeQFBV =
     val min_key_elements : (TE.key * 'a1) list -> TE.key option
 
     val min_key : 'a1 TE.t -> TE.key option
+
+    val equalP : typ TE.t -> typ TE.t -> reflect
+
+    val eequalP : typ TE.t -> typ TE.t -> reflect
    end
  end) ->
  struct
@@ -931,6 +936,236 @@ module MakeQFBV =
   let bexp_eqType =
     Obj.magic bexp_eqMixin
 
+  (** val qfbv_true : bexp **)
+
+  let qfbv_true =
+    Btrue
+
+  (** val qfbv_false : bexp **)
+
+  let qfbv_false =
+    Bfalse
+
+  (** val qfbv_var : V.t -> exp **)
+
+  let qfbv_var v =
+    Evar v
+
+  (** val qfbv_const : int -> int -> exp **)
+
+  let qfbv_const w n =
+    Econst (from_nat w n)
+
+  (** val qfbv_zero : int -> exp **)
+
+  let qfbv_zero w =
+    Econst (from_nat w 0)
+
+  (** val qfbv_one : int -> exp **)
+
+  let qfbv_one w =
+    Econst (from_nat w (Pervasives.succ 0))
+
+  (** val qfbv_not : exp -> exp **)
+
+  let qfbv_not qe =
+    Eunop (Unot, qe)
+
+  (** val qfbv_neg : exp -> exp **)
+
+  let qfbv_neg qe =
+    Eunop (Uneg, qe)
+
+  (** val qfbv_extr : int -> int -> exp -> exp **)
+
+  let qfbv_extr i j qe =
+    Eunop ((Uextr (i, j)), qe)
+
+  (** val qfbv_high : int -> exp -> exp **)
+
+  let qfbv_high n qe =
+    Eunop ((Uhigh n), qe)
+
+  (** val qfbv_low : int -> exp -> exp **)
+
+  let qfbv_low n qe =
+    Eunop ((Ulow n), qe)
+
+  (** val qfbv_zext : int -> exp -> exp **)
+
+  let qfbv_zext n qe =
+    Eunop ((Uzext n), qe)
+
+  (** val qfbv_sext : int -> exp -> exp **)
+
+  let qfbv_sext n qe =
+    Eunop ((Usext n), qe)
+
+  (** val qfbv_and : exp -> exp -> exp **)
+
+  let qfbv_and qe0 qe1 =
+    Ebinop (Band, qe0, qe1)
+
+  (** val qfbv_or : exp -> exp -> exp **)
+
+  let qfbv_or qe0 qe1 =
+    Ebinop (Bor, qe0, qe1)
+
+  (** val qfbv_xor : exp -> exp -> exp **)
+
+  let qfbv_xor qe0 qe1 =
+    Ebinop (Bxor, qe0, qe1)
+
+  (** val qfbv_add : exp -> exp -> exp **)
+
+  let qfbv_add qe0 qe1 =
+    Ebinop (Badd, qe0, qe1)
+
+  (** val qfbv_sub : exp -> exp -> exp **)
+
+  let qfbv_sub qe0 qe1 =
+    Ebinop (Bsub, qe0, qe1)
+
+  (** val qfbv_mul : exp -> exp -> exp **)
+
+  let qfbv_mul qe0 qe1 =
+    Ebinop (Bmul, qe0, qe1)
+
+  (** val qfbv_mod : exp -> exp -> exp **)
+
+  let qfbv_mod qe0 qe1 =
+    Ebinop (Bmod, qe0, qe1)
+
+  (** val qfbv_srem : exp -> exp -> exp **)
+
+  let qfbv_srem qe0 qe1 =
+    Ebinop (Bsrem, qe0, qe1)
+
+  (** val qfbv_smod : exp -> exp -> exp **)
+
+  let qfbv_smod qe0 qe1 =
+    Ebinop (Bsmod, qe0, qe1)
+
+  (** val qfbv_shl : exp -> exp -> exp **)
+
+  let qfbv_shl qe0 qe1 =
+    Ebinop (Bshl, qe0, qe1)
+
+  (** val qfbv_lshr : exp -> exp -> exp **)
+
+  let qfbv_lshr qe0 qe1 =
+    Ebinop (Blshr, qe0, qe1)
+
+  (** val qfbv_ashr : exp -> exp -> exp **)
+
+  let qfbv_ashr qe0 qe1 =
+    Ebinop (Bashr, qe0, qe1)
+
+  (** val qfbv_concat : exp -> exp -> exp **)
+
+  let qfbv_concat qe0 qe1 =
+    Ebinop (Bconcat, qe0, qe1)
+
+  (** val qfbv_eq : exp -> exp -> bexp **)
+
+  let qfbv_eq qe0 qe1 =
+    Bbinop (Beq, qe0, qe1)
+
+  (** val qfbv_ult : exp -> exp -> bexp **)
+
+  let qfbv_ult qe0 qe1 =
+    Bbinop (Bult, qe0, qe1)
+
+  (** val qfbv_ule : exp -> exp -> bexp **)
+
+  let qfbv_ule qe0 qe1 =
+    Bbinop (Bule, qe0, qe1)
+
+  (** val qfbv_ugt : exp -> exp -> bexp **)
+
+  let qfbv_ugt qe0 qe1 =
+    Bbinop (Bugt, qe0, qe1)
+
+  (** val qfbv_uge : exp -> exp -> bexp **)
+
+  let qfbv_uge qe0 qe1 =
+    Bbinop (Buge, qe0, qe1)
+
+  (** val qfbv_slt : exp -> exp -> bexp **)
+
+  let qfbv_slt qe0 qe1 =
+    Bbinop (Bslt, qe0, qe1)
+
+  (** val qfbv_sle : exp -> exp -> bexp **)
+
+  let qfbv_sle qe0 qe1 =
+    Bbinop (Bsle, qe0, qe1)
+
+  (** val qfbv_sgt : exp -> exp -> bexp **)
+
+  let qfbv_sgt qe0 qe1 =
+    Bbinop (Bsgt, qe0, qe1)
+
+  (** val qfbv_sge : exp -> exp -> bexp **)
+
+  let qfbv_sge qe0 qe1 =
+    Bbinop (Bsge, qe0, qe1)
+
+  (** val qfbv_uaddo : exp -> exp -> bexp **)
+
+  let qfbv_uaddo qe0 qe1 =
+    Bbinop (Buaddo, qe0, qe1)
+
+  (** val qfbv_usubo : exp -> exp -> bexp **)
+
+  let qfbv_usubo qe0 qe1 =
+    Bbinop (Busubo, qe0, qe1)
+
+  (** val qfbv_umulo : exp -> exp -> bexp **)
+
+  let qfbv_umulo qe0 qe1 =
+    Bbinop (Bumulo, qe0, qe1)
+
+  (** val qfbv_saddo : exp -> exp -> bexp **)
+
+  let qfbv_saddo qe0 qe1 =
+    Bbinop (Bsaddo, qe0, qe1)
+
+  (** val qfbv_ssubo : exp -> exp -> bexp **)
+
+  let qfbv_ssubo qe0 qe1 =
+    Bbinop (Bssubo, qe0, qe1)
+
+  (** val qfbv_smulo : exp -> exp -> bexp **)
+
+  let qfbv_smulo qe0 qe1 =
+    Bbinop (Bsmulo, qe0, qe1)
+
+  (** val qfbv_lneg : bexp -> bexp **)
+
+  let qfbv_lneg qb =
+    Blneg qb
+
+  (** val qfbv_conj : bexp -> bexp -> bexp **)
+
+  let qfbv_conj qb0 qb1 =
+    Bconj (qb0, qb1)
+
+  (** val qfbv_disj : bexp -> bexp -> bexp **)
+
+  let qfbv_disj qb0 qb1 =
+    Bdisj (qb0, qb1)
+
+  (** val qfbv_ite : bexp -> exp -> exp -> exp **)
+
+  let qfbv_ite qb qe0 qe1 =
+    Eite (qb, qe0, qe1)
+
+  (** val qfbv_imp : bexp -> bexp -> bexp **)
+
+  let qfbv_imp f g =
+    qfbv_disj (qfbv_lneg f) g
+
   (** val eunop_denote : eunop -> bits -> bits **)
 
   let eunop_denote = function
@@ -1027,6 +1262,12 @@ module MakeQFBV =
   | Bconj (e1, e2) -> VS.union (vars_bexp e1) (vars_bexp e2)
   | Bdisj (e1, e2) -> VS.union (vars_bexp e1) (vars_bexp e2)
   | _ -> VS.empty
+
+  (** val vars_bexps : bexp list -> VS.t **)
+
+  let rec vars_bexps = function
+  | [] -> VS.empty
+  | e :: es0 -> VS.union (vars_bexp e) (vars_bexps es0)
 
   (** val id_eunop : eunop -> int **)
 
@@ -1532,6 +1773,29 @@ module MakeQFBV =
   let rec split_conj e = match e with
   | Bconj (e1, e2) -> cat (split_conj e1) (split_conj e2)
   | _ -> e :: []
+
+  (** val qfbv_conjs : bexp list -> bexp **)
+
+  let rec qfbv_conjs = function
+  | [] -> Btrue
+  | hd :: tl -> qfbv_conj hd (qfbv_conjs tl)
+
+  (** val qfbv_conjs_rec : bexp -> bexp list -> bexp **)
+
+  let rec qfbv_conjs_rec pre_es = function
+  | [] -> pre_es
+  | hd :: tl -> qfbv_conjs_rec (qfbv_conj pre_es hd) tl
+
+  (** val qfbv_conjs_la : bexp list -> bexp **)
+
+  let qfbv_conjs_la = function
+  | [] -> Btrue
+  | e :: es0 -> qfbv_conjs_rec (qfbv_conj Btrue e) es0
+
+  (** val eval_bexps : bexp list -> S.t -> bool **)
+
+  let eval_bexps es s =
+    all (fun x -> eval_bexp x s) es
 
   (** val simplify_bexp : bexp -> bexp **)
 

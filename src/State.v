@@ -1,5 +1,5 @@
 
-From Coq Require Import ZArith.
+From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype seq.
 From nbits Require Import NBits.
 From ssrlib Require Import Var Types SsrOrder Store ZAriths FMaps.
@@ -22,7 +22,7 @@ End ZValueType.
 Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <: TStore V BitsValueType.
 
   Include TStore V BitsValueType.
-  Module Lemmas := FMapLemmas TE.
+  Module Lemmas := TypEnvLemmas TE.
 
   Local Notation var := V.t.
   Local Notation value := bits.
@@ -63,13 +63,25 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <: TStore
   Parameter equal_conform :
     forall E s1 s2,
       Equal s1 s2 -> conform s1 E <-> conform s2 E.
+  Global Instance add_proper_conform_store :
+    Proper (Equal ==> eq ==> iff) conform.
+  Proof.
+    move=> s1 s2 Heq E1 E2 ?; subst. exact: (equal_conform _ Heq).
+  Qed.
+  Global Instance add_proper_conform_env :
+    Proper (eq ==> TE.Equal ==> iff) conform.
+  Proof.
+    move=> s1 s2 ? E1 E2 Heq; subst. exact: (conform_equal _ Heq).
+  Qed.
+
 End BitsStore.
+
 
 Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
   BitsStore V TE.
 
   Include MakeTStoreMap V BitsValueType.
-  Module Lemmas := FMapLemmas TE.
+  Module Lemmas := TypEnvLemmas TE.
 
   (* A store conforms to a typing environment if for every variable in the typing
      environment, the size of its type in the typing environment is the same as
@@ -150,7 +162,7 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
     move: (Lemmas.mem_find_some Hmem1) => [ty Hfind1].
     move: (Hsubm x ty Hfind1) => Hfind2. move: (TE.find_some_vtyp Hfind1) => Hty1.
      move: (TE.find_some_vtyp Hfind2) => Hty2. rewrite -(Hco _ Hmem2).
-    rewrite (TE.vtyp_vsize Hty1) (TE.vtyp_vsize Hty2). reflexivity.
+    rewrite !TE.vtyp_vsize Hty1 Hty2. reflexivity.
   Qed.
 
   Lemma conform_equal E1 E2 s :
@@ -173,7 +185,20 @@ Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
       rewrite (conform_mem H2 Hmem). rewrite (Heq v). reflexivity.
   Qed.
 
+  Global Instance add_proper_conform_store :
+    Proper (Equal ==> eq ==> iff) conform.
+  Proof.
+    move=> s1 s2 Heq E1 E2 ?; subst. exact: (equal_conform _ Heq).
+  Qed.
+
+  Global Instance add_proper_conform_env :
+    Proper (eq ==> TE.Equal ==> iff) conform.
+  Proof.
+    move=> s1 s2 ? E1 E2 Heq; subst. exact: (conform_equal _ Heq).
+  Qed.
+
 End MakeBitsStore.
+
 
 Module Store := MakeBitsStore VarOrder TE.
 Module SSAStore := MakeBitsStore SSAVarOrder SSATE.

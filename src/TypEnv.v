@@ -1,4 +1,5 @@
 
+From Coq Require Import OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype.
 From BitBlasting Require Import Typ.
 From ssrlib Require Import SsrOrder FMaps Tactics.
@@ -48,10 +49,58 @@ Module Type TypEnv <: SsrFMap.
   Axiom not_mem_vtyp :
     forall {v : SE.t} {e : env}, ~~ mem v e -> vtyp v e = deftyp.
   Axiom vtyp_vsize :
-    forall {x : SE.t} {e : env} {ty : typ},
-      vtyp x e = ty -> vsize x e = sizeof_typ ty.
+    forall {x : SE.t} {e : env},
+      vsize x e = sizeof_typ (vtyp x e).
+  Definition eequal : env -> env -> bool := equal typ_eqn.
+  Global Instance add_proper_vtyp : Proper (eq ==> (@Equal typ) ==> eq) vtyp.
+  Proof.
+    move=> x y ? E1 E2 Heq; subst. case H1: (find y E1); case H2: (find y E2).
+    - rewrite (find_some_vtyp H1) (find_some_vtyp H2). rewrite -Heq H1 in H2. by case: H2.
+    - rewrite -Heq H1 in H2. discriminate.
+    - rewrite -Heq H1 in H2. discriminate.
+    - rewrite (find_none_vtyp H1) (find_none_vtyp H2). reflexivity.
+  Qed.
+  Global Instance add_proper_vsize : Proper (eq ==> (@Equal typ) ==> eq) vsize.
+  Proof.
+    move=> x y ? E1 E2 Heq; subst. rewrite !vtyp_vsize. rewrite -> Heq. reflexivity.
+  Qed.
 
 End TypEnv.
+
+
+Module TypEnvLemmas (TE : TypEnv).
+
+  Include (FMapLemmas TE).
+
+  Lemma find_same_vtyp E1 E2 x :
+    TE.find x E1 = TE.find x E2 -> TE.vtyp x E1 = TE.vtyp x E2.
+  Proof.
+    move=> Hfind. case Hf2: (TE.find x E2) Hfind => Hf1.
+    - rewrite (TE.find_some_vtyp Hf1) (TE.find_some_vtyp Hf2). reflexivity.
+    - rewrite (TE.find_none_vtyp Hf1) (TE.find_none_vtyp Hf2). reflexivity.
+  Qed.
+
+  Lemma find_same_vsize E1 E2 x :
+    TE.find x E1 = TE.find x E2 -> TE.vsize x E1 = TE.vsize x E2.
+  Proof.
+    move=> Hfind. rewrite !TE.vtyp_vsize. rewrite (find_same_vtyp Hfind). reflexivity.
+  Qed.
+
+  Lemma equalP x y : reflect (TE.Equal x y) (TE.equal typ_eqn x y).
+  Proof.
+    have H: forall e e' : typ, (e =? e')%typ = true <-> e = e'.
+    { move=> e1 e2; split; [move/typ_eqP => H | move=> H; apply/typ_eqP]; tauto. }
+    case Heq: (TE.equal typ_eqn x y).
+    - apply: ReflectT. move: Heq. move/equal_iff. move/(Equal_Equivb H). by apply.
+    - apply: ReflectF. move=> Hxy. move/negP: Heq; apply.
+      apply/equal_iff. apply/(Equal_Equivb H). assumption.
+  Qed.
+
+  Lemma eequalP x y : reflect (TE.Equal x y) (TE.eequal x y).
+  Proof. exact: equalP. Qed.
+
+End TypEnvLemmas.
+
 
 Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
   TypEnv with Module SE := V.
@@ -111,8 +160,20 @@ Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
   Lemma not_mem_vtyp v e : ~~ mem v e -> vtyp v e = deftyp.
   Proof. rewrite /vtyp => H. by rewrite Lemmas.not_mem_find_none. Qed.
 
-  Lemma vtyp_vsize x e ty : vtyp x e = ty -> vsize x e = sizeof_typ ty.
-  Proof. rewrite /vsize /vtyp. move=> ->. reflexivity. Qed.
+  Lemma vtyp_vsize x e : vsize x e = sizeof_typ (vtyp x e).
+  Proof. reflexivity. Qed.
+
+  Definition eequal := equal typ_eqn.
+
+  Global Instance add_proper_vtyp : Proper (eq ==> (@Equal typ) ==> eq) vtyp.
+  Proof.
+    move=> x y ? E1 E2 Heq; subst. rewrite /vtyp. rewrite Heq. reflexivity.
+  Qed.
+
+  Global Instance add_proper_vsize : Proper (eq ==> (@Equal typ) ==> eq) vsize.
+  Proof.
+    move=> x y ? E1 E2 Heq; subst. rewrite /vsize. rewrite Heq. reflexivity.
+  Qed.
 
 End MakeTypEnv.
 

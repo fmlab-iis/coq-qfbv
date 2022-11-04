@@ -24,6 +24,8 @@ val last : 'a1 -> 'a1 list -> 'a1
 
 val belast : 'a1 -> 'a1 list -> 'a1 list
 
+val all : 'a1 pred -> 'a1 list -> bool
+
 val drop : int -> 'a1 list -> 'a1 list
 
 val take : int -> 'a1 list -> 'a1 list

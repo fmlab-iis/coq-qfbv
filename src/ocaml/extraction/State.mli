@@ -6,6 +6,7 @@ open List0
 open NBitsDef
 open Nat0
 open OrdersTac
+open Typ
 open Var
 open Eqtype
 
@@ -2673,6 +2674,10 @@ module MakeBitsStore :
     val min_key_elements : (TE.key * 'a1) list -> TE.key option
 
     val min_key : 'a1 TE.t -> TE.key option
+
+    val equalP : typ TE.t -> typ TE.t -> reflect
+
+    val eequalP : typ TE.t -> typ TE.t -> reflect
    end
  end
 
@@ -5399,5 +5404,9 @@ module SSAStore :
       (TypEnv.SSATE.key * 'a1) list -> TypEnv.SSATE.key option
 
     val min_key : 'a1 TypEnv.SSATE.t -> TypEnv.SSATE.key option
+
+    val equalP : typ TypEnv.SSATE.t -> typ TypEnv.SSATE.t -> reflect
+
+    val eequalP : typ TypEnv.SSATE.t -> typ TypEnv.SSATE.t -> reflect
    end
  end

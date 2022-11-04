@@ -6,6 +6,7 @@ open List0
 open NBitsDef
 open Nat0
 open OrdersTac
+open Typ
 open Var
 open Eqtype
 
@@ -2157,7 +2158,7 @@ module MakeBitsStore =
   let upd2 x1 v1 x2 v2 s =
     upd x2 v2 (upd x1 v1 s)
 
-  module Lemmas = FMapLemmas(TE)
+  module Lemmas = TypEnv.TypEnvLemmas(TE)
  end
 
 module SSAStore = MakeBitsStore(SSAVarOrder)(TypEnv.SSATE)

@@ -5,6 +5,7 @@ open FSets
 open NBitsDef
 open NBitsOp
 open State
+open Typ
 open Var
 open Eqtype
 open Seq
@@ -394,6 +395,10 @@ module MakeQFBV :
     val min_key_elements : (TE.key * 'a1) list -> TE.key option
 
     val min_key : 'a1 TE.t -> TE.key option
+
+    val equalP : typ TE.t -> typ TE.t -> reflect
+
+    val eequalP : typ TE.t -> typ TE.t -> reflect
    end
  end) ->
  sig
@@ -782,6 +787,98 @@ module MakeQFBV :
 
   val bexp_eqType : Equality.coq_type
 
+  val qfbv_true : bexp
+
+  val qfbv_false : bexp
+
+  val qfbv_var : V.t -> exp
+
+  val qfbv_const : int -> int -> exp
+
+  val qfbv_zero : int -> exp
+
+  val qfbv_one : int -> exp
+
+  val qfbv_not : exp -> exp
+
+  val qfbv_neg : exp -> exp
+
+  val qfbv_extr : int -> int -> exp -> exp
+
+  val qfbv_high : int -> exp -> exp
+
+  val qfbv_low : int -> exp -> exp
+
+  val qfbv_zext : int -> exp -> exp
+
+  val qfbv_sext : int -> exp -> exp
+
+  val qfbv_and : exp -> exp -> exp
+
+  val qfbv_or : exp -> exp -> exp
+
+  val qfbv_xor : exp -> exp -> exp
+
+  val qfbv_add : exp -> exp -> exp
+
+  val qfbv_sub : exp -> exp -> exp
+
+  val qfbv_mul : exp -> exp -> exp
+
+  val qfbv_mod : exp -> exp -> exp
+
+  val qfbv_srem : exp -> exp -> exp
+
+  val qfbv_smod : exp -> exp -> exp
+
+  val qfbv_shl : exp -> exp -> exp
+
+  val qfbv_lshr : exp -> exp -> exp
+
+  val qfbv_ashr : exp -> exp -> exp
+
+  val qfbv_concat : exp -> exp -> exp
+
+  val qfbv_eq : exp -> exp -> bexp
+
+  val qfbv_ult : exp -> exp -> bexp
+
+  val qfbv_ule : exp -> exp -> bexp
+
+  val qfbv_ugt : exp -> exp -> bexp
+
+  val qfbv_uge : exp -> exp -> bexp
+
+  val qfbv_slt : exp -> exp -> bexp
+
+  val qfbv_sle : exp -> exp -> bexp
+
+  val qfbv_sgt : exp -> exp -> bexp
+
+  val qfbv_sge : exp -> exp -> bexp
+
+  val qfbv_uaddo : exp -> exp -> bexp
+
+  val qfbv_usubo : exp -> exp -> bexp
+
+  val qfbv_umulo : exp -> exp -> bexp
+
+  val qfbv_saddo : exp -> exp -> bexp
+
+  val qfbv_ssubo : exp -> exp -> bexp
+
+  val qfbv_smulo : exp -> exp -> bexp
+
+  val qfbv_lneg : bexp -> bexp
+
+  val qfbv_conj : bexp -> bexp -> bexp
+
+  val qfbv_disj : bexp -> bexp -> bexp
+
+  val qfbv_ite : bexp -> exp -> exp -> exp
+
+  val qfbv_imp : bexp -> bexp -> bexp
+
   val eunop_denote : eunop -> bits -> bits
 
   val ebinop_denote : ebinop -> bits -> bits -> bits
@@ -795,6 +892,8 @@ module MakeQFBV :
   val vars_exp : exp -> VS.t
 
   val vars_bexp : bexp -> VS.t
+
+  val vars_bexps : bexp list -> VS.t
 
   val id_eunop : eunop -> int
 
@@ -1262,6 +1361,14 @@ module MakeQFBV :
 
   val split_conj : bexp -> bexp list
 
+  val qfbv_conjs : bexp list -> bexp
+
+  val qfbv_conjs_rec : bexp -> bexp list -> bexp
+
+  val qfbv_conjs_la : bexp list -> bexp
+
+  val eval_bexps : bexp list -> S.t -> bool
+
   val simplify_bexp : bexp -> bexp
 
   val bexp_is_implied : bexp -> bool
@@ -1659,6 +1766,98 @@ module QFBV :
 
   val bexp_eqType : Equality.coq_type
 
+  val qfbv_true : bexp
+
+  val qfbv_false : bexp
+
+  val qfbv_var : SSAVarOrder.t -> exp
+
+  val qfbv_const : int -> int -> exp
+
+  val qfbv_zero : int -> exp
+
+  val qfbv_one : int -> exp
+
+  val qfbv_not : exp -> exp
+
+  val qfbv_neg : exp -> exp
+
+  val qfbv_extr : int -> int -> exp -> exp
+
+  val qfbv_high : int -> exp -> exp
+
+  val qfbv_low : int -> exp -> exp
+
+  val qfbv_zext : int -> exp -> exp
+
+  val qfbv_sext : int -> exp -> exp
+
+  val qfbv_and : exp -> exp -> exp
+
+  val qfbv_or : exp -> exp -> exp
+
+  val qfbv_xor : exp -> exp -> exp
+
+  val qfbv_add : exp -> exp -> exp
+
+  val qfbv_sub : exp -> exp -> exp
+
+  val qfbv_mul : exp -> exp -> exp
+
+  val qfbv_mod : exp -> exp -> exp
+
+  val qfbv_srem : exp -> exp -> exp
+
+  val qfbv_smod : exp -> exp -> exp
+
+  val qfbv_shl : exp -> exp -> exp
+
+  val qfbv_lshr : exp -> exp -> exp
+
+  val qfbv_ashr : exp -> exp -> exp
+
+  val qfbv_concat : exp -> exp -> exp
+
+  val qfbv_eq : exp -> exp -> bexp
+
+  val qfbv_ult : exp -> exp -> bexp
+
+  val qfbv_ule : exp -> exp -> bexp
+
+  val qfbv_ugt : exp -> exp -> bexp
+
+  val qfbv_uge : exp -> exp -> bexp
+
+  val qfbv_slt : exp -> exp -> bexp
+
+  val qfbv_sle : exp -> exp -> bexp
+
+  val qfbv_sgt : exp -> exp -> bexp
+
+  val qfbv_sge : exp -> exp -> bexp
+
+  val qfbv_uaddo : exp -> exp -> bexp
+
+  val qfbv_usubo : exp -> exp -> bexp
+
+  val qfbv_umulo : exp -> exp -> bexp
+
+  val qfbv_saddo : exp -> exp -> bexp
+
+  val qfbv_ssubo : exp -> exp -> bexp
+
+  val qfbv_smulo : exp -> exp -> bexp
+
+  val qfbv_lneg : bexp -> bexp
+
+  val qfbv_conj : bexp -> bexp -> bexp
+
+  val qfbv_disj : bexp -> bexp -> bexp
+
+  val qfbv_ite : bexp -> exp -> exp -> exp
+
+  val qfbv_imp : bexp -> bexp -> bexp
+
   val eunop_denote : eunop -> bits -> bits
 
   val ebinop_denote : ebinop -> bits -> bits -> bits
@@ -1672,6 +1871,8 @@ module QFBV :
   val vars_exp : exp -> SSAVS.t
 
   val vars_bexp : bexp -> SSAVS.t
+
+  val vars_bexps : bexp list -> SSAVS.t
 
   val id_eunop : eunop -> int
 
@@ -2208,6 +2409,14 @@ module QFBV :
   val well_formed_bexps : bexp list -> TypEnv.SSATE.env -> bool
 
   val split_conj : bexp -> bexp list
+
+  val qfbv_conjs : bexp list -> bexp
+
+  val qfbv_conjs_rec : bexp -> bexp list -> bexp
+
+  val qfbv_conjs_la : bexp list -> bexp
+
+  val eval_bexps : bexp list -> SSAStore.t -> bool
 
   val simplify_bexp : bexp -> bexp
 

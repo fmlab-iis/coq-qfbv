@@ -62,6 +62,12 @@ let rec belast x = function
 | [] -> []
 | x' :: s' -> x :: (belast x' s')
 
+(** val all : 'a1 pred -> 'a1 list -> bool **)
+
+let rec all a = function
+| [] -> true
+| x :: s' -> (&&) (a x) (all a s')
+
 (** val drop : int -> 'a1 list -> 'a1 list **)
 
 let rec drop n s = match s with
