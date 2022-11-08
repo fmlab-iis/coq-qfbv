@@ -5,6 +5,18 @@ open Decimal
 
 module N =
  struct
+  (** val succ_double : coq_N -> coq_N **)
+
+  let succ_double = function
+  | N0 -> Npos Coq_xH
+  | Npos p -> Npos (Coq_xI p)
+
+  (** val double : coq_N -> coq_N **)
+
+  let double = function
+  | N0 -> N0
+  | Npos p -> Npos (Coq_xO p)
+
   (** val succ : coq_N -> coq_N **)
 
   let succ = function
@@ -64,12 +76,66 @@ module N =
                  | N0 -> false
                  | Npos q -> Pos.eqb p q)
 
+  (** val leb : coq_N -> coq_N -> bool **)
+
+  let leb x y =
+    match compare x y with
+    | Gt -> false
+    | _ -> true
+
   (** val ltb : coq_N -> coq_N -> bool **)
 
   let ltb x y =
     match compare x y with
     | Lt -> true
     | _ -> false
+
+  (** val even : coq_N -> bool **)
+
+  let even = function
+  | N0 -> true
+  | Npos p -> (match p with
+               | Coq_xO _ -> true
+               | _ -> false)
+
+  (** val odd : coq_N -> bool **)
+
+  let odd n =
+    negb (even n)
+
+  (** val pos_div_eucl : positive -> coq_N -> coq_N * coq_N **)
+
+  let rec pos_div_eucl a b =
+    match a with
+    | Coq_xI a' ->
+      let (q, r) = pos_div_eucl a' b in
+      let r' = succ_double r in
+      if leb b r' then ((succ_double q), (sub r' b)) else ((double q), r')
+    | Coq_xO a' ->
+      let (q, r) = pos_div_eucl a' b in
+      let r' = double r in
+      if leb b r' then ((succ_double q), (sub r' b)) else ((double q), r')
+    | Coq_xH ->
+      (match b with
+       | N0 -> (N0, (Npos Coq_xH))
+       | Npos p ->
+         (match p with
+          | Coq_xH -> ((Npos Coq_xH), N0)
+          | _ -> (N0, (Npos Coq_xH))))
+
+  (** val div_eucl : coq_N -> coq_N -> coq_N * coq_N **)
+
+  let div_eucl a b =
+    match a with
+    | N0 -> (N0, N0)
+    | Npos na -> (match b with
+                  | N0 -> (N0, a)
+                  | Npos _ -> pos_div_eucl na b)
+
+  (** val div : coq_N -> coq_N -> coq_N **)
+
+  let div a b =
+    fst (div_eucl a b)
 
   (** val to_nat : coq_N -> int **)
 

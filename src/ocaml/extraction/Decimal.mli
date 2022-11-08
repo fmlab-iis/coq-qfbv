@@ -18,6 +18,8 @@ val rev : uint -> uint
 
 module Little :
  sig
+  val succ : uint -> uint
+
   val double : uint -> uint
 
   val succ_double : uint -> uint

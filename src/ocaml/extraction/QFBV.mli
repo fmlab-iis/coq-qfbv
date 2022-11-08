@@ -1,3 +1,4 @@
+open BinNums
 open Bool
 open Datatypes
 open FMaps
@@ -5,6 +6,8 @@ open FSets
 open NBitsDef
 open NBitsOp
 open State
+open String0
+open Strings
 open Typ
 open Var
 open Eqtype
@@ -16,6 +19,7 @@ type __ = Obj.t
 
 module MakeQFBV :
  functor (V:SsrOrder.SsrOrder) ->
+ functor (VP:Printer with type t = V.t) ->
  functor (VS:SsrFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
@@ -795,6 +799,14 @@ module MakeQFBV :
 
   val qfbv_const : int -> int -> exp
 
+  val qfbv_const_bits : bits -> exp
+
+  val qfbv_const_nat : int -> int -> exp
+
+  val qfbv_const_Z : int -> coq_Z -> exp
+
+  val qfbv_const_N : int -> coq_N -> exp
+
   val qfbv_zero : int -> exp
 
   val qfbv_one : int -> exp
@@ -1373,7 +1385,19 @@ module MakeQFBV :
 
   val bexp_is_implied : bexp -> bool
 
+  val simplify_exp : exp -> exp
+
   val simplify_bexp2 : bexp -> bexp
+
+  val string_of_eunop : eunop -> char list
+
+  val string_of_ebinop : ebinop -> char list
+
+  val string_of_bbinop : bbinop -> char list
+
+  val string_of_exp : exp -> char list
+
+  val string_of_bexp : bexp -> char list
  end
 
 module QFBV :
@@ -1773,6 +1797,14 @@ module QFBV :
   val qfbv_var : SSAVarOrder.t -> exp
 
   val qfbv_const : int -> int -> exp
+
+  val qfbv_const_bits : bits -> exp
+
+  val qfbv_const_nat : int -> int -> exp
+
+  val qfbv_const_Z : int -> coq_Z -> exp
+
+  val qfbv_const_N : int -> coq_N -> exp
 
   val qfbv_zero : int -> exp
 
@@ -2422,7 +2454,19 @@ module QFBV :
 
   val bexp_is_implied : bexp -> bool
 
+  val simplify_exp : exp -> exp
+
   val simplify_bexp2 : bexp -> bexp
+
+  val string_of_eunop : eunop -> char list
+
+  val string_of_ebinop : ebinop -> char list
+
+  val string_of_bbinop : bbinop -> char list
+
+  val string_of_exp : exp -> char list
+
+  val string_of_bexp : bexp -> char list
  end
 
 val eunop_eqType : Equality.coq_type

@@ -1,3 +1,4 @@
+open BinNums
 open Bool
 open Datatypes
 open FMaps
@@ -5,6 +6,8 @@ open FSets
 open NBitsDef
 open NBitsOp
 open State
+open String0
+open Strings
 open Typ
 open Var
 open Eqtype
@@ -17,6 +20,7 @@ let __ = let rec f _ = Obj.repr f in Obj.repr f
 
 module MakeQFBV =
  functor (V:SsrOrder.SsrOrder) ->
+ functor (VP:Printer with type t = V.t) ->
  functor (VS:SsrFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
@@ -956,6 +960,26 @@ module MakeQFBV =
   let qfbv_const w n =
     Econst (from_nat w n)
 
+  (** val qfbv_const_bits : bits -> exp **)
+
+  let qfbv_const_bits bs =
+    Econst bs
+
+  (** val qfbv_const_nat : int -> int -> exp **)
+
+  let qfbv_const_nat w n =
+    Econst (from_nat w n)
+
+  (** val qfbv_const_Z : int -> coq_Z -> exp **)
+
+  let qfbv_const_Z w n =
+    Econst (from_Z w n)
+
+  (** val qfbv_const_N : int -> coq_N -> exp **)
+
+  let qfbv_const_N w n =
+    Econst (from_N w n)
+
   (** val qfbv_zero : int -> exp **)
 
   let qfbv_zero w =
@@ -1837,9 +1861,45 @@ module MakeQFBV =
      | _ -> false)
   | _ -> false
 
+  (** val simplify_exp : exp -> exp **)
+
+  let rec simplify_exp e = match e with
+  | Eunop (op0, e0) ->
+    let e1 = simplify_exp e0 in
+    (match e1 with
+     | Econst bs -> Econst (eunop_denote op0 bs)
+     | _ -> Eunop (op0, e1))
+  | Ebinop (op0, e1, e2) ->
+    let e3 = simplify_exp e1 in
+    let e4 = simplify_exp e2 in
+    (match e3 with
+     | Econst bs1 ->
+       (match e4 with
+        | Econst bs2 -> Econst (ebinop_denote op0 bs1 bs2)
+        | _ -> Ebinop (op0, e3, e4))
+     | _ -> Ebinop (op0, e3, e4))
+  | Eite (b, e1, e2) ->
+    let b0 = simplify_bexp2 b in
+    let e3 = simplify_exp e1 in
+    let e4 = simplify_exp e2 in
+    (match b0 with
+     | Bfalse -> e4
+     | Btrue -> e3
+     | _ -> Eite (b0, e3, e4))
+  | _ -> e
+
   (** val simplify_bexp2 : bexp -> bexp **)
 
-  let rec simplify_bexp2 e = match e with
+  and simplify_bexp2 e = match e with
+  | Bbinop (op0, e1, e2) ->
+    let e3 = simplify_exp e1 in
+    let e4 = simplify_exp e2 in
+    (match e3 with
+     | Econst bs1 ->
+       (match e4 with
+        | Econst bs2 -> if bbinop_denote op0 bs1 bs2 then Btrue else Bfalse
+        | _ -> Bbinop (op0, e3, e4))
+     | _ -> Bbinop (op0, e3, e4))
   | Blneg e0 ->
     (match simplify_bexp2 e0 with
      | Bfalse -> Btrue
@@ -1866,9 +1926,131 @@ module MakeQFBV =
         | x0 ->
           if bexp_is_implied (Bdisj (x, x0)) then Btrue else Bdisj (x, x0)))
   | _ -> e
+
+  (** val string_of_eunop : eunop -> char list **)
+
+  let string_of_eunop = function
+  | Unot -> 'b'::('v'::('n'::('o'::('t'::[]))))
+  | Uneg -> 'b'::('v'::('n'::('e'::('g'::[]))))
+  | Uextr (i, j) ->
+    append
+      ('('::('_'::(' '::('e'::('x'::('t'::('r'::('a'::('c'::('t'::(' '::[])))))))))))
+      (append (string_of_nat i)
+        (append (' '::[]) (append (string_of_nat j) (')'::[]))))
+  | Uhigh n ->
+    append ('('::('_'::(' '::('h'::('i'::('g'::('h'::(' '::[]))))))))
+      (append (string_of_nat n) (')'::[]))
+  | Ulow n ->
+    append ('('::('_'::(' '::('l'::('o'::('w'::(' '::[])))))))
+      (append (string_of_nat n) (')'::[]))
+  | Uzext n ->
+    append
+      ('('::('_'::(' '::('z'::('e'::('r'::('o'::('_'::('e'::('x'::('t'::('e'::('n'::('d'::(' '::[])))))))))))))))
+      (append (string_of_nat n) (')'::[]))
+  | Usext n ->
+    append
+      ('('::('_'::(' '::('s'::('i'::('g'::('n'::('_'::('e'::('x'::('t'::('e'::('n'::('d'::(' '::[])))))))))))))))
+      (append (string_of_nat n) (')'::[]))
+  | Urepeat n ->
+    append
+      ('('::('_'::(' '::('r'::('e'::('p'::('e'::('a'::('t'::(' '::[]))))))))))
+      (append (string_of_nat n) (')'::[]))
+  | Urotl n ->
+    append
+      ('('::('_'::(' '::('r'::('o'::('t'::('a'::('t'::('e'::('_'::('l'::('e'::('f'::('t'::(' '::[])))))))))))))))
+      (append (string_of_nat n) (')'::[]))
+  | Urotr n ->
+    append
+      ('('::('_'::(' '::('r'::('o'::('t'::('a'::('t'::('e'::('_'::('r'::('i'::('g'::('h'::('t'::(' '::[]))))))))))))))))
+      (append (string_of_nat n) (')'::[]))
+
+  (** val string_of_ebinop : ebinop -> char list **)
+
+  let string_of_ebinop = function
+  | Band -> 'b'::('v'::('a'::('n'::('d'::[]))))
+  | Bor -> 'b'::('v'::('o'::('r'::[])))
+  | Bxor -> 'b'::('v'::('x'::('o'::('r'::[]))))
+  | Badd -> 'b'::('v'::('a'::('d'::('d'::[]))))
+  | Bsub -> 'b'::('v'::('s'::('u'::('b'::[]))))
+  | Bmul -> 'b'::('v'::('m'::('u'::('l'::[]))))
+  | Bdiv -> 'b'::('v'::('d'::('i'::('v'::[]))))
+  | Bmod -> 'b'::('v'::('u'::('r'::('e'::('m'::[])))))
+  | Bsdiv -> 'b'::('v'::('s'::('d'::('i'::('v'::[])))))
+  | Bsrem -> 'b'::('v'::('s'::('r'::('e'::('m'::[])))))
+  | Bsmod -> 'b'::('v'::('s'::('m'::('o'::('d'::[])))))
+  | Bshl -> 'b'::('v'::('s'::('h'::('l'::[]))))
+  | Blshr -> 'b'::('v'::('l'::('s'::('h'::('r'::[])))))
+  | Bashr -> 'b'::('v'::('a'::('s'::('h'::('r'::[])))))
+  | Bconcat -> 'c'::('o'::('n'::('c'::('a'::('t'::[])))))
+  | Bcomp -> 'b'::('v'::('c'::('o'::('m'::('p'::[])))))
+
+  (** val string_of_bbinop : bbinop -> char list **)
+
+  let string_of_bbinop = function
+  | Beq -> '='::[]
+  | Bult -> 'b'::('v'::('u'::('l'::('t'::[]))))
+  | Bule -> 'b'::('v'::('u'::('l'::('e'::[]))))
+  | Bugt -> 'b'::('v'::('u'::('g'::('t'::[]))))
+  | Buge -> 'b'::('v'::('u'::('g'::('e'::[]))))
+  | Bslt -> 'b'::('v'::('s'::('l'::('t'::[]))))
+  | Bsle -> 'b'::('v'::('s'::('l'::('e'::[]))))
+  | Bsgt -> 'b'::('v'::('s'::('g'::('t'::[]))))
+  | Bsge -> 'b'::('v'::('s'::('g'::('e'::[]))))
+  | Buaddo -> 'b'::('v'::('u'::('a'::('d'::('d'::('o'::[]))))))
+  | Busubo -> 'b'::('v'::('u'::('s'::('u'::('b'::('o'::[]))))))
+  | Bumulo -> 'b'::('v'::('u'::('m'::('u'::('l'::('o'::[]))))))
+  | Bsaddo -> 'b'::('v'::('s'::('a'::('d'::('d'::('o'::[]))))))
+  | Bssubo -> 'b'::('v'::('s'::('s'::('u'::('b'::('o'::[]))))))
+  | Bsmulo -> 'b'::('v'::('s'::('m'::('u'::('l'::('o'::[]))))))
+
+  (** val string_of_exp : exp -> char list **)
+
+  let rec string_of_exp = function
+  | Evar v -> VP.to_string v
+  | Econst bs -> append ('0'::('x'::[])) (to_hex bs)
+  | Eunop (op0, e0) ->
+    append ('('::[])
+      (append (string_of_eunop op0)
+        (append (' '::[]) (append (string_of_exp e0) (')'::[]))))
+  | Ebinop (op0, e1, e2) ->
+    append ('('::[])
+      (append (string_of_ebinop op0)
+        (append (' '::[])
+          (append (string_of_exp e1)
+            (append (' '::[]) (append (string_of_exp e2) (')'::[]))))))
+  | Eite (b, e1, e2) ->
+    append ('('::('i'::('t'::('e'::(' '::[])))))
+      (append (string_of_bexp b)
+        (append (' '::[])
+          (append (string_of_exp e1)
+            (append (' '::[]) (append (string_of_exp e2) (')'::[]))))))
+
+  (** val string_of_bexp : bexp -> char list **)
+
+  and string_of_bexp = function
+  | Bfalse -> 'f'::('a'::('l'::('s'::('e'::[]))))
+  | Btrue -> 't'::('r'::('u'::('e'::[])))
+  | Bbinop (op0, e1, e2) ->
+    append ('('::[])
+      (append (string_of_bbinop op0)
+        (append (' '::[])
+          (append (string_of_exp e1)
+            (append (' '::[]) (append (string_of_exp e2) (')'::[]))))))
+  | Blneg e0 ->
+    append ('('::('n'::('o'::('t'::(' '::[])))))
+      (append (string_of_bexp e0) (')'::[]))
+  | Bconj (e1, e2) ->
+    append ('('::('a'::('n'::('d'::(' '::[])))))
+      (append (string_of_bexp e1)
+        (append (' '::[]) (append (string_of_bexp e2) (')'::[]))))
+  | Bdisj (e1, e2) ->
+    append ('('::('o'::('r'::(' '::[]))))
+      (append (string_of_bexp e1)
+        (append (' '::[]) (append (string_of_bexp e2) (')'::[]))))
  end
 
-module QFBV = MakeQFBV(SSAVarOrder)(SSAVS)(TypEnv.SSATE)(SSAStore)
+module QFBV =
+ MakeQFBV(SSAVarOrder)(SSAVarOrderPrinter)(SSAVS)(TypEnv.SSATE)(SSAStore)
 
 (** val eunop_eqType : Equality.coq_type **)
 

@@ -1,8 +1,8 @@
 
-From Coq Require Import Arith ZArith OrderedType.
+From Coq Require Import Arith ZArith OrderedType String.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics Seqs.
+From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics Seqs Strings.
 From BitBlasting Require Import Typ TypEnv State.
 
 Set Implicit Arguments.
@@ -11,6 +11,7 @@ Import Prenex Implicits.
 
 Module MakeQFBV
        (V : SsrOrder)
+       (VP : Printer with Definition t := V.t)
        (VS : SsrFSet with Module SE := V)
        (TE : TypEnv with Module SE := V)
        (S : BitsStore V TE).
@@ -340,6 +341,14 @@ Module MakeQFBV
   Definition qfbv_var v := Evar v.
 
   Definition qfbv_const w n := Econst (NBitsDef.from_nat w n).
+
+  Definition qfbv_const_bits bs := Econst bs.
+
+  Definition qfbv_const_nat w n := Econst (NBitsDef.from_nat w n).
+
+  Definition qfbv_const_Z w n := Econst (NBitsDef.from_Z w n).
+
+  Definition qfbv_const_N w n := Econst (NBitsDef.from_N w n).
 
   Definition qfbv_zero w := Econst (NBitsDef.from_nat w 0).
 
@@ -2326,9 +2335,40 @@ Module MakeQFBV
     - move=> f1 IH1 f2 IH2. rewrite mem_seq1. move/eqP=> -> /=. exact: orNb.
   Qed.
 
-  Fixpoint simplify_bexp2 (e : bexp) : bexp :=
+  Fixpoint simplify_exp (e : exp) : exp :=
     match e with
-    | Btrue | Bfalse | Bbinop _ _ _ => e
+    | Evar _ | Econst _ => e
+    | Eunop op e => let e := simplify_exp e in
+                    match e with
+                    | Econst bs => Econst ((eunop_denote op) bs)
+                    | _ => Eunop op e
+                    end
+    | Ebinop op e1 e2 => let e1 := simplify_exp e1 in
+                         let e2 := simplify_exp e2 in
+                         match e1, e2 with
+                         | Econst bs1, Econst bs2 => Econst ((ebinop_denote op) bs1 bs2)
+                         | _, _ => Ebinop op e1 e2
+                         end
+    | Eite b e1 e2 => let b := simplify_bexp2 b in
+                      let e1 := simplify_exp e1 in
+                      let e2 := simplify_exp e2 in
+                      match b with
+                      | Btrue => e1
+                      | Bfalse => e2
+                      | _ => Eite b e1 e2
+                      end
+    end
+  with
+  simplify_bexp2 (e : bexp) : bexp :=
+    match e with
+    | Btrue | Bfalse => e
+    | Bbinop op e1 e2 => let e1 := simplify_exp e1 in
+                         let e2 := simplify_exp e2 in
+                         match e1, e2 with
+                         | Econst bs1, Econst bs2 => if (bbinop_denote op) bs1 bs2
+                                                     then Btrue else Bfalse
+                         | _, _ => Bbinop op e1 e2
+                         end
     | Blneg e => match simplify_bexp2 e with
                  | Btrue => Bfalse
                  | Bfalse => Btrue
@@ -2352,99 +2392,52 @@ Module MakeQFBV
                         end
     end.
 
-  Ltac mytac ::=
-    match goal with
-    | H : _ <-> _ |- _ =>
-      let H1 := fresh in
-      let H2 := fresh in
-      (case: H => H1 H2); mytac
-    | |- _ <-> _ =>
-      let H := fresh in
-      split; move=> H; mytac
-    | H : is_true (_ && _) |- _ =>
-      let H1 := fresh in
-      let H2 := fresh in
-      (move/andP: H => [H1 H2]); mytac
-    | |- is_true (_ && _) =>
-      apply/andP; split; mytac
-    | H : is_true (_ || _) |- _ =>
-      (case/orP: H => H); mytac
-    | |- is_true (_ || _) =>
-      apply/orP; mytac
-    | H : is_true true -> ?e |- _ =>
-      (move: (H is_true_true) => {} H); mytac
-    | H1 : ?e1 -> _, H2 : ?e1 |- _ => (move: (H1 H2) => {} H1); mytac
-    | |- is_true (~~ _) => let H := fresh in apply/negP=> H; mytac
-    | H : is_true (eval_bexp
-                     (match (?er \in split_conj ?el) with
-                      | true => Btrue
-                      | false => Bdisj (Blneg ?el) ?er
-                      end) ?s) |- _ =>
-      let Hin := fresh in
-      let H1 := fresh in
-      let H2 := fresh in
-      (move: (@bexp_is_implied_sat (Bdisj (Blneg el) er) s)); simpl;
-      (move: H); (dcase (er \in split_conj el)); case; (move => -> /= H1 H2);
-      [(move: (H2 is_true_true) => {} H2) | idtac ]; mytac
-    | |- is_true (eval_bexp (match ?er \in split_conj ?el with
-                             | true => Btrue
-                             | false => Bdisj (Blneg ?el) ?er
-                             end) ?s) =>
-      dcase (er \in split_conj el); (case => -> /=); [by reflexivity | mytac]
-    | H1 : is_true ?e,
-      H2 : is_true (~~ ?e)
-      |- _ => rewrite H1 in H2; discriminate
-    | H1 : is_true (~~ ?b) -> is_true ?e,
-      H2 : is_true (~~ ?e)
-      |- is_true ?b =>
-      let Hbs := fresh in
-      let He := fresh in
-      (dcase b); (case=> Hbs); [
-        reflexivity
-      | (move/idP/negP: Hbs => Hbs); (move: (H1 Hbs) => He); rewrite He in H2;
-        discriminate ]
-    | H1 : is_true (?e1 && ?e2) -> _,
-      H2 : is_true ?e1, H3 : is_true ?e2 |- _ =>
-      (rewrite H2 H3 /= in H1); (move: (H1 is_true_true) => {} H1); mytac
-    | H1 : is_true (?e1 || ?e2) -> _,
-      H2 : is_true ?e1 |- _ =>
-      (rewrite H2 orTb in H1); (move: (H1 is_true_true) => {} H1); mytac
-    | H1 : is_true (?e1 || ?e2) -> _,
-      H2 : is_true ?e2 |- _ =>
-      (rewrite H2 orbT in H1); (move: (H1 is_true_true) => {} H1); mytac
-    | H1 : is_true (~~ (?e1 && ?e2)),
-      H2 : is_true ?e1, H3 : is_true ?e2 |- _ =>
-      rewrite H2 H3 /= in H1; discriminate
-    | H1 : is_true (~~ (?e1 || ?e2)),
-      H2 : is_true ?e1 |- _ =>
-      rewrite H2 orTb in H1; discriminate
-    | H1 : is_true (~~ (?e1 || ?e2)),
-      H2 : is_true ?e2 |- _ =>
-      rewrite H2 orbT in H1; discriminate
-    | H1 : is_true ?e |- context f [?e] => rewrite H1 /=; mytac
-    | |- context f [_ || true] => rewrite orbT; mytac
-    | |- is_true true \/ _ => left; reflexivity
-    | |- _ \/ is_true true => right; reflexivity
-    | H1 : ?e -> is_true false,
-      H2 : ?e |- _ => move: (H1 H2); discriminate
-    | H : is_true false |- _ => discriminate
-    | |- is_true true => reflexivity
-    | H : ?e |- ?e => assumption
-    | |- _ => idtac
-    end.
-
-  Lemma simplify_bexp2_eqsat s e :
-    eval_bexp (simplify_bexp2 e) s <-> eval_bexp e s.
+  Lemma simplify_exp_eval s e :
+    eval_exp (simplify_exp e) s = eval_exp e s
+  with
+  simplify_bexp2_eval s e :
+    eval_bexp (simplify_bexp2 e) s = eval_bexp e s.
   Proof.
-    elim: e => //=.
-    - move=> e. case: (simplify_bexp2 e) => /=; intros; by mytac.
-    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
-      (case: (simplify_bexp2 e1)); (case: (simplify_bexp2 e2)); (move => /=);
-        intros; by mytac.
-    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
-      (case: (simplify_bexp2 e1)); (case: (simplify_bexp2 e2)); (move => /=);
-        intros; by mytac.
+    (* simplify_exp_eval *)
+    - elim: e => //=.
+      + move=> op e. by case Hs: (simplify_exp e) => /= ->.
+      + move=> op e1 IH1 e2 IH2. rewrite -IH1 -IH2 => {IH1 IH2}.
+        by case Hs1: (simplify_exp e1); case Hs2: (simplify_exp e2).
+      + move=> b e1 IH1 e2 IH2. rewrite -IH1 -IH2 => {IH1 IH2}.
+        (case Hs: (simplify_bexp2 b) => //=);
+          by rewrite -(simplify_bexp2_eval s b) Hs.
+    (* simplify_bexp_eval *)
+    - elim: e => //=.
+      + move=> op e1 e2. case Hs1: (simplify_exp e1); case Hs2: (simplify_exp e2);
+          intros; repeat match goal with
+                    | H : simplify_exp ?e = _ |- context c [eval_exp ?e _] =>
+                        rewrite -(simplify_exp_eval _ e) H /=
+                    end; (done || by case_if).
+      + move=> e IH. rewrite -IH => {IH}. case Hs: (simplify_bexp2 e) => //=.
+        by rewrite Bool.negb_involutive.
+      + move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 => {IH1 IH2}.
+        case: (simplify_bexp2 e1); (case: (simplify_bexp2 e2) => //=);
+          intros; repeat match goal with
+                    | |- context c [_ && true] => rewrite andbT
+                    | |- context c [_ && false] => rewrite andbF
+                    end; done.
+      + move=> e1 IH1 e2 IH2. rewrite -IH1 -IH2 => {IH1 IH2}.
+        case: (simplify_bexp2 e1); (case: (simplify_bexp2 e2) => //=);
+          intros; case_if;
+          repeat match goal with
+            | |- context c [_ || true] => rewrite orbT
+            | |- context c [_ || false] => rewrite orbF
+            end; try done.
+        all: match goal with
+             | H : (?e1 \in split_conj ?e2) = true |- context c [eval_bexp ?e2 ?s] =>
+                 (move: (@bexp_is_implied_sat (Bdisj (Blneg e2) e1) s H) => /=);
+                   by move=> ->
+             end.
   Qed.
+
+  Corollary simplify_bexp2_eqsat s e :
+    eval_bexp (simplify_bexp2 e) s <-> eval_bexp e s.
+  Proof. by rewrite simplify_bexp2_eval. Qed.
 
   Corollary simplify_bexp2_eqvalid E e :
     valid E (simplify_bexp2 e) <-> valid E e.
@@ -2454,43 +2447,179 @@ Module MakeQFBV
     - apply/simplify_bexp2_eqsat. exact: (He s Hco).
   Qed.
 
-  Ltac mytac ::=
-    match goal with
-    | H : true = ?e |- context f [?e] => rewrite -H /=; mytac
-    | H : is_true ?e |- context f [?e] => rewrite H /=; mytac
-    | H : is_true (_ && _) |- _ =>
-      let H1 := fresh in
-      let H2 := fresh in
-      move/andP: H => [H1 H2]; mytac
-    | H1 : ?e -> _, H2 : ?e |- _ =>
-      move: (H1 H2); clear H1; move=> H1; mytac
-    | |- is_true (well_formed_bexp (match ?er \in split_conj ?el with
-                                    | true => Btrue
-                                    | false => Bdisj (Blneg ?el) ?er
-                                    end) ?E) =>
-      (case: (er \in split_conj el) => /=); mytac
-    | |- true = true => reflexivity
-    | |- is_true true => reflexivity
-    | |- _ => idtac
+  Ltac rewrite_to_right :=
+    repeat match goal with
+      | H : is_true ?e |- context c [?e] => rewrite H /=
+      | H : ?e = _ |- context c [?e] => rewrite H /=
+      end.
+
+  Ltac rewrite_to_left :=
+    repeat match goal with
+      | H : is_true ?e |- context c [?e] => rewrite H /=
+      | H : _ = ?e |- context c [?e] => rewrite -H /=
+      end.
+
+  Lemma simplify_exp_well_formed E e :
+    well_formed_exp e E -> well_formed_exp (simplify_exp e) E
+  with simplify_bexp2_well_formed E e :
+    well_formed_bexp e E -> well_formed_bexp (simplify_bexp2 e) E
+  with simplify_exp_size E e :
+    well_formed_exp e E ->
+    exp_size (simplify_exp e) E = exp_size e E.
+  Proof.
+    (* simplify_exp_well_formed *)
+    - elim: e => //=.
+      + move=> op e IH Hwf. move: (IH Hwf) => {IH Hwf}.
+        by case: (simplify_exp e).
+      + move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [H1 H2] H3] H4].
+        move: (IH1 H1) (IH2 H2) => {IH1 IH2}.
+        move: (simplify_exp_size E e1 H1) (simplify_exp_size E e2 H2) => {H1 H2}.
+        case Hs1: (simplify_exp e1); (case Hs2: (simplify_exp e2) => //=); intros;
+          rewrite_to_right; done.
+      + move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hb H1] H2] Hsize].
+        move: (simplify_bexp2_well_formed E b Hb) (IH1 H1) (IH2 H2) => {IH1 IH2 Hb}.
+        move: (simplify_exp_size E e1 H1) (simplify_exp_size E e2 H2) => {H1 H2}.
+        case Hsb: (simplify_bexp2 b); case Hs1: (simplify_exp e1);
+          (case Hs2: (simplify_exp e2) => //=); intros;
+          rewrite_to_right; done.
+    (* simplify_bexp_well_formed *)
+    - elim: e => //=.
+      + move=> op e1 e2 /andP [/andP [H1 H2] Hsize].
+        move: (simplify_exp_well_formed _ _ H1) (simplify_exp_well_formed _ _ H2).
+        move: (simplify_exp_size E e1 H1) (simplify_exp_size E e2 H2) => {H1 H2}.
+        case Hs1: (simplify_exp e1); (case Hs2: (simplify_exp e2) => //=); intros;
+          rewrite_to_right; done || by case_if.
+      + move=> e IH H. move: (IH H) => {IH H}.
+        by case: (simplify_bexp2 e).
+      + move=> e1 IH1 e2 IH2 /andP [H1 H2]. move: (IH1 H1) (IH2 H2) => {IH1 IH2 H1 H2}.
+        case Hs1: (simplify_bexp2 e1); (case Hs2: (simplify_bexp2 e2) => //=);
+          by move=> -> ->.
+      + move=> e1 IH1 e2 IH2 /andP [H1 H2]. move: (IH1 H1) (IH2 H2) => {IH1 IH2 H1 H2}.
+        case Hs1: (simplify_bexp2 e1); (case Hs2: (simplify_bexp2 e2) => //=);
+          case_if; simpl; intros; rewrite_to_right; done.
+    (* simplify_exp_size *)
+    - elim: e => //=.
+      + move=> op e IH H. move: (IH H) => {IH H}.
+        case Hs: (simplify_exp e) => //=; intros; rewrite_to_left; try done.
+        case: op => //=.
+        * by rewrite size_invB.
+        * by rewrite size_negB.
+        * move=> *; by rewrite size_extract.
+        * move=> *; by rewrite size_high.
+        * move=> *; by rewrite size_low.
+        * move=> *; by rewrite size_zext.
+        * move=> *; by rewrite size_sext.
+        * move=> *; by rewrite size_repeat.
+        * move=> *; by rewrite size_rolB.
+        * move=> *; by rewrite size_rorB.
+      + move=> op e1 IH1 e2 IH2 /andP [/andP [/andP [H1 H2] Hsize1] Hsize2].
+        move: (IH1 H1) (IH2 H2) => {IH1 IH2 H1 H2}.
+        case Hs1: (simplify_exp e1); case Hs2: (simplify_exp e2); simpl; intros;
+          rewrite_to_left; try reflexivity.
+        case: op Hsize2 => Hsize2 //=.
+        * by rewrite size_andB.
+        * by rewrite size_orB.
+        * by rewrite size_xorB.
+        * by rewrite size_addB.
+        * by rewrite size_subB.
+        * by rewrite size_mulB.
+        * by rewrite size_udivB.
+        * by rewrite size_uremB.
+        * by rewrite size_sdivB.
+        * by rewrite size_sremB.
+        * rewrite size_smodB. rewrite size_sremB. case_if => //=.
+          rewrite IH1 IH2. rewrite (eqP Hsize2). rewrite minnn. reflexivity.
+        * by rewrite shlBB_shlB size_shlB.
+        * by rewrite shrBB_shrB size_shrB.
+        * by rewrite sarBB_sarB size_sarB.
+        * by rewrite size_cat addnC.
+      + move=> b e1 IH1 e2 IH2 /andP [/andP [/andP [Hb H1] H2] Hsize].
+        (case Hs: (simplify_bexp2 b) => //=);
+        rewrite ?(IH1 H1) ?(IH2 H2) !(eqP Hsize); reflexivity || by rewrite maxnn.
+  Qed.
+
+
+  (** String outputs *)
+
+  Definition string_of_eunop (op : eunop) : string :=
+    match op with
+    | Unot => "bvnot"
+    | Uneg => "bvneg"
+    | Uextr i j => "(_ extract " ++ string_of_nat i ++ " " ++ string_of_nat j ++ ")"
+    | Uhigh n => "(_ high " ++ string_of_nat n ++ ")"
+    | Ulow n => "(_ low " ++ string_of_nat n ++ ")"
+    | Uzext n => "(_ zero_extend " ++ string_of_nat n ++ ")"
+    | Usext n => "(_ sign_extend " ++ string_of_nat n ++ ")"
+    | Urepeat n => "(_ repeat " ++ string_of_nat n ++ ")"
+    | Urotl n => "(_ rotate_left " ++ string_of_nat n ++ ")"
+    | Urotr n => "(_ rotate_right " ++ string_of_nat n ++ ")"
     end.
 
-  Lemma simplify_bexp2_well_formed E e :
-    well_formed_bexp e E -> well_formed_bexp (simplify_bexp2 e) E.
-  Proof.
-    elim: e => //=.
-    - move=> e. by case Hsb: (simplify_bexp2 e) => //=.
-    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
-      (case Hse1: (simplify_bexp2 e1)); (case Hse2: (simplify_bexp2 e2));
-        (move => //=); intros; by mytac.
-    - move=> e1 IH1 e2 IH2. move: IH1 IH2.
-      (case Hse1: (simplify_bexp2 e1)); (case Hse2: (simplify_bexp2 e2));
-        (move => //=); intros; by mytac.
-  Qed.
+  Definition string_of_ebinop (op : ebinop) : string :=
+    match op with
+    | Band => "bvand"
+    | Bor => "bvor"
+    | Bxor => "bvxor"
+    | Badd => "bvadd"
+    | Bsub => "bvsub"
+    | Bmul => "bvmul"
+    | Bdiv => "bvdiv"
+    | Bmod => "bvurem"
+    | Bsdiv => "bvsdiv"
+    | Bsrem => "bvsrem"
+    | Bsmod => "bvsmod"
+    | Bshl => "bvshl"
+    | Blshr => "bvlshr"
+    | Bashr => "bvashr"
+    | Bconcat => "concat"
+    | Bcomp => "bvcomp"
+    end.
+
+  Definition string_of_bbinop (op : bbinop) : string :=
+    match op with
+    | Beq => "="
+    | Bult => "bvult"
+    | Bule => "bvule"
+    | Bugt => "bvugt"
+    | Buge => "bvuge"
+    | Bslt => "bvslt"
+    | Bsle => "bvsle"
+    | Bsgt => "bvsgt"
+    | Bsge => "bvsge"
+    | Buaddo => "bvuaddo"
+    | Busubo => "bvusubo"
+    | Bumulo => "bvumulo"
+    | Bsaddo => "bvsaddo"
+    | Bssubo => "bvssubo"
+    | Bsmulo => "bvsmulo"
+    end.
+
+  Fixpoint string_of_exp (e : exp) : string :=
+    match e with
+    | Evar v => VP.to_string v
+    | Econst bs => "0x" ++ to_hex bs
+    | Eunop op e => "(" ++ string_of_eunop op ++ " " ++ string_of_exp e ++ ")"
+    | Ebinop op e1 e2 => "(" ++ string_of_ebinop op ++ " " ++
+                           string_of_exp e1 ++ " " ++ string_of_exp e2 ++ ")"
+    | Eite b e1 e2 => "(ite " ++ string_of_bexp b ++ " " ++
+                        string_of_exp e1 ++ " " ++ string_of_exp e2 ++ ")"
+    end
+  with
+  string_of_bexp (e : bexp) : string :=
+    match e with
+    | Bfalse => "false"
+    | Btrue => "true"
+    | Bbinop op e1 e2 => "(" ++ string_of_bbinop op ++ " " ++
+                           string_of_exp e1 ++ " " ++ string_of_exp e2 ++ ")"
+    | Blneg e => "(not " ++ string_of_bexp e ++ ")"
+    | Bconj e1 e2 => "(and " ++ string_of_bexp e1 ++ " " ++ string_of_bexp e2 ++ ")"
+    | Bdisj e1 e2 => "(or " ++ string_of_bexp e1 ++ " " ++ string_of_bexp e2 ++ ")"
+    end.
 
 End MakeQFBV.
 
 
-Module QFBV := MakeQFBV SSAVarOrder SSAVS SSATE SSAStore.
+Module QFBV := MakeQFBV SSAVarOrder SSAVarOrderPrinter SSAVS SSATE SSAStore.
 Canonical eunop_eqType := Eval hnf in EqType QFBV.eunop QFBV.eunop_eqMixin.
 Canonical ebinop_eqType := Eval hnf in EqType QFBV.ebinop QFBV.ebinop_eqMixin.
 Canonical bbinop_eqType := Eval hnf in EqType QFBV.bbinop QFBV.bbinop_eqMixin.

@@ -1,4 +1,5 @@
 open Datatypes
+open Decimal
 
 module Nat =
  struct
@@ -13,6 +14,19 @@ module Nat =
   (** val compare : int -> int -> comparison **)
 
   let rec compare = fun n m -> if n=m then Eq else if n<m then Lt else Gt
+
+  (** val to_little_uint : int -> uint -> uint **)
+
+  let rec to_little_uint n acc =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> acc)
+      (fun n0 -> to_little_uint n0 (Little.succ acc))
+      n
+
+  (** val to_uint : int -> uint **)
+
+  let to_uint n =
+    rev (to_little_uint n (D0 Nil))
 
   (** val log2_iter : int -> int -> int -> int -> int **)
 
