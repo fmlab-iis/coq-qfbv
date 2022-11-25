@@ -1,8 +1,6 @@
 #!/bin/bash
 
 SWITCHES=" \
-	ocaml4.08.1-coq8.11.0-ssr1.10.0 \
-	ocaml4.11.2-coq8.12.2-ssr1.11.0 \
 	ocaml4.12.1-coq8.13.2-ssr1.12.0 \
 	ocaml4.13.1-coq8.14.1-ssr1.13.0 \
 	ocaml4.14.0-coq8.15.2-ssr1.14.0 \
