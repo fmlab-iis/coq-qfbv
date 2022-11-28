@@ -1,10 +1,11 @@
 #!/bin/bash
 
-SWITCHES=" \
+SWITCHES=${SWITCHES:- \
 	ocaml4.12.1-coq8.13.2-ssr1.12.0 \
 	ocaml4.13.1-coq8.14.1-ssr1.13.0 \
+	ocaml4.13.1-coq8.15.0-ssr1.14.0 \
 	ocaml4.14.0-coq8.15.2-ssr1.14.0 \
-"
+}
 
 BUILD_DIR=_build
 

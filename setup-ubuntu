@@ -1,5 +1,24 @@
 #!/bin/bash
 
+read -n 1 -p "Sudo is required for running this script.
+Do you have sudo installed? (y/n)? " answer
+case ${answer} in
+  n|N )
+    echo
+    echo
+    echo "Run the following command as root to install sudo and then"
+    echo "run this script again."
+    echo
+    echo "# apt install sudo"
+    echo
+    exit 1
+    ;;
+  * )
+    ;;
+esac
+echo
+echo
+
 inside_coqqfbv=no
 read -n 1 -p "Are you running this script inside CoqQFBV source code directory (y/n)? " answer
 case ${answer} in
@@ -48,6 +67,23 @@ esac
 echo
 echo
 
+
+if [[ "${install_grat}" == "yes" ]]; then
+  read -n 1 -p "MLton is required to compile GRAT but it is not included in Ubuntu
+22.04 LTS. Install MLton using this script (y/n)? " answer
+  case ${answer} in
+    y|Y )
+      install_mlton=yes
+      ;;
+    * )
+      install_mlton=no
+      ;;
+  esac
+  echo
+  echo
+fi
+
+
 compile_coq=no
 read -n 1 -p "Compilation of the Coq source code of CoqQFBV is not required
 for running the certified SMT QF_BV solver. It takes much more
@@ -76,6 +112,11 @@ if [[ "${install_grat}" == "yes" ]]; then
   echo "  to /usr/local/bin."
 else
   echo "* SAT solver certificate checking tool chain GRAT will not be installed."
+fi
+if [[ "${install_mlton}" == "yes" ]]; then
+  echo "* MLton will be installed to /usr/local/bin."
+else
+  echo "* MLton will not be installed."
 fi
 if [[ "${inside_coqqfbv}" == "yes" ]]; then
   echo "* Use the source code of CoqQFBV in ${PWD}."
@@ -109,9 +150,8 @@ fi
 echo "# Installing Ubuntu packages #"
 
 sudo apt -y install \
-	build-essential git ocaml ocaml-dune libzarith-ocaml-dev \
-	coq libssreflect-coq \
-	cmake mlton libboost-timer-dev
+	wget build-essential git ocaml ocaml-dune libzarith-ocaml-dev \
+	coq libcoq-mathcomp cmake libboost-timer-dev
 
 if [[ "${install_kissat}" == "yes" ]]; then
   echo "# Installing kissat to /usr/local/bin #"
@@ -125,6 +165,16 @@ if [[ "${install_kissat}" == "yes" ]]; then
   popd
   [[ -d "kissat-sc2020" ]] && rm -rf kissat-sc2020
   [[ -f "sc2020.tar.gz" ]] && rm -f sc2020.tar.gz
+fi
+
+if [[ "${install_mlton}" == "yes" ]]; then
+  wget https://github.com/MLton/mlton/releases/download/on-20210117-release/mlton-20210117-1.amd64-linux-glibc2.31.tgz
+  tar zxf mlton-20210117-1.amd64-linux-glibc2.31.tgz
+  pushd mlton-20210117-1.amd64-linux-glibc2.31
+  sudo make install
+  popd
+  [[ -d "mlton-20210117-1.amd64-linux-glibc2.31" ]] && rm -rf mlton-20210117-1.amd64-linux-glibc2.31
+  [[ -f "mlton-20210117-1.amd64-linux-glibc2.31.tgz" ]] && rm -f mlton-20210117-1.amd64-linux-glibc2.31.tgz
 fi
 
 if [[ "${install_grat}" == "yes" ]]; then
