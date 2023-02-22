@@ -198,3 +198,15 @@ Proof.
     move: (Hnew x _ Hfx) => Hnew_igxls.
     exact: (env_preserve_enc_bits (mk_env_var_preserve Henv) Hnew_igxls Henc).
 Qed.
+
+
+(* agree *)
+
+Lemma agree_bit_blast_var E1 E2 g v :
+  QFBV.MA.agree (SSAVS.singleton v) E1 E2 ->
+  bit_blast_var E1 g v = bit_blast_var E2 g v.
+Proof.
+  move=> Hag. rewrite /bit_blast_var. rewrite (QFBV.MA.agree_vsize_singleton Hag).
+  reflexivity.
+Qed.
+

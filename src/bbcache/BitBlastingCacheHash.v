@@ -2393,3 +2393,67 @@ Proof.
            (mapr hash_bexp es)) => [[[[[m c] g] cs] lrs] Hbb].
   move=> Hwf Hev. exact: (bit_blast_hbexps_hcache_conjs_sat_complete Hbb Hwf Hev).
 Qed.
+
+
+(* agree *)
+
+Lemma agree_bit_blast_exp_hcache E1 E2 m c g (e : hexp) :
+  QFBV.MA.agree (QFBV.vars_exp e) E1 E2 ->
+  bit_blast_exp_hcache E1 m c g e =
+    bit_blast_exp_hcache E2 m c g e
+with agree_bit_blast_bexp_hcache E1 E2 m c g (e : hbexp) :
+  QFBV.MA.agree (QFBV.vars_bexp e) E1 E2 ->
+  bit_blast_bexp_hcache E1 m c g e =
+    bit_blast_bexp_hcache E2 m c g e.
+Proof.
+  - (* agree_bit_blast_exp_hcache *)
+    case: e. case; simpl.
+    + move=> v z Hag. rewrite (agree_bit_blast_var _ Hag). reflexivity.
+    + reflexivity.
+    + move=> op e z Hag. rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ Hag).
+      reflexivity.
+    + move=> op e1 e2 z Hag.
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      dcase (bit_blast_exp_hcache E2 m c g e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_r Hag)).
+      reflexivity.
+    + move=> b e1 e2 z Hag.
+      rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      move: (QFBV.MA.agree_union_set_r Hag) => {} Hag.
+      dcase (bit_blast_bexp_hcache E2 m c g b) => [[[[[mb cb] gb] csb] lsb] Hbbb].
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      dcase (bit_blast_exp_hcache E2 mb cb gb e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_r Hag)).
+      reflexivity.
+  - (* agree_bit_blast_bexp_hcache *)
+    case: e. case; simpl.
+    + reflexivity.
+    + reflexivity.
+    + move=> op e1 e2 n Hag.
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      dcase (bit_blast_exp_hcache E2 m c g e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
+      rewrite (agree_bit_blast_exp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_r Hag)).
+      reflexivity.
+    + move=> e n Hag. rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ Hag).
+      reflexivity.
+    + move=> e1 e2 n Hag.
+      rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      dcase (bit_blast_bexp_hcache E2 m c g e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
+      rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_r Hag)).
+      reflexivity.
+    + move=> e1 e2 n Hag.
+      rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_l Hag)).
+      dcase (bit_blast_bexp_hcache E2 m c g e1) => [[[[[m1 c1] g1] cs1] ls1] Hbb1].
+      rewrite (agree_bit_blast_bexp_hcache _ _ _ _ _ _ (QFBV.MA.agree_union_set_r Hag)).
+      reflexivity.
+Qed.
+
+Lemma agree_bit_blast_bexp_hcache_tflatten E1 E2 m c g (e : hbexp) :
+  QFBV.MA.agree (QFBV.vars_bexp e) E1 E2 ->
+  bit_blast_bexp_hcache_tflatten E1 m c g e =
+    bit_blast_bexp_hcache_tflatten E2 m c g e.
+Proof.
+  rewrite /bit_blast_bexp_hcache_tflatten => Hag.
+  rewrite (agree_bit_blast_bexp_hcache _ _ _ Hag).
+  reflexivity.
+Qed.

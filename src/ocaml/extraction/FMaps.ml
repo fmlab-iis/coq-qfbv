@@ -2,6 +2,8 @@ open Bool
 open Datatypes
 open FMapFacts
 open FMapInterface
+open FSetInterface
+open FSets
 open Int0
 open List0
 open Nat0
@@ -52,7 +54,7 @@ module type SsrFMap =
  end
 
 module FMapLemmas =
- functor (M:S) ->
+ functor (M:FMapInterface.S) ->
  struct
   module F = Facts(M)
 
@@ -2757,4 +2759,14 @@ module MakeTreeMapWithNew =
     match Lemmas.max_key m with
     | Some k -> X.succ k
     | None -> X.default
+ end
+
+module MapAgree =
+ functor (E:OrderedType.OrderedType) ->
+ functor (M:FMapInterface.S with module E = E) ->
+ functor (S:S with module E = E) ->
+ struct
+  module VSLemmas = FSetLemmas(S)
+
+  module VMLemmas = FMapLemmas(M)
  end

@@ -2,7 +2,7 @@
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var SsrOrder ZAriths Tactics.
+From ssrlib Require Import Var SsrOrder ZAriths Tactics Seqs.
 From BitBlasting Require Import QFBV.
 
 Set Implicit Arguments.
@@ -1125,3 +1125,29 @@ End HbexpOrderMinimal.
 Module HexpOrder <: SsrOrder := MakeSsrOrder HexpOrderMinimal.
 Module HbexpOrder <: SsrOrder := MakeSsrOrder HbexpOrderMinimal.
 
+
+Section Vars.
+
+  Lemma vars_hash_exp e :
+    SSAVS.Equal (QFBV.vars_exp (hash_exp e)) (QFBV.vars_exp e)
+  with vars_hash_bexp e :
+    SSAVS.Equal (QFBV.vars_bexp (hash_bexp e)) (QFBV.vars_bexp e).
+  Proof.
+    - (* vars_hash_exp *)
+      case: e; simpl.
+      + move=> v; reflexivity.
+      + move=> _; reflexivity.
+      + move=> _ e. exact: vars_hash_exp.
+      + move=> _ e1 e2. rewrite (vars_hash_exp e1) (vars_hash_exp e2). reflexivity.
+      + move=> b e1 e2. rewrite (vars_hash_bexp b) (vars_hash_exp e1) (vars_hash_exp e2). reflexivity.
+    - (* vars_hash_bexp *)
+      case: e; simpl.
+      + reflexivity.
+      + reflexivity.
+      + move=> _ e1 e2. rewrite (vars_hash_exp e1) (vars_hash_exp e2). reflexivity.
+      + move=> b. rewrite (vars_hash_bexp b). reflexivity.
+      + move=> e1 e2. rewrite (vars_hash_bexp e1) (vars_hash_bexp e2). reflexivity.
+      + move=> e1 e2. rewrite (vars_hash_bexp e1) (vars_hash_bexp e2). reflexivity.
+  Qed.
+
+End Vars.

@@ -2,6 +2,8 @@ open Bool
 open Datatypes
 open FMapFacts
 open FMapInterface
+open FSetInterface
+open FSets
 open Int0
 open List0
 open Nat0
@@ -51,7 +53,7 @@ module type SsrFMap =
  end
 
 module FMapLemmas :
- functor (M:S) ->
+ functor (M:FMapInterface.S) ->
  sig
   module F :
    sig
@@ -5838,4 +5840,611 @@ module MakeTreeMapWithNew :
    end
 
   val new_key : 'a1 M.t -> M.key
+ end
+
+module MapAgree :
+ functor (E:OrderedType.OrderedType) ->
+ functor (M:FMapInterface.S with module E = E) ->
+ functor (S:S with module E = E) ->
+ sig
+  module VSLemmas :
+   sig
+    module F :
+     sig
+      val eqb : E.t -> E.t -> bool
+     end
+
+    module OP :
+     sig
+      module ME :
+       sig
+        module TO :
+         sig
+          type t = E.t
+         end
+
+        module IsTO :
+         sig
+         end
+
+        module OrderTac :
+         sig
+         end
+
+        val eq_dec : E.t -> E.t -> bool
+
+        val lt_dec : E.t -> E.t -> bool
+
+        val eqb : E.t -> E.t -> bool
+       end
+
+      module P :
+       sig
+        module Dec :
+         sig
+          module F :
+           sig
+            val eqb : E.t -> E.t -> bool
+           end
+
+          module FSetLogicalFacts :
+           sig
+           end
+
+          module FSetDecideAuxiliary :
+           sig
+           end
+
+          module FSetDecideTestCases :
+           sig
+           end
+         end
+
+        module FM :
+         sig
+          val eqb : E.t -> E.t -> bool
+         end
+
+        val coq_In_dec : S.elt -> S.t -> bool
+
+        val of_list : S.elt list -> S.t
+
+        val to_list : S.t -> S.elt list
+
+        val fold_rec :
+          (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> (S.t -> __ -> 'a2) -> (S.elt
+          -> 'a1 -> S.t -> S.t -> __ -> __ -> __ -> 'a2 -> 'a2) -> 'a2
+
+        val fold_rec_bis :
+          (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> (S.t -> S.t -> 'a1 -> __ ->
+          'a2 -> 'a2) -> 'a2 -> (S.elt -> 'a1 -> S.t -> __ -> __ -> 'a2 ->
+          'a2) -> 'a2
+
+        val fold_rec_nodep :
+          (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> 'a2 -> (S.elt -> 'a1 -> __
+          -> 'a2 -> 'a2) -> 'a2
+
+        val fold_rec_weak :
+          (S.elt -> 'a1 -> 'a1) -> 'a1 -> (S.t -> S.t -> 'a1 -> __ -> 'a2 ->
+          'a2) -> 'a2 -> (S.elt -> 'a1 -> S.t -> __ -> 'a2 -> 'a2) -> S.t ->
+          'a2
+
+        val fold_rel :
+          (S.elt -> 'a1 -> 'a1) -> (S.elt -> 'a2 -> 'a2) -> 'a1 -> 'a2 -> S.t
+          -> 'a3 -> (S.elt -> 'a1 -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3
+
+        val set_induction :
+          (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> S.elt -> __ -> __ ->
+          'a1) -> S.t -> 'a1
+
+        val set_induction_bis :
+          (S.t -> S.t -> __ -> 'a1 -> 'a1) -> 'a1 -> (S.elt -> S.t -> __ ->
+          'a1 -> 'a1) -> S.t -> 'a1
+
+        val cardinal_inv_2 : S.t -> int -> S.elt
+
+        val cardinal_inv_2b : S.t -> S.elt
+       end
+
+      val gtb : E.t -> E.t -> bool
+
+      val leb : E.t -> E.t -> bool
+
+      val elements_lt : E.t -> S.t -> E.t list
+
+      val elements_ge : E.t -> S.t -> E.t list
+
+      val set_induction_max :
+        (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> E.t -> __ -> __ -> 'a1)
+        -> S.t -> 'a1
+
+      val set_induction_min :
+        (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> E.t -> __ -> __ -> 'a1)
+        -> S.t -> 'a1
+     end
+
+    val eqb : E.t -> E.t -> bool
+
+    module ME :
+     sig
+      module TO :
+       sig
+        type t = E.t
+       end
+
+      module IsTO :
+       sig
+       end
+
+      module OrderTac :
+       sig
+       end
+
+      val eq_dec : E.t -> E.t -> bool
+
+      val lt_dec : E.t -> E.t -> bool
+
+      val eqb : E.t -> E.t -> bool
+     end
+
+    module P :
+     sig
+      module Dec :
+       sig
+        module F :
+         sig
+          val eqb : E.t -> E.t -> bool
+         end
+
+        module FSetLogicalFacts :
+         sig
+         end
+
+        module FSetDecideAuxiliary :
+         sig
+         end
+
+        module FSetDecideTestCases :
+         sig
+         end
+       end
+
+      module FM :
+       sig
+        val eqb : E.t -> E.t -> bool
+       end
+
+      val coq_In_dec : S.elt -> S.t -> bool
+
+      val of_list : S.elt list -> S.t
+
+      val to_list : S.t -> S.elt list
+
+      val fold_rec :
+        (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> (S.t -> __ -> 'a2) -> (S.elt
+        -> 'a1 -> S.t -> S.t -> __ -> __ -> __ -> 'a2 -> 'a2) -> 'a2
+
+      val fold_rec_bis :
+        (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> (S.t -> S.t -> 'a1 -> __ ->
+        'a2 -> 'a2) -> 'a2 -> (S.elt -> 'a1 -> S.t -> __ -> __ -> 'a2 -> 'a2)
+        -> 'a2
+
+      val fold_rec_nodep :
+        (S.elt -> 'a1 -> 'a1) -> 'a1 -> S.t -> 'a2 -> (S.elt -> 'a1 -> __ ->
+        'a2 -> 'a2) -> 'a2
+
+      val fold_rec_weak :
+        (S.elt -> 'a1 -> 'a1) -> 'a1 -> (S.t -> S.t -> 'a1 -> __ -> 'a2 ->
+        'a2) -> 'a2 -> (S.elt -> 'a1 -> S.t -> __ -> 'a2 -> 'a2) -> S.t -> 'a2
+
+      val fold_rel :
+        (S.elt -> 'a1 -> 'a1) -> (S.elt -> 'a2 -> 'a2) -> 'a1 -> 'a2 -> S.t
+        -> 'a3 -> (S.elt -> 'a1 -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3
+
+      val set_induction :
+        (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> S.elt -> __ -> __ -> 'a1)
+        -> S.t -> 'a1
+
+      val set_induction_bis :
+        (S.t -> S.t -> __ -> 'a1 -> 'a1) -> 'a1 -> (S.elt -> S.t -> __ -> 'a1
+        -> 'a1) -> S.t -> 'a1
+
+      val cardinal_inv_2 : S.t -> int -> S.elt
+
+      val cardinal_inv_2b : S.t -> S.elt
+     end
+
+    val gtb : E.t -> E.t -> bool
+
+    val leb : E.t -> E.t -> bool
+
+    val elements_lt : E.t -> S.t -> E.t list
+
+    val elements_ge : E.t -> S.t -> E.t list
+
+    val set_induction_max :
+      (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> E.t -> __ -> __ -> 'a1) ->
+      S.t -> 'a1
+
+    val set_induction_min :
+      (S.t -> __ -> 'a1) -> (S.t -> S.t -> 'a1 -> E.t -> __ -> __ -> 'a1) ->
+      S.t -> 'a1
+
+    val memP : S.elt -> S.t -> reflect
+
+    val equalP : S.t -> S.t -> reflect
+
+    val subsetP : S.t -> S.t -> reflect
+
+    val emptyP : S.t -> reflect
+
+    val disjoint : S.t -> S.t -> bool
+
+    val proper_subset : S.t -> S.t -> bool
+   end
+
+  module VMLemmas :
+   sig
+    module F :
+     sig
+      val eqb : E.t -> E.t -> bool
+
+      val coq_In_dec : 'a1 M.t -> M.key -> bool
+     end
+
+    module OP :
+     sig
+      module ME :
+       sig
+        module TO :
+         sig
+          type t = E.t
+         end
+
+        module IsTO :
+         sig
+         end
+
+        module OrderTac :
+         sig
+         end
+
+        val eq_dec : E.t -> E.t -> bool
+
+        val lt_dec : E.t -> E.t -> bool
+
+        val eqb : E.t -> E.t -> bool
+       end
+
+      module O :
+       sig
+        module MO :
+         sig
+          module TO :
+           sig
+            type t = E.t
+           end
+
+          module IsTO :
+           sig
+           end
+
+          module OrderTac :
+           sig
+           end
+
+          val eq_dec : E.t -> E.t -> bool
+
+          val lt_dec : E.t -> E.t -> bool
+
+          val eqb : E.t -> E.t -> bool
+         end
+       end
+
+      module P :
+       sig
+        module F :
+         sig
+          val eqb : E.t -> E.t -> bool
+
+          val coq_In_dec : 'a1 M.t -> M.key -> bool
+         end
+
+        val uncurry : ('a1 -> 'a2 -> 'a3) -> ('a1 * 'a2) -> 'a3
+
+        val of_list : (M.key * 'a1) list -> 'a1 M.t
+
+        val to_list : 'a1 M.t -> (M.key * 'a1) list
+
+        val fold_rec :
+          (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> ('a1 M.t -> __ ->
+          'a3) -> (M.key -> 'a1 -> 'a2 -> 'a1 M.t -> 'a1 M.t -> __ -> __ ->
+          __ -> 'a3 -> 'a3) -> 'a3
+
+        val fold_rec_bis :
+          (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> ('a1 M.t -> 'a1
+          M.t -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3 -> (M.key -> 'a1 -> 'a2 ->
+          'a1 M.t -> __ -> __ -> 'a3 -> 'a3) -> 'a3
+
+        val fold_rec_nodep :
+          (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> 'a3 -> (M.key ->
+          'a1 -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3
+
+        val fold_rec_weak :
+          (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> ('a1 M.t -> 'a1 M.t -> 'a2
+          -> __ -> 'a3 -> 'a3) -> 'a3 -> (M.key -> 'a1 -> 'a2 -> 'a1 M.t ->
+          __ -> 'a3 -> 'a3) -> 'a1 M.t -> 'a3
+
+        val fold_rel :
+          (M.key -> 'a1 -> 'a2 -> 'a2) -> (M.key -> 'a1 -> 'a3 -> 'a3) -> 'a2
+          -> 'a3 -> 'a1 M.t -> 'a4 -> (M.key -> 'a1 -> 'a2 -> 'a3 -> __ ->
+          'a4 -> 'a4) -> 'a4
+
+        val map_induction :
+          ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> M.key ->
+          'a1 -> __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+
+        val map_induction_bis :
+          ('a1 M.t -> 'a1 M.t -> __ -> 'a2 -> 'a2) -> 'a2 -> (M.key -> 'a1 ->
+          'a1 M.t -> __ -> 'a2 -> 'a2) -> 'a1 M.t -> 'a2
+
+        val cardinal_inv_2 : 'a1 M.t -> int -> (M.key * 'a1)
+
+        val cardinal_inv_2b : 'a1 M.t -> (M.key * 'a1)
+
+        val filter : (M.key -> 'a1 -> bool) -> 'a1 M.t -> 'a1 M.t
+
+        val for_all : (M.key -> 'a1 -> bool) -> 'a1 M.t -> bool
+
+        val exists_ : (M.key -> 'a1 -> bool) -> 'a1 M.t -> bool
+
+        val partition : (M.key -> 'a1 -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+
+        val update : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+        val restrict : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+        val diff : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+        val coq_Partition_In : 'a1 M.t -> 'a1 M.t -> 'a1 M.t -> M.key -> bool
+
+        val update_dec : 'a1 M.t -> 'a1 M.t -> M.key -> 'a1 -> bool
+
+        val filter_dom : (M.key -> bool) -> 'a1 M.t -> 'a1 M.t
+
+        val filter_range : ('a1 -> bool) -> 'a1 M.t -> 'a1 M.t
+
+        val for_all_dom : (M.key -> bool) -> 'a1 M.t -> bool
+
+        val for_all_range : ('a1 -> bool) -> 'a1 M.t -> bool
+
+        val exists_dom : (M.key -> bool) -> 'a1 M.t -> bool
+
+        val exists_range : ('a1 -> bool) -> 'a1 M.t -> bool
+
+        val partition_dom : (M.key -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+
+        val partition_range : ('a1 -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+       end
+
+      val gtb : (M.key * 'a1) -> (M.key * 'a1) -> bool
+
+      val leb : (M.key * 'a1) -> (M.key * 'a1) -> bool
+
+      val elements_lt : (M.key * 'a1) -> 'a1 M.t -> (M.key * 'a1) list
+
+      val elements_ge : (M.key * 'a1) -> 'a1 M.t -> (M.key * 'a1) list
+
+      val max_elt_aux : (M.key * 'a1) list -> (M.key * 'a1) option
+
+      val max_elt : 'a1 M.t -> (M.key * 'a1) option
+
+      val min_elt : 'a1 M.t -> (M.key * 'a1) option
+
+      val map_induction_max :
+        ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> E.t -> 'a1 ->
+        __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+
+      val map_induction_min :
+        ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> E.t -> 'a1 ->
+        __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+     end
+
+    val eqb : E.t -> E.t -> bool
+
+    val coq_In_dec : 'a1 M.t -> M.key -> bool
+
+    module ME :
+     sig
+      module TO :
+       sig
+        type t = E.t
+       end
+
+      module IsTO :
+       sig
+       end
+
+      module OrderTac :
+       sig
+       end
+
+      val eq_dec : E.t -> E.t -> bool
+
+      val lt_dec : E.t -> E.t -> bool
+
+      val eqb : E.t -> E.t -> bool
+     end
+
+    module O :
+     sig
+      module MO :
+       sig
+        module TO :
+         sig
+          type t = E.t
+         end
+
+        module IsTO :
+         sig
+         end
+
+        module OrderTac :
+         sig
+         end
+
+        val eq_dec : E.t -> E.t -> bool
+
+        val lt_dec : E.t -> E.t -> bool
+
+        val eqb : E.t -> E.t -> bool
+       end
+     end
+
+    module P :
+     sig
+      module F :
+       sig
+        val eqb : E.t -> E.t -> bool
+
+        val coq_In_dec : 'a1 M.t -> M.key -> bool
+       end
+
+      val uncurry : ('a1 -> 'a2 -> 'a3) -> ('a1 * 'a2) -> 'a3
+
+      val of_list : (M.key * 'a1) list -> 'a1 M.t
+
+      val to_list : 'a1 M.t -> (M.key * 'a1) list
+
+      val fold_rec :
+        (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> ('a1 M.t -> __ ->
+        'a3) -> (M.key -> 'a1 -> 'a2 -> 'a1 M.t -> 'a1 M.t -> __ -> __ -> __
+        -> 'a3 -> 'a3) -> 'a3
+
+      val fold_rec_bis :
+        (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> ('a1 M.t -> 'a1 M.t
+        -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3 -> (M.key -> 'a1 -> 'a2 -> 'a1 M.t
+        -> __ -> __ -> 'a3 -> 'a3) -> 'a3
+
+      val fold_rec_nodep :
+        (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> 'a1 M.t -> 'a3 -> (M.key ->
+        'a1 -> 'a2 -> __ -> 'a3 -> 'a3) -> 'a3
+
+      val fold_rec_weak :
+        (M.key -> 'a1 -> 'a2 -> 'a2) -> 'a2 -> ('a1 M.t -> 'a1 M.t -> 'a2 ->
+        __ -> 'a3 -> 'a3) -> 'a3 -> (M.key -> 'a1 -> 'a2 -> 'a1 M.t -> __ ->
+        'a3 -> 'a3) -> 'a1 M.t -> 'a3
+
+      val fold_rel :
+        (M.key -> 'a1 -> 'a2 -> 'a2) -> (M.key -> 'a1 -> 'a3 -> 'a3) -> 'a2
+        -> 'a3 -> 'a1 M.t -> 'a4 -> (M.key -> 'a1 -> 'a2 -> 'a3 -> __ -> 'a4
+        -> 'a4) -> 'a4
+
+      val map_induction :
+        ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> M.key -> 'a1
+        -> __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+
+      val map_induction_bis :
+        ('a1 M.t -> 'a1 M.t -> __ -> 'a2 -> 'a2) -> 'a2 -> (M.key -> 'a1 ->
+        'a1 M.t -> __ -> 'a2 -> 'a2) -> 'a1 M.t -> 'a2
+
+      val cardinal_inv_2 : 'a1 M.t -> int -> (M.key * 'a1)
+
+      val cardinal_inv_2b : 'a1 M.t -> (M.key * 'a1)
+
+      val filter : (M.key -> 'a1 -> bool) -> 'a1 M.t -> 'a1 M.t
+
+      val for_all : (M.key -> 'a1 -> bool) -> 'a1 M.t -> bool
+
+      val exists_ : (M.key -> 'a1 -> bool) -> 'a1 M.t -> bool
+
+      val partition : (M.key -> 'a1 -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+
+      val update : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+      val restrict : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+      val diff : 'a1 M.t -> 'a1 M.t -> 'a1 M.t
+
+      val coq_Partition_In : 'a1 M.t -> 'a1 M.t -> 'a1 M.t -> M.key -> bool
+
+      val update_dec : 'a1 M.t -> 'a1 M.t -> M.key -> 'a1 -> bool
+
+      val filter_dom : (M.key -> bool) -> 'a1 M.t -> 'a1 M.t
+
+      val filter_range : ('a1 -> bool) -> 'a1 M.t -> 'a1 M.t
+
+      val for_all_dom : (M.key -> bool) -> 'a1 M.t -> bool
+
+      val for_all_range : ('a1 -> bool) -> 'a1 M.t -> bool
+
+      val exists_dom : (M.key -> bool) -> 'a1 M.t -> bool
+
+      val exists_range : ('a1 -> bool) -> 'a1 M.t -> bool
+
+      val partition_dom : (M.key -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+
+      val partition_range : ('a1 -> bool) -> 'a1 M.t -> 'a1 M.t * 'a1 M.t
+     end
+
+    val gtb : (M.key * 'a1) -> (M.key * 'a1) -> bool
+
+    val leb : (M.key * 'a1) -> (M.key * 'a1) -> bool
+
+    val elements_lt : (M.key * 'a1) -> 'a1 M.t -> (M.key * 'a1) list
+
+    val elements_ge : (M.key * 'a1) -> 'a1 M.t -> (M.key * 'a1) list
+
+    val max_elt_aux : (M.key * 'a1) list -> (M.key * 'a1) option
+
+    val max_elt : 'a1 M.t -> (M.key * 'a1) option
+
+    val min_elt : 'a1 M.t -> (M.key * 'a1) option
+
+    val map_induction_max :
+      ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> E.t -> 'a1 ->
+      __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+
+    val map_induction_min :
+      ('a1 M.t -> __ -> 'a2) -> ('a1 M.t -> 'a1 M.t -> 'a2 -> E.t -> 'a1 ->
+      __ -> __ -> 'a2) -> 'a1 M.t -> 'a2
+
+    val memP : M.key -> 'a1 M.t -> reflect
+
+    val split : ('a1 * 'a2) M.t -> 'a1 M.t * 'a2 M.t
+
+    module EFacts :
+     sig
+      module TO :
+       sig
+        type t = E.t
+       end
+
+      module IsTO :
+       sig
+       end
+
+      module OrderTac :
+       sig
+       end
+
+      val eq_dec : E.t -> E.t -> bool
+
+      val lt_dec : E.t -> E.t -> bool
+
+      val eqb : E.t -> E.t -> bool
+     end
+
+    val max_opt : M.key -> M.key option -> M.key
+
+    val max_key_elements : (M.key * 'a1) list -> M.key option
+
+    val max_key : 'a1 M.t -> M.key option
+
+    val min_opt : M.key -> M.key option -> M.key
+
+    val min_key_elements : (M.key * 'a1) list -> M.key option
+
+    val min_key : 'a1 M.t -> M.key option
+   end
  end

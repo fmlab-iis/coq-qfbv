@@ -2,7 +2,7 @@
 From Coq Require Import OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype.
 From BitBlasting Require Import Typ.
-From ssrlib Require Import SsrOrder FMaps Tactics.
+From ssrlib Require Import SsrOrder FMaps Tactics FSets.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -181,3 +181,59 @@ From ssrlib Require Import Var.
 
 Module TE <: TypEnv := MakeTypEnv VarOrder VM.
 Module SSATE <: TypEnv := MakeTypEnv SSAVarOrder SSAVM.
+
+
+Module TypEnvAgree
+       (V : SsrOrder)
+       (TE : TypEnv with Module SE := V)
+       (VS : SsrFSet with Module SE := V).
+
+  Module MA := MapAgree V TE VS.
+  Include MA.
+
+  Lemma agree_mem v vs (E1 E2 : TE.env) :
+    agree vs E1 E2 -> VS.mem v vs -> TE.mem v E1 = TE.mem v E2.
+  Proof.
+    move=> Hag Hmem. move: (Hag _ Hmem).
+    rewrite VMLemmas.F.mem_find_b. move=> ->.
+    rewrite -VMLemmas.F.mem_find_b. reflexivity.
+  Qed.
+
+  Lemma agree_mem_singleton v (E1 E2 : TE.env) :
+    agree (VS.singleton v) E1 E2 -> TE.mem v E1 = TE.mem v E2.
+  Proof.
+    move=> Hag. apply: (agree_mem Hag). apply: VSLemmas.mem_singleton2.
+    exact: eqxx.
+  Qed.
+
+  Lemma agree_vtyp v vs (E1 E2 : TE.env) :
+    agree vs E1 E2 -> VS.mem v vs -> TE.vtyp v E1 = TE.vtyp v E2.
+  Proof.
+    move=> Hag Hmem. move: (Hag _ Hmem) => Hfind.
+    case Hf: (TE.find v E2).
+    - rewrite Hf in Hfind. rewrite (TE.find_some_vtyp Hf) (TE.find_some_vtyp Hfind).
+      reflexivity.
+    - rewrite Hf in Hfind. rewrite (TE.find_none_vtyp Hf) (TE.find_none_vtyp Hfind).
+      reflexivity.
+  Qed.
+
+  Lemma agree_vtyp_singleton v (E1 E2 : TE.env) :
+    agree (VS.singleton v) E1 E2 -> TE.vtyp v E1 = TE.vtyp v E2.
+  Proof.
+    move=> Hag. apply: (agree_vtyp Hag). apply: VSLemmas.mem_singleton2.
+    exact: eqxx.
+  Qed.
+
+  Lemma agree_vsize v vs (E1 E2 : TE.env) :
+    agree vs E1 E2 -> VS.mem v vs -> TE.vsize v E1 = TE.vsize v E2.
+  Proof.
+    move=> Hag Hmem. rewrite !TE.vtyp_vsize. rewrite (agree_vtyp Hag Hmem). reflexivity.
+  Qed.
+
+  Lemma agree_vsize_singleton v (E1 E2 : TE.env) :
+    agree (VS.singleton v) E1 E2 -> TE.vsize v E1 = TE.vsize v E2.
+  Proof.
+    move=> Hag. rewrite !TE.vtyp_vsize. rewrite (agree_vtyp_singleton Hag). reflexivity.
+  Qed.
+
+End TypEnvAgree.

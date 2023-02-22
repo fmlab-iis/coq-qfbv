@@ -572,6 +572,13 @@ Module MakeQFBV
     - rewrite IH. by VSLemmas.dp_Equal.
   Qed.
 
+  Lemma vars_bexps_rev es :
+    VS.Equal (vars_bexps (rev es)) (vars_bexps es).
+  Proof.
+    elim: es => [| e es IH] //=. rewrite rev_cons vars_bexps_rcons.
+    rewrite IH. rewrite VSLemmas.P.union_sym. reflexivity.
+  Qed.
+
 
   (* Ordering on expressions *)
 
@@ -1611,11 +1618,8 @@ Module MakeQFBV
       | Bdisj b1 b2 => well_formed_bexp b1 te && well_formed_bexp b2 te
       end.
 
-    Fixpoint well_formed_bexps (bs : seq bexp) (te : TE.env) : bool :=
-      match bs with
-      | [::] => true
-      | b :: bs' => well_formed_bexp b te && well_formed_bexps bs' te
-      end.
+    Definition well_formed_bexps (bs : seq bexp) (E : TE.env) : bool :=
+      all (well_formed_bexp^~E) bs.
 
     Lemma well_formed_bexps_cons E e es :
       well_formed_bexps (e::es) E = well_formed_bexp e E && well_formed_bexps es E.
@@ -1643,6 +1647,18 @@ Module MakeQFBV
     Proof.
       elim: es => [| e es IH] //=. rewrite rev_cons well_formed_bexps_rcons.
       rewrite IH andbC. reflexivity.
+    Qed.
+
+    Lemma well_formed_bexps_flatten E ess :
+      well_formed_bexps (flatten ess) E = all (well_formed_bexps^~E) ess.
+    Proof.
+      rewrite /well_formed_bexps /=. rewrite all_flatten. reflexivity.
+    Qed.
+
+    Lemma well_formed_bexps_tflatten E ess :
+      well_formed_bexps (tflatten ess) E = all (well_formed_bexps^~E) ess.
+    Proof.
+      rewrite /well_formed_bexps /=. rewrite all_tflatten. reflexivity.
     Qed.
 
     Lemma eval_exp_size e te s :
@@ -2125,6 +2141,50 @@ Module MakeQFBV
     rewrite -> Heq at 1. by rewrite IH.
   Qed.
 
+  Global Instance add_proper_exp_size : Proper (eq ==> TE.Equal ==> eq) exp_size.
+  Proof.
+    move=> e1 e2 ? E1 E2 Heq; subst. elim: e2 => //=.
+    - move=> v. rewrite Heq. reflexivity.
+    - move=> op e IH. rewrite IH. reflexivity.
+    - move=> op e1 IH1 e2 IH2. rewrite IH1 IH2. reflexivity.
+    - move=> _ e1 IH1 e2 IH2. rewrite IH1 IH2. reflexivity.
+  Qed.
+
+  Lemma well_formed_exp_env_equal E1 E2 e :
+    TE.Equal E1 E2 -> well_formed_exp e E1 = well_formed_exp e E2
+  with well_formed_bexp_env_equal E1 E2 e :
+    TE.Equal E1 E2 -> well_formed_bexp e E1 = well_formed_bexp e E2.
+  Proof.
+    - (* well_formed_exp_env_equal *)
+      case: e => //=.
+      + move=> v ->. reflexivity.
+      + move=> _ e Heq. rewrite (well_formed_exp_env_equal _ _ _ Heq). reflexivity.
+      + move=> op e1 e2 Heq. rewrite 2!(well_formed_exp_env_equal _ _ _ Heq).
+        rewrite Heq. reflexivity.
+      + move=> b e1 e2 Heq. rewrite (well_formed_bexp_env_equal _ _ _ Heq)
+                                    2!(well_formed_exp_env_equal _ _ _ Heq).
+        rewrite Heq. reflexivity.
+    - (* well_formed_bexp_env_equal *)
+      case: e => //=.
+      + move=> _ e1 e2 Heq. rewrite 2!(well_formed_exp_env_equal _ _ _ Heq).
+        rewrite Heq. reflexivity.
+      + move=> b Heq. rewrite (well_formed_bexp_env_equal _ _ _ Heq). reflexivity.
+      + move=> b1 b2 Heq. rewrite 2!(well_formed_bexp_env_equal _ _ _ Heq). reflexivity.
+      + move=> b1 b2 Heq. rewrite 2!(well_formed_bexp_env_equal _ _ _ Heq). reflexivity.
+  Qed.
+
+  Global Instance add_proper_well_formed_exp : Proper (eq ==> TE.Equal ==> eq) well_formed_exp.
+  Proof. move=> e1 e2 ? E1 E2 Heq; subst. exact: well_formed_exp_env_equal. Qed.
+
+  Global Instance add_proper_well_formed_bexp : Proper (eq ==> TE.Equal ==> eq) well_formed_bexp.
+  Proof. move=> e1 e2 ? E1 E2 Heq; subst. exact: well_formed_bexp_env_equal. Qed.
+
+  Global Instance add_proper_well_formed_bexps : Proper (eq ==> TE.Equal ==> eq) well_formed_bexps.
+  Proof.
+    move=> es1 es2 ? E1 E2 Heq; subst. elim: es2 => [| e es IH] //=.
+    rewrite IH Heq. reflexivity.
+  Qed.
+
 
   (* Check validity of a sequence of QFBV formulas *)
 
@@ -2169,6 +2229,40 @@ Module MakeQFBV
       + move=> s Hco. move: (H _ Hco). rewrite eval_bexps_cat. move/andP. tauto.
     - move=> [H1 H2] s Hco. rewrite eval_bexps_cat.
       apply/andP. move: (H1 _ Hco) (H2 _ Hco). tauto.
+  Qed.
+
+  Lemma valid_bexps_all E es :
+    valid_bexps E es <-> forall e, e \in es -> valid_bexp E e.
+  Proof.
+    elim: es => [| e es IH] //=. move: IH => [IH1 IH2]. split=> H.
+    - move/valid_bexps_cons: H => [He Hes]. move=> f. rewrite in_cons.
+      case/orP=> Hin.
+      + move/eqP: Hin => ?; subst. assumption.
+      + exact: (IH1 Hes _ Hin).
+    - apply/valid_bexps_cons. split.
+      + apply: H. exact: mem_head.
+      + apply: IH2. move=> f Hin. apply: H. by rewrite in_cons Hin orbT.
+  Qed.
+
+  Lemma valid_bexps_flatten E ess :
+    valid_bexps E (flatten ess) <-> forall es, es \in ess -> valid_bexps E es.
+  Proof.
+    elim: ess => [| es ess IH] //=. move: IH => [IH1 IH2]. split => H.
+    - move/valid_bexps_cat: H => [Hes Hess]. move=> fs. rewrite in_cons.
+      case/orP => Hin.
+      + move/eqP: Hin => ?; subst. assumption.
+      + exact: (IH1 Hess _ Hin).
+    - apply/valid_bexps_cat. split.
+      + apply: H. exact: mem_head.
+      + apply: IH2. move=> fs Hin. apply: H. by rewrite in_cons Hin orbT.
+  Qed.
+
+  Lemma valid_bexps_tflatten E ess :
+    valid_bexps E (tflatten ess) <-> forall es, es \in ess -> valid_bexps E es.
+  Proof.
+    rewrite tflatten_flatten. split => H.
+    - apply/valid_bexps_flatten. apply/valid_bexps_rev. assumption.
+    - apply/valid_bexps_rev. apply/valid_bexps_flatten. assumption.
   Qed.
 
 
@@ -2391,6 +2485,67 @@ Module MakeQFBV
                                     else Bdisj e1 e2
                         end
     end.
+
+  Lemma vars_simplify_exp e :
+    VS.subset (vars_exp (simplify_exp e)) (vars_exp e)
+  with vars_simplify_bexp2 e :
+    VS.subset (vars_bexp (simplify_bexp2 e)) (vars_bexp e).
+  Proof.
+    - (* simplify_exp_vars *)
+      case: e.
+      + move=> v /=. exact: VSLemmas.subset_refl.
+      + move=> _ /=. exact: VSLemmas.subset_refl.
+      + move=> op e /=. move: (vars_simplify_exp e).
+        dcase (simplify_exp e). case; simpl; intros; assumption.
+      + move=> op e1 e2 /=. move: (vars_simplify_exp e1) (vars_simplify_exp e2).
+        dcase (simplify_exp e1). case; simpl; intros.
+        * by VSLemmas.dp_subset.
+        * move: vars_simplify_exp1. dcase (simplify_exp e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+      + move=> b e1 e2 /=. move: (vars_simplify_bexp2 b) (vars_simplify_exp e1) (vars_simplify_exp e2).
+        dcase (simplify_bexp2 b). case; simpl; intros; by VSLemmas.dp_subset.
+    - (* simplify_bexp_vars *)
+      case: e.
+      + exact: VSLemmas.subset_refl.
+      + exact: VSLemmas.subset_refl.
+      + move=> op e1 e2 /=. move: (vars_simplify_exp e1) (vars_simplify_exp e2).
+        dcase (simplify_exp e1). case; simpl; intros.
+        * by VSLemmas.dp_subset.
+        * move: vars_simplify_exp1. dcase (simplify_exp e2).
+          case; simpl; intros; case_if; by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+      + move=> e /=. move: (vars_simplify_bexp2 e).
+        dcase (simplify_bexp2 e). case; simpl; intros; by VSLemmas.dp_subset.
+      + move=> e1 e2 /=. move: (vars_simplify_bexp2 e1) (vars_simplify_bexp2 e2).
+        dcase (simplify_bexp2 e1). case; simpl; intros.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+      + move=> e1 e2 /=. move: (vars_simplify_bexp2 e1) (vars_simplify_bexp2 e2).
+        dcase (simplify_bexp2 e1). case; simpl; intros.
+        * by VSLemmas.dp_subset.
+        * by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; case_if; simpl; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+        * move: vars_simplify_bexp1. dcase (simplify_bexp2 e2).
+          case; simpl; intros; by VSLemmas.dp_subset.
+  Qed.
 
   Lemma simplify_exp_eval s e :
     eval_exp (simplify_exp e) s = eval_exp e s
@@ -2615,6 +2770,74 @@ Module MakeQFBV
     | Bconj e1 e2 => "(and " ++ string_of_bexp e1 ++ " " ++ string_of_bexp e2 ++ ")"
     | Bdisj e1 e2 => "(or " ++ string_of_bexp e1 ++ " " ++ string_of_bexp e2 ++ ")"
     end.
+
+
+  (* Agree *)
+
+  Module MA := TypEnvAgree V TE VS.
+
+  Lemma agree_exp_size E1 E2 e :
+    MA.agree (vars_exp e) E1 E2 ->
+    exp_size e E1 = exp_size e E2.
+  Proof.
+    elim: e => //=.
+    - move=> v Hag. exact: (MA.agree_vsize_singleton Hag).
+    - move=> op e IH Hag. rewrite (IH Hag). reflexivity.
+    - move=> op e1 IH1 e2 IH2 Hag.
+      rewrite (IH1 (MA.agree_union_set_l Hag)) (IH2 (MA.agree_union_set_r Hag)).
+      reflexivity.
+    - move=> b e1 IH1 e2 IH2 Hag. move: (MA.agree_union_set_r Hag) => {}Hag.
+      rewrite (IH1 (MA.agree_union_set_l Hag)) (IH2 (MA.agree_union_set_r Hag)).
+      reflexivity.
+  Qed.
+
+  Lemma agree_well_formed_exp E1 E2 e :
+    MA.agree (vars_exp e) E1 E2 ->
+    well_formed_exp e E1 = well_formed_exp e E2
+  with agree_well_formed_bexp E1 E2 e :
+    MA.agree (vars_bexp e) E1 E2 ->
+    well_formed_bexp e E1 = well_formed_bexp e E2.
+  Proof.
+    - (* agree_well_formed_exp *)
+      case: e; simpl.
+      + move=> v Hag. exact: (MA.agree_mem_singleton Hag).
+      + done.
+      + move=> _ e Hag. exact: (agree_well_formed_exp _ _ _ Hag).
+      + move=> op e1 e2 Hag.
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_l Hag)).
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_r Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_l Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_r Hag)).
+        reflexivity.
+      + move=> b e1 e2 Hag.
+        rewrite (agree_well_formed_bexp _ _ _ (MA.agree_union_set_l Hag)).
+        move: (MA.agree_union_set_r Hag) => {}Hag.
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_l Hag)).
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_r Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_l Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_r Hag)).
+        reflexivity.
+    - (* agree_well_formed_bexp *)
+      case: e; simpl.
+      + done.
+      + done.
+      + move=> _ e1 e2 Hag.
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_l Hag)).
+        rewrite (agree_well_formed_exp _ _ _ (MA.agree_union_set_r Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_l Hag)).
+        rewrite (agree_exp_size (MA.agree_union_set_r Hag)).
+        reflexivity.
+      + move=> e Hag. rewrite (agree_well_formed_bexp _ _ _ Hag).
+        reflexivity.
+      + move=> e1 e2 Hag.
+        rewrite (agree_well_formed_bexp _ _ _ (MA.agree_union_set_l Hag)).
+        rewrite (agree_well_formed_bexp _ _ _ (MA.agree_union_set_r Hag)).
+        reflexivity.
+      + move=> e1 e2 Hag.
+        rewrite (agree_well_formed_bexp _ _ _ (MA.agree_union_set_l Hag)).
+        rewrite (agree_well_formed_bexp _ _ _ (MA.agree_union_set_r Hag)).
+        reflexivity.
+  Qed.
 
 End MakeQFBV.
 

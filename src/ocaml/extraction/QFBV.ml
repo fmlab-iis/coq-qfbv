@@ -1787,10 +1787,8 @@ module MakeQFBV =
 
   (** val well_formed_bexps : bexp list -> TE.env -> bool **)
 
-  let rec well_formed_bexps bs te =
-    match bs with
-    | [] -> true
-    | b :: bs' -> (&&) (well_formed_bexp b te) (well_formed_bexps bs' te)
+  let well_formed_bexps bs e =
+    all (fun x -> well_formed_bexp x e) bs
 
   (** val split_conj : bexp -> bexp list **)
 
@@ -2047,6 +2045,8 @@ module MakeQFBV =
     append ('('::('o'::('r'::(' '::[]))))
       (append (string_of_bexp e1)
         (append (' '::[]) (append (string_of_bexp e2) (')'::[]))))
+
+  module MA = TypEnv.TypEnvAgree(V)(TE)(VS)
  end
 
 module QFBV =
