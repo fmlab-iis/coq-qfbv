@@ -1,7 +1,7 @@
 open BinNums
 open BinPos
 open CNF
-open Var
+open EqVar
 
 (** val init_vm : word SSAVM.t **)
 

@@ -2,7 +2,7 @@
 From Coq Require Import Arith ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics.
+From ssrlib Require Import EqVar Types EqOrder Nats ZAriths Store EqFSets Tactics.
 From BitBlasting Require Import Typ TypEnv State QFBV CNF BBCommon.
 
 Set Implicit Arguments.

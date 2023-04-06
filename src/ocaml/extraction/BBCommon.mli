@@ -1,8 +1,8 @@
 open BinNums
 open BinPos
 open CNF
+open EqVar
 open NBitsOp
-open Var
 
 val cnf_lit_eq : literal -> literal -> literal list list
 

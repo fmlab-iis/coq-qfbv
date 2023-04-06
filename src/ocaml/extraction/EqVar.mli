@@ -2,12 +2,11 @@ open BinNat
 open BinNums
 open Bool
 open Datatypes
-open FMaps
-open FSets
+open EqFMaps
+open EqFSets
 open Int0
 open String0
 open Strings
-open ZAriths
 open Eqtype
 
 type __ = Obj.t

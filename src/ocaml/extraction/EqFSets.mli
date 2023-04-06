@@ -10,10 +10,10 @@ open Eqtype
 
 type __ = Obj.t
 
-module type SsrFSet =
+module type EqFSet =
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = SE.t
@@ -304,8 +304,8 @@ module FSetLemmas :
   val proper_subset : S.t -> S.t -> bool
  end
 
-module SsrFSetLemmas :
- functor (S:SsrFSet) ->
+module EqFSetLemmas :
+ functor (S:EqFSet) ->
  sig
   module F :
    sig
@@ -540,7 +540,7 @@ module SsrFSetLemmas :
  end
 
 module MakeTreeSet' :
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  sig
   module SE :
    sig
@@ -954,7 +954,7 @@ module MakeTreeSet' :
  end
 
 module MakeTreeSet :
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  sig
   module TS :
    sig
@@ -2025,7 +2025,7 @@ module MakeTreeSet :
  end
 
 module MakeElementGenerator :
- functor (X:SsrFSet) ->
+ functor (X:EqFSet) ->
  functor (D:sig
   val default : Equality.sort
  end) ->
@@ -2039,7 +2039,7 @@ module MakeElementGenerator :
  end
 
 module MakeTreeSetWithNew :
- functor (X:SsrOrder.SsrOrderWithDefaultSucc) ->
+ functor (X:EqOrder.EqOrderWithDefaultSucc) ->
  sig
   module S :
    sig

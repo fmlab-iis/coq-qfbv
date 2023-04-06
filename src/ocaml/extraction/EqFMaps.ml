@@ -1,9 +1,9 @@
 open Bool
 open Datatypes
+open EqFSets
 open FMapFacts
 open FMapInterface
 open FSetInterface
-open FSets
 open Int0
 open List0
 open Nat0
@@ -13,10 +13,10 @@ open Eqtype
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
-module type SsrFMap =
+module type EqFMap =
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = SE.t
@@ -187,7 +187,7 @@ module FMapLemmas =
  end
 
 module MakeTreeMap' =
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  struct
   module SE = X
 
@@ -2097,7 +2097,7 @@ module MakeTreeMap' =
  end
 
 module MakeTreeMap =
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  struct
   module M = MakeTreeMap'(X)
 
@@ -2205,7 +2205,7 @@ module MakeTreeMap =
  end
 
 module MakeTreeMapWithNew =
- functor (X:SsrOrder.SsrOrderWithDefaultSucc) ->
+ functor (X:EqOrder.EqOrderWithDefaultSucc) ->
  struct
   module M = MakeTreeMap'(X)
 

@@ -1,10 +1,10 @@
 open Bool
 open Datatypes
-open FMaps
-open FSets
+open EqFMaps
+open EqFSets
+open EqVar
 open List0
 open Typ
-open Var
 open Eqtype
 open Ssreflect
 
@@ -13,7 +13,7 @@ type __ = Obj.t
 module type TypEnv =
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = SE.t
@@ -433,11 +433,11 @@ module TypEnvLemmas :
  end
 
 module MakeTypEnv :
- functor (V:SsrOrder.SsrOrder) ->
- functor (VM:SsrFMap with module SE = V) ->
+ functor (V:EqOrder.EqOrder) ->
+ functor (VM:EqFMap with module SE = V) ->
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = VM.SE.t
@@ -857,7 +857,7 @@ module MakeTypEnv :
 module SSATE :
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = SSAVM.SE.t
@@ -1287,9 +1287,9 @@ module SSATE :
  end
 
 module TypEnvAgree :
- functor (V:SsrOrder.SsrOrder) ->
+ functor (V:EqOrder.EqOrder) ->
  functor (TE:TypEnv with module SE = V) ->
- functor (VS:SsrFSet with module SE = V) ->
+ functor (VS:EqFSet with module SE = V) ->
  sig
   module MA :
    sig

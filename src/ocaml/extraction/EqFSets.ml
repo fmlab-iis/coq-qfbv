@@ -11,10 +11,10 @@ open Eqtype
 type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
-module type SsrFSet =
+module type EqFSet =
  sig
   module SE :
-   SsrOrder.SsrOrder
+   EqOrder.EqOrder
 
   module E :
    OrderedType.OrderedType with type t = SE.t
@@ -161,8 +161,8 @@ module FSetLemmas =
     (&&) (S.subset s1 s2) (negb (S.equal s1 s2))
  end
 
-module SsrFSetLemmas =
- functor (S:SsrFSet) ->
+module EqFSetLemmas =
+ functor (S:EqFSet) ->
  struct
   module F =
    struct
@@ -450,7 +450,7 @@ module SsrFSetLemmas =
  end
 
 module MakeTreeSet' =
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  struct
   module SE = X
 
@@ -624,11 +624,11 @@ module MakeTreeSet' =
  end
 
 module MakeTreeSet =
- functor (X:SsrOrder.SsrOrder) ->
+ functor (X:EqOrder.EqOrder) ->
  struct
   module TS = MakeTreeSet'(X)
 
-  module Lemmas = SsrFSetLemmas(TS)
+  module Lemmas = EqFSetLemmas(TS)
 
   module SE = X
 
@@ -780,7 +780,7 @@ module MakeTreeSet =
  end
 
 module MakeElementGenerator =
- functor (X:SsrFSet) ->
+ functor (X:EqFSet) ->
  functor (D:sig
   val default : Equality.sort
  end) ->
@@ -799,7 +799,7 @@ module MakeElementGenerator =
  end
 
 module MakeTreeSetWithNew =
- functor (X:SsrOrder.SsrOrderWithDefaultSucc) ->
+ functor (X:EqOrder.EqOrderWithDefaultSucc) ->
  struct
   module S = MakeTreeSet(X)
 

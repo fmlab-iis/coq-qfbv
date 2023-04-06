@@ -1,9 +1,12 @@
+open BinNat
+open BinPos
 open Datatypes
+open ZAriths
 open Eqtype
 
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
-module type SsrOrderMinimal =
+module type EqOrderMinimal =
  sig
   val t : Equality.coq_type
 
@@ -15,7 +18,7 @@ module type SsrOrderMinimal =
     Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare
  end
 
-module type SsrOrder =
+module type EqOrder =
  sig
   val coq_T : Equality.coq_type
 
@@ -28,8 +31,8 @@ module type SsrOrder =
   val eq_dec : t -> t -> bool
  end
 
-module MakeSsrOrder =
- functor (M:SsrOrderMinimal) ->
+module MakeEqOrder =
+ functor (M:EqOrderMinimal) ->
  struct
   (** val coq_T : Equality.coq_type **)
 
@@ -56,7 +59,7 @@ module MakeSsrOrder =
     if eq_op coq_T x y then _evar_0_ __ else _evar_0_0 __
  end
 
-module type SsrOrderWithDefaultSucc =
+module type EqOrderWithDefaultSucc =
  sig
   val coq_T : Equality.coq_type
 
@@ -74,8 +77,8 @@ module type SsrOrderWithDefaultSucc =
  end
 
 module MakeProdOrderMinimal =
- functor (O1:SsrOrder) ->
- functor (O2:SsrOrder) ->
+ functor (O1:EqOrder) ->
+ functor (O2:EqOrder) ->
  struct
   (** val t : Equality.coq_type **)
 
@@ -122,12 +125,12 @@ module MakeProdOrderMinimal =
  end
 
 module MakeProdOrderWithDefaultSucc =
- functor (O1:SsrOrderWithDefaultSucc) ->
- functor (O2:SsrOrderWithDefaultSucc) ->
+ functor (O1:EqOrderWithDefaultSucc) ->
+ functor (O2:EqOrderWithDefaultSucc) ->
  struct
   module M = MakeProdOrderMinimal(O1)(O2)
 
-  module P = MakeSsrOrder(M)
+  module P = MakeEqOrder(M)
 
   (** val coq_T : Equality.coq_type **)
 
@@ -161,3 +164,67 @@ module MakeProdOrderWithDefaultSucc =
   let succ x =
     Obj.magic ((O1.succ (fst (Obj.magic x))), O2.default)
  end
+
+module PositiveOrderMinimal =
+ struct
+  (** val t : Equality.coq_type **)
+
+  let t =
+    pos_eqType
+
+  (** val eqn : Equality.sort -> Equality.sort -> bool **)
+
+  let eqn x y =
+    eq_op t x y
+
+  (** val ltn : Equality.sort -> Equality.sort -> bool **)
+
+  let ltn x y =
+    Pos.ltb (Obj.magic x) (Obj.magic y)
+
+  (** val compare :
+      Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare **)
+
+  let compare x y =
+    let _evar_0_ = fun _ -> OrderedType.EQ in
+    let _evar_0_0 = fun _ -> OrderedType.LT in
+    let _evar_0_1 = fun _ -> OrderedType.GT in
+    (match Pos.compare (Obj.magic x) (Obj.magic y) with
+     | Eq -> _evar_0_ __
+     | Lt -> _evar_0_0 __
+     | Gt -> _evar_0_1 __)
+ end
+
+module PositiveOrder = MakeEqOrder(PositiveOrderMinimal)
+
+module NOrderMinimal =
+ struct
+  (** val t : Equality.coq_type **)
+
+  let t =
+    coq_N_eqType
+
+  (** val eqn : Equality.sort -> Equality.sort -> bool **)
+
+  let eqn x y =
+    eq_op t x y
+
+  (** val ltn : Equality.sort -> Equality.sort -> bool **)
+
+  let ltn x y =
+    N.ltb (Obj.magic x) (Obj.magic y)
+
+  (** val compare :
+      Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare **)
+
+  let compare x y =
+    let _evar_0_ = fun _ -> OrderedType.EQ in
+    let _evar_0_0 = fun _ -> OrderedType.LT in
+    let _evar_0_1 = fun _ -> OrderedType.GT in
+    (match N.compare (Obj.magic x) (Obj.magic y) with
+     | Eq -> _evar_0_ __
+     | Lt -> _evar_0_0 __
+     | Gt -> _evar_0_1 __)
+ end
+
+module NOrder = MakeEqOrder(NOrderMinimal)

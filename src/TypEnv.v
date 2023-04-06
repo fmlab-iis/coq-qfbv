@@ -2,7 +2,7 @@
 From Coq Require Import OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype.
 From BitBlasting Require Import Typ.
-From ssrlib Require Import SsrOrder FMaps Tactics FSets.
+From ssrlib Require Import EqOrder EqFMaps Tactics EqFSets.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -10,9 +10,9 @@ Import Prenex Implicits.
 
 
 (* A typing environment is a map from a variable to its type *)
-Module Type TypEnv <: SsrFMap.
+Module Type TypEnv <: EqFMap.
 
-  Include SsrFMap.
+  Include EqFMap.
 
   Definition env : Type := t typ.
 
@@ -102,7 +102,7 @@ Module TypEnvLemmas (TE : TypEnv).
 End TypEnvLemmas.
 
 
-Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
+Module MakeTypEnv (V : EqOrder) (VM : EqFMap with Module SE := V) <:
   TypEnv with Module SE := V.
 
   Include VM.
@@ -177,16 +177,16 @@ Module MakeTypEnv (V : SsrOrder) (VM : SsrFMap with Module SE := V) <:
 
 End MakeTypEnv.
 
-From ssrlib Require Import Var.
+From ssrlib Require Import EqVar.
 
 Module TE <: TypEnv := MakeTypEnv VarOrder VM.
 Module SSATE <: TypEnv := MakeTypEnv SSAVarOrder SSAVM.
 
 
 Module TypEnvAgree
-       (V : SsrOrder)
+       (V : EqOrder)
        (TE : TypEnv with Module SE := V)
-       (VS : SsrFSet with Module SE := V).
+       (VS : EqFSet with Module SE := V).
 
   Module MA := MapAgree V TE VS.
   Include MA.

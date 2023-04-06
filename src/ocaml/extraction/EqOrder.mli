@@ -1,7 +1,10 @@
+open BinNat
+open BinPos
 open Datatypes
+open ZAriths
 open Eqtype
 
-module type SsrOrderMinimal =
+module type EqOrderMinimal =
  sig
   val t : Equality.coq_type
 
@@ -13,7 +16,7 @@ module type SsrOrderMinimal =
     Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare
  end
 
-module type SsrOrder =
+module type EqOrder =
  sig
   val coq_T : Equality.coq_type
 
@@ -26,8 +29,8 @@ module type SsrOrder =
   val eq_dec : t -> t -> bool
  end
 
-module MakeSsrOrder :
- functor (M:SsrOrderMinimal) ->
+module MakeEqOrder :
+ functor (M:EqOrderMinimal) ->
  sig
   val coq_T : Equality.coq_type
 
@@ -40,7 +43,7 @@ module MakeSsrOrder :
   val eq_dec : t -> t -> bool
  end
 
-module type SsrOrderWithDefaultSucc =
+module type EqOrderWithDefaultSucc =
  sig
   val coq_T : Equality.coq_type
 
@@ -58,8 +61,8 @@ module type SsrOrderWithDefaultSucc =
  end
 
 module MakeProdOrderMinimal :
- functor (O1:SsrOrder) ->
- functor (O2:SsrOrder) ->
+ functor (O1:EqOrder) ->
+ functor (O2:EqOrder) ->
  sig
   val t : Equality.coq_type
 
@@ -72,8 +75,8 @@ module MakeProdOrderMinimal :
  end
 
 module MakeProdOrderWithDefaultSucc :
- functor (O1:SsrOrderWithDefaultSucc) ->
- functor (O2:SsrOrderWithDefaultSucc) ->
+ functor (O1:EqOrderWithDefaultSucc) ->
+ functor (O2:EqOrderWithDefaultSucc) ->
  sig
   module M :
    sig
@@ -113,4 +116,54 @@ module MakeProdOrderWithDefaultSucc :
   val default : t
 
   val succ : t -> t
+ end
+
+module PositiveOrderMinimal :
+ sig
+  val t : Equality.coq_type
+
+  val eqn : Equality.sort -> Equality.sort -> bool
+
+  val ltn : Equality.sort -> Equality.sort -> bool
+
+  val compare :
+    Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare
+ end
+
+module PositiveOrder :
+ sig
+  val coq_T : Equality.coq_type
+
+  type t = Equality.sort
+
+  val ltn : t -> t -> bool
+
+  val compare : t -> t -> t OrderedType.coq_Compare
+
+  val eq_dec : t -> t -> bool
+ end
+
+module NOrderMinimal :
+ sig
+  val t : Equality.coq_type
+
+  val eqn : Equality.sort -> Equality.sort -> bool
+
+  val ltn : Equality.sort -> Equality.sort -> bool
+
+  val compare :
+    Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare
+ end
+
+module NOrder :
+ sig
+  val coq_T : Equality.coq_type
+
+  type t = Equality.sort
+
+  val ltn : t -> t -> bool
+
+  val compare : t -> t -> t OrderedType.coq_Compare
+
+  val eq_dec : t -> t -> bool
  end

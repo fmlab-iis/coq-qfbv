@@ -1,6 +1,6 @@
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import FMaps Var. 
+From ssrlib Require Import EqFMaps EqVar.
 From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
 From BBCache Require Import CompTable.
 
@@ -22,42 +22,42 @@ Definition empty : compcache :=
      ct := CompTable.empty |}.
 
 Definition find_het e c := CompTable.find_et e (ht c).
-Definition find_hbt e c := CompTable.find_bt e (ht c). 
-Definition find_cet e c := CompTable.find_et e (ct c). 
-Definition find_cbt e c := CompTable.find_bt e (ct c). 
+Definition find_hbt e c := CompTable.find_bt e (ht c).
+Definition find_cet e c := CompTable.find_et e (ct c).
+Definition find_cbt e c := CompTable.find_bt e (ct c).
 
-Lemma find_het_equation : 
+Lemma find_het_equation :
   forall e c, find_het e c = CompTable.find_et e (ht c).
 Proof. done. Qed.
 
-Lemma find_hbt_equation : 
+Lemma find_hbt_equation :
   forall e c, find_hbt e c = CompTable.find_bt e (ht c).
 Proof. done. Qed.
 
-Lemma find_cet_equation : 
+Lemma find_cet_equation :
   forall e c, find_cet e c = CompTable.find_et e (ct c).
 Proof. done. Qed.
 
-Lemma find_cbt_equation : 
+Lemma find_cbt_equation :
   forall e c, find_cbt e c = CompTable.find_bt e (ct c).
 Proof. done. Qed.
 
 
 (* ==== modification ==== *)
 
-Definition add_het e cs ls c := 
+Definition add_het e cs ls c :=
   {| ht := CompTable.add_et e cs ls (ht c);
      ct := ct c |}.
 
-Definition add_hbt e cs l c := 
+Definition add_hbt e cs l c :=
   {| ht := CompTable.add_bt e cs l (ht c);
      ct := ct c |}.
 
-Definition add_cet e cs ls c := 
+Definition add_cet e cs ls c :=
   {| ht := ht c;
      ct := CompTable.add_et e cs ls (ct c) |}.
 
-Definition add_cbt e cs l c := 
+Definition add_cbt e cs l c :=
   {| ht := ht c;
      ct := CompTable.add_bt e cs l (ct c) |}.
 
@@ -67,7 +67,7 @@ Definition reset_ct (c : compcache) :=
 
 Lemma add_het_cet_comm :
   forall c e1 cs1 ls1 e2 cs2 ls2,
-    add_het e1 cs1 ls1 (add_cet e2 cs2 ls2 c) 
+    add_het e1 cs1 ls1 (add_cet e2 cs2 ls2 c)
     = add_cet e2 cs2 ls2 (add_het e1 cs1 ls1 c).
 Proof.
   done.
@@ -75,7 +75,7 @@ Qed.
 
 Lemma add_het_cbt_comm :
   forall c e1 cs1 ls1 e2 cs2 l2,
-    add_het e1 cs1 ls1 (add_cbt e2 cs2 l2 c) 
+    add_het e1 cs1 ls1 (add_cbt e2 cs2 l2 c)
     = add_cbt e2 cs2 l2 (add_het e1 cs1 ls1 c).
 Proof.
   done.
@@ -83,7 +83,7 @@ Qed.
 
 Lemma add_hbt_cet_comm :
   forall c e1 cs1 l1 e2 cs2 ls2,
-    add_hbt e1 cs1 l1 (add_cet e2 cs2 ls2 c) 
+    add_hbt e1 cs1 l1 (add_cet e2 cs2 ls2 c)
     = add_cet e2 cs2 ls2 (add_hbt e1 cs1 l1 c).
 Proof.
   done.
@@ -91,7 +91,7 @@ Qed.
 
 Lemma add_hbt_cbt_comm :
   forall c e1 cs1 l1 e2 cs2 l2,
-    add_hbt e1 cs1 l1 (add_cbt e2 cs2 l2 c) 
+    add_hbt e1 cs1 l1 (add_cbt e2 cs2 l2 c)
     = add_cbt e2 cs2 l2 (add_hbt e1 cs1 l1 c).
 Proof.
   done.
@@ -100,14 +100,14 @@ Qed.
 Lemma find_het_add_het_eq :
   forall e cs ls c, find_het e (add_het e cs ls c) = Some (cs, ls).
 Proof.
-  move=> e cs ls c. rewrite /find_het /add_het /=. 
+  move=> e cs ls c. rewrite /find_het /add_het /=.
   by apply: CompTable.find_et_add_et_eq.
 Qed.
 
 Lemma find_het_add_het_neq :
   forall e0 e cs ls c, ~ e0 == e -> find_het e0 (add_het e cs ls c) = find_het e0 c.
 Proof.
-  move=> e0 e cs ls c. rewrite /find_het /add_het /=. 
+  move=> e0 e cs ls c. rewrite /find_het /add_het /=.
   by apply: CompTable.find_et_add_et_neq.
 Qed.
 
@@ -140,7 +140,7 @@ Qed.
 Lemma find_hbt_add_hbt_eq :
   forall e cs l c, find_hbt e (add_hbt e cs l c) = Some (cs, l).
 Proof.
-  move=> e cs l c. rewrite /find_hbt /add_hbt /=. 
+  move=> e cs l c. rewrite /find_hbt /add_hbt /=.
   by apply: CompTable.find_bt_add_bt_eq.
 Qed.
 
@@ -178,14 +178,14 @@ Qed.
 Lemma find_cet_add_cet_eq :
   forall e cs ls c, find_cet e (add_cet e cs ls c) = Some (cs, ls).
 Proof.
-  move=> e cs ls c. rewrite /find_cet /add_cet /=. 
+  move=> e cs ls c. rewrite /find_cet /add_cet /=.
   by apply: CompTable.find_et_add_et_eq.
 Qed.
 
 Lemma find_cet_add_cet_neq :
   forall e0 e cs ls c, ~ e0 == e -> find_cet e0 (add_cet e cs ls c) = find_cet e0 c.
 Proof.
-  move=> e0 e cs ls c. rewrite /find_cet /add_cet /=. 
+  move=> e0 e cs ls c. rewrite /find_cet /add_cet /=.
   by apply: CompTable.find_et_add_et_neq.
 Qed.
 
@@ -218,7 +218,7 @@ Qed.
 Lemma find_cbt_add_cbt_eq :
   forall e cs l c, find_cbt e (add_cbt e cs l c) = Some (cs, l).
 Proof.
-  move=> e cs l c. rewrite /find_cbt /add_cbt /=. 
+  move=> e cs l c. rewrite /find_cbt /add_cbt /=.
   by apply: CompTable.find_bt_add_bt_eq.
 Qed.
 
@@ -232,14 +232,14 @@ Qed.
 
 (* ==== well_formed ==== *)
 
-Definition well_formed (c : compcache) : Prop := 
+Definition well_formed (c : compcache) : Prop :=
   (forall e cs ls, find_cet e c = Some (cs, ls) -> find_het e c = Some (cs, ls))
   /\ forall e cs l, find_cbt e c = Some (cs, l) -> find_hbt e c = Some (cs, l).
 
 Lemma well_formed_find_cet :
   forall c e cs ls,
     well_formed c -> find_cet e c = Some (cs, ls) -> find_het e c = Some (cs, ls).
-Proof. 
+Proof.
   move=> c e cs ls [He Hb]. exact: He.
 Qed.
 
@@ -253,7 +253,7 @@ Qed.
 Lemma well_formed_add_cet :
   forall c e cs ls,
     well_formed c -> find_het e c = Some (cs, ls) -> well_formed (add_cet e cs ls c).
-Proof. 
+Proof.
   move=> c e1 cs1 ls1 Hwfc Hfhete1. split.
   - move=> e2 cs2 ls2. case Heq : (e2 == e1).
     + move/eqP: Heq => ->. rewrite find_cet_add_cet_eq. case=> <- <-.
@@ -286,9 +286,9 @@ Proof.
   - move=> e2 cs2 ls2. case Heq : (e2 == e1).
     + move/eqP: Heq => ->. rewrite find_cet_add_cet_eq. case=> <- <-.
       rewrite find_het_add_cet find_het_add_het_eq. done.
-    + move/negP: Heq => Hneq. 
+    + move/negP: Heq => Hneq.
       rewrite (find_cet_add_cet_neq _ _ _ Hneq) find_cet_add_het => Hfcete2.
-      rewrite find_het_add_cet (find_het_add_het_neq _ _ _ Hneq). 
+      rewrite find_het_add_cet (find_het_add_het_neq _ _ _ Hneq).
       exact: (well_formed_find_cet Hwfc Hfcete2).
   - move=> e2 cs2 l2. rewrite find_cbt_add_cet find_cbt_add_het.
     rewrite find_hbt_add_cet find_hbt_add_het.
@@ -306,25 +306,25 @@ Proof.
   - move=> e2 cs2 l2. case Heq : (e2 == e1).
     + move/eqP: Heq => ->. rewrite find_cbt_add_cbt_eq. case=> <- <-.
       rewrite find_hbt_add_cbt find_hbt_add_hbt_eq. done.
-    + move/negP: Heq => Hneq. 
+    + move/negP: Heq => Hneq.
       rewrite (find_cbt_add_cbt_neq _ _ _ Hneq) find_cbt_add_hbt => Hfcbte2.
-      rewrite find_hbt_add_cbt (find_hbt_add_hbt_neq _ _ _ Hneq). 
+      rewrite find_hbt_add_cbt (find_hbt_add_hbt_neq _ _ _ Hneq).
       exact: (well_formed_find_cbt Hwfc Hfcbte2).
 Qed.
 
 Lemma well_formed_reset_ct :
   forall c, well_formed (reset_ct c).
 Proof.
-  done. 
+  done.
 Qed.
 
 
 (* ==== interp_cache === *)
 
-Definition interp_cache_ct (E : env) (c : compcache) := 
+Definition interp_cache_ct (E : env) (c : compcache) :=
   CompTable.interp_table E (ct c).
 
-Definition interp_cache_ht (E : env) (c : compcache) := 
+Definition interp_cache_ht (E : env) (c : compcache) :=
   CompTable.interp_table E (ht c).
 
 Definition interp_cache := interp_cache_ht.
@@ -367,29 +367,29 @@ Qed.
 
 Lemma interp_cache_ct_add_het :
   forall E c e cs ls, interp_cache_ct E c <-> interp_cache_ct E (add_het e cs ls c).
-Proof. 
+Proof.
   done.
 Qed.
 
 Lemma interp_cache_ct_add_hbt :
   forall E c e cs l, interp_cache_ct E c <-> interp_cache_ct E (add_hbt e cs l c).
-Proof. 
-  done. 
+Proof.
+  done.
 Qed.
 
 Lemma interp_cache_ct_add_cet :
   forall E c e cs ls, interp_cache_ct E c -> interp_cnf E cs ->
                       interp_cache_ct E (add_cet e cs ls c).
-Proof. 
-  move=> E c e cs ls. rewrite /interp_cache_ct /=. 
+Proof.
+  move=> E c e cs ls. rewrite /interp_cache_ct /=.
   exact: CompTable.interp_table_add_et.
 Qed.
 
 Lemma interp_cache_ct_add_cbt :
   forall E c e cs l, interp_cache_ct E c -> interp_cnf E cs ->
                      interp_cache_ct E (add_cbt e cs l c).
-Proof. 
-  move=> E c e cs l. rewrite /interp_cache_ct /=. 
+Proof.
+  move=> E c e cs l. rewrite /interp_cache_ct /=.
   exact: CompTable.interp_table_add_bt.
 Qed.
 
@@ -403,7 +403,7 @@ Lemma interp_cache_add_het :
   forall E c e cs ls, interp_cache E c -> interp_cnf E cs ->
                       interp_cache E (add_het e cs ls c).
 Proof.
-  move=> E c e cs ls. rewrite /interp_cache /interp_cache_ht /=. 
+  move=> E c e cs ls. rewrite /interp_cache /interp_cache_ht /=.
   exact: CompTable.interp_table_add_et.
 Qed.
 
@@ -411,41 +411,41 @@ Lemma interp_cache_add_hbt :
   forall E c e cs l, interp_cache E c -> interp_cnf E cs ->
                      interp_cache E (add_hbt e cs l c).
 Proof.
-  move=> E c e cs l. rewrite /interp_cache /interp_cache_ht /=. 
+  move=> E c e cs l. rewrite /interp_cache /interp_cache_ht /=.
   exact: CompTable.interp_table_add_bt.
 Qed.
 
 Lemma interp_cache_add_cet :
   forall E c e cs ls, interp_cache E c <-> interp_cache E (add_cet e cs ls c).
 Proof.
-  move=> E c e cs ls. by rewrite /interp_cache. 
+  move=> E c e cs ls. by rewrite /interp_cache.
 Qed.
 
 Lemma interp_cache_add_cbt :
   forall E c e cs l, interp_cache E c <-> interp_cache E (add_cbt e cs l c).
 Proof.
-  move=> E c e cs ls. by rewrite /interp_cache. 
+  move=> E c e cs ls. by rewrite /interp_cache.
 Qed.
 
 Lemma interp_cache_reset_ct :
   forall E c, interp_cache E c <-> interp_cache E (reset_ct c).
-Proof. 
+Proof.
   done.
 Qed.
 
 
 (* ==== correct ==== *)
 
-Definition ht_enc_correct_exp e cs ls vm c := 
+Definition ht_enc_correct_exp e cs ls vm c :=
   CompTable.enc_correct_exp e cs ls vm (ht c).
 
-Definition ht_enc_correct_bexp e cs l vm c := 
+Definition ht_enc_correct_bexp e cs l vm c :=
   CompTable.enc_correct_bexp e cs l vm (ht c).
 
-Definition ct_enc_correct_exp e cs ls vm c := 
+Definition ct_enc_correct_exp e cs ls vm c :=
   CompTable.enc_correct_exp e cs ls vm (ct c).
 
-Definition ct_enc_correct_bexp e cs l vm c := 
+Definition ct_enc_correct_bexp e cs l vm c :=
   CompTable.enc_correct_bexp e cs l vm (ct c).
 
 Definition correct_ht (vm : vm) (c : compcache) := CompTable.correct vm (ht c).
@@ -481,7 +481,7 @@ Proof.
 Qed.
 
 Lemma correct_ht_add_het :
-  forall vm c e cs ls, 
+  forall vm c e cs ls,
     correct_ht vm c
     -> find_het e c = None
     -> ht_enc_correct_exp e cs ls vm c
@@ -492,7 +492,7 @@ Proof.
 Qed.
 
 Lemma correct_ht_add_hbt :
-  forall vm c e cs l, 
+  forall vm c e cs l,
     correct_ht vm c
     -> find_hbt e c = None
     -> ht_enc_correct_bexp e cs l vm c
@@ -505,29 +505,29 @@ Qed.
 Lemma correct_ht_add_cet :
   forall vm c e cs ls, correct_ht vm c <-> correct_ht vm (add_cet e cs ls c).
 Proof.
-  move=> vm c e cs ls. rewrite /correct_ht. done. 
+  move=> vm c e cs ls. rewrite /correct_ht. done.
 Qed.
 
 Lemma correct_ht_add_cbt :
   forall vm c e cs l, correct_ht vm c <-> correct_ht vm (add_cbt e cs l c).
 Proof.
-  move=> vm c e cs l. rewrite /correct_ht. done. 
+  move=> vm c e cs l. rewrite /correct_ht. done.
 Qed.
 
 Lemma correct_ct_add_het :
   forall vm c e cs ls, correct_ct vm c <-> correct_ct vm (add_het e cs ls c).
 Proof.
-  move=> vm c e cs ls. rewrite /correct_ct. done. 
+  move=> vm c e cs ls. rewrite /correct_ct. done.
 Qed.
 
 Lemma correct_ct_add_hbt :
   forall vm c e cs l, correct_ct vm c <-> correct_ct vm (add_hbt e cs l c).
 Proof.
-  move=> vm c e cs l. rewrite /correct_ct. done. 
+  move=> vm c e cs l. rewrite /correct_ct. done.
 Qed.
 
 Lemma correct_ct_add_cet :
-  forall vm c e cs ls, 
+  forall vm c e cs ls,
     correct_ct vm c
     -> find_cet e c = None
     -> ct_enc_correct_exp e cs ls vm c
@@ -538,7 +538,7 @@ Proof.
 Qed.
 
 Lemma correct_ct_add_cbt :
-  forall vm c e cs l, 
+  forall vm c e cs l,
     correct_ct vm c
     -> find_cbt e c = None
     -> ct_enc_correct_bexp e cs l vm c
@@ -549,7 +549,7 @@ Proof.
 Qed.
 
 Lemma correct_add_cet :
-  forall vm c e cs ls, 
+  forall vm c e cs ls,
     correct vm c
     -> find_cet e c = None
     -> ct_enc_correct_exp e cs ls vm c
@@ -561,7 +561,7 @@ Proof.
 Qed.
 
 Lemma correct_add_cet_het :
-  forall vm c e cs ls, 
+  forall vm c e cs ls,
     correct vm c
     -> find_cet e c = None
     -> find_het e c = None
@@ -569,13 +569,13 @@ Lemma correct_add_cet_het :
     -> ht_enc_correct_exp e cs ls vm c
     -> correct vm (add_cet e cs ls (add_het e cs ls c)).
 Proof.
-  move=> vm c e cs ls [Hctc Hhtc] Hfcet Hfhet Hctenc Hhtenc. split. 
+  move=> vm c e cs ls [Hctc Hhtc] Hfcet Hfhet Hctenc Hhtenc. split.
   - rewrite -correct_ht_add_cet. by apply correct_ht_add_het.
-  - rewrite -add_het_cet_comm -correct_ct_add_het. by apply correct_ct_add_cet. 
+  - rewrite -add_het_cet_comm -correct_ct_add_het. by apply correct_ct_add_cet.
 Qed.
 
 Lemma correct_add_cbt :
-  forall vm c e cs l, 
+  forall vm c e cs l,
     correct vm c
     -> find_cbt e c = None
     -> ct_enc_correct_bexp e cs l vm c
@@ -587,7 +587,7 @@ Proof.
 Qed.
 
 Lemma correct_add_cbt_hbt :
-  forall vm c e cs l, 
+  forall vm c e cs l,
     correct vm c
     -> find_cbt e c = None
     -> find_hbt e c = None
@@ -595,9 +595,9 @@ Lemma correct_add_cbt_hbt :
     -> ht_enc_correct_bexp e cs l vm c
     -> correct vm (add_cbt e cs l (add_hbt e cs l c)).
 Proof.
-  move=> vm c e cs l [Hctc Hhtc] Hfcbt Hfhbt Hctenc Hhtenc. split. 
+  move=> vm c e cs l [Hctc Hhtc] Hfcbt Hfhbt Hctenc Hhtenc. split.
   - rewrite -correct_ht_add_cbt. by apply correct_ht_add_hbt.
-  - rewrite -add_hbt_cbt_comm -correct_ct_add_hbt. by apply correct_ct_add_cbt. 
+  - rewrite -add_hbt_cbt_comm -correct_ct_add_hbt. by apply correct_ct_add_cbt.
 Qed.
 
 Lemma correct_reset_ct :
@@ -609,14 +609,14 @@ Qed.
 Lemma vm_preserve_correct :
   forall m m' c, vm_preserve m m' -> correct m c -> correct m' c.
 Proof.
-  move=> m m' c Hpre [Hht Hct]. 
+  move=> m m' c Hpre [Hht Hct].
   split; by apply (@CompTable.vm_preserve_correct m).
 Qed.
 
 Lemma interp_cache_ct_find_cet_some_correct :
   forall m E s c e cs ls te,
     consistent m E s -> interp_lit E lit_tt
-    -> interp_cache_ct E c -> find_cet e c = Some (cs, ls) 
+    -> interp_cache_ct E c -> find_cet e c = Some (cs, ls)
     -> QFBV.well_formed_exp e te -> conform_exp e s te
     -> correct m c -> enc_bits E ls (QFBV.eval_exp e s).
 Proof.
@@ -628,7 +628,7 @@ Qed.
 Lemma interp_cache_ct_find_cbt_some_correct :
   forall m E s c e cs l te,
     consistent m E s -> interp_lit E lit_tt
-    -> interp_cache_ct E c -> find_cbt e c = Some (cs, l) 
+    -> interp_cache_ct E c -> find_cbt e c = Some (cs, l)
     -> QFBV.well_formed_bexp e te -> conform_bexp e s te
     -> correct m c -> enc_bit E l (QFBV.eval_bexp e s).
 Proof.
@@ -654,7 +654,7 @@ Qed.
 
 Lemma newer_than_ct_find_cet :
   forall g c e cs ls,
-    newer_than_ct g c -> find_cet e c = Some (cs, ls) 
+    newer_than_ct g c -> find_cet e c = Some (cs, ls)
     -> newer_than_cnf g cs /\ newer_than_lits g ls.
 Proof.
   move=> g c e cs ls. exact: CompTable.newer_than_table_find_et.
@@ -662,15 +662,15 @@ Qed.
 
 Lemma newer_than_ct_find_cbt :
   forall g c e cs l,
-    newer_than_ct g c -> find_cbt e c = Some (cs, l) 
+    newer_than_ct g c -> find_cbt e c = Some (cs, l)
     -> newer_than_cnf g cs /\ newer_than_lit g l.
-Proof. 
+Proof.
   move=> g c e cs l. exact: CompTable.newer_than_table_find_bt.
 Qed.
 
 Lemma newer_than_cache_find_het :
   forall g c e cs ls,
-    newer_than_cache g c -> find_het e c = Some (cs, ls) 
+    newer_than_cache g c -> find_het e c = Some (cs, ls)
     -> newer_than_cnf g cs /\ newer_than_lits g ls.
 Proof.
   move=> g c e cs ls. exact: CompTable.newer_than_table_find_et.
@@ -678,37 +678,37 @@ Qed.
 
 Lemma newer_than_cache_find_hbt :
   forall g c e cs l,
-    newer_than_cache g c -> find_hbt e c = Some (cs, l) 
+    newer_than_cache g c -> find_hbt e c = Some (cs, l)
     -> newer_than_cnf g cs /\ newer_than_lit g l.
 Proof.
   move=> g c e cs l. exact: CompTable.newer_than_table_find_bt.
 Qed.
 
 Lemma newer_than_cache_add_het :
-  forall g c e cs ls, 
-    newer_than_cache g c -> newer_than_cnf g cs -> newer_than_lits g ls 
+  forall g c e cs ls,
+    newer_than_cache g c -> newer_than_cnf g cs -> newer_than_lits g ls
     -> newer_than_cache g (add_het e cs ls c).
-Proof. 
+Proof.
   move=> g c e cs ls. exact: CompTable.newer_than_table_add_et.
 Qed.
 
 Lemma newer_than_cache_add_hbt :
-  forall g c e cs l, 
-    newer_than_cache g c -> newer_than_cnf g cs -> newer_than_lit g l 
+  forall g c e cs l,
+    newer_than_cache g c -> newer_than_cnf g cs -> newer_than_lit g l
     -> newer_than_cache g (add_hbt e cs l c).
 Proof.
   move=> g c e cs l. exact: CompTable.newer_than_table_add_bt.
 Qed.
 
 Lemma newer_than_cache_add_cet :
-  forall g c e cs ls, 
+  forall g c e cs ls,
     newer_than_cache g c <-> newer_than_cache g (add_cet e cs ls c).
 Proof.
   done.
 Qed.
 
 Lemma newer_than_cache_add_cbt :
-  forall g c e cs l, 
+  forall g c e cs l,
     newer_than_cache g c <-> newer_than_cache g (add_cbt e cs l c).
 Proof.
   done.
@@ -716,24 +716,24 @@ Qed.
 
 Lemma newer_than_cache_reset_ct :
   forall g c, newer_than_cache g c <-> newer_than_cache g (reset_ct c).
-Proof. 
+Proof.
   done.
 Qed.
 
 Lemma newer_than_cache_le_newer g g' c :
   newer_than_cache g c -> (g <=? g')%positive -> newer_than_cache g' c.
-Proof. 
+Proof.
   exact: CompTable.newer_than_table_le_newer.
 Qed.
 
-Lemma env_preserve_interp_cache : 
+Lemma env_preserve_interp_cache :
   forall E E' g c,
     env_preserve E E' g -> newer_than_cache g c ->
     interp_cache E' c <-> interp_cache E c.
 Proof.
-  move=> E E' g c. rewrite /interp_cache /newer_than_cache /=. 
+  move=> E E' g c. rewrite /interp_cache /newer_than_cache /=.
   by apply: CompTable.env_preserve_interp_table.
-Qed.    
+Qed.
 
 
 (* ==== bound by vm ==== *)
@@ -751,30 +751,30 @@ Proof.
 Qed.
 
 Lemma bound_ct_find_cet :
-  forall c m e cs ls, 
+  forall c m e cs ls,
     bound_ct c m -> find_cet e c = Some (cs, ls) -> bound_exp e m.
-Proof. 
+Proof.
   move=> c m e cs ls. exact: CompTable.bound_find_et.
 Qed.
 
 Lemma bound_ct_find_cbt :
-  forall c m e cs l, 
+  forall c m e cs l,
     bound_ct c m -> find_cbt e c = Some (cs, l) -> bound_bexp e m.
 Proof.
   move=> c m e cs l. exact: CompTable.bound_find_bt.
 Qed.
 
 Lemma bound_find_het :
-  forall c m e cs ls, 
+  forall c m e cs ls,
     bound c m -> find_het e c = Some (cs, ls) -> bound_exp e m.
 Proof.
   move=> c m e cs ls. exact: CompTable.bound_find_et.
 Qed.
 
 Lemma bound_find_hbt :
-  forall c m e cs l, 
+  forall c m e cs l,
     bound c m -> find_hbt e c = Some (cs, l) -> bound_bexp e m.
-Proof.  
+Proof.
   move=> c m e cs l. exact: CompTable.bound_find_bt.
 Qed.
 
@@ -827,15 +827,15 @@ Qed.
 
 Lemma preserve_trans :
   forall c1 c2 c3, preserve c1 c2 -> preserve c2 c3 -> preserve c1 c3.
-Proof. 
-  move=> c1 c2 c3 [Hpct12 Hpht12] [Hpct23 Hpht23]. split. 
+Proof.
+  move=> c1 c2 c3 [Hpct12 Hpht12] [Hpct23 Hpht23]. split.
   - by apply (CompTable.preserve_trans Hpct12).
   - by apply (CompTable.preserve_trans Hpht12).
 Qed.
 
 Lemma preserve_find_het :
   forall c c' e cs ls,
-    preserve c c' -> 
+    preserve c c' ->
     find_het e c = Some (cs, ls) -> find_het e c' = Some (cs, ls).
 Proof.
   move=> c c' e cs ls [Hprect Hpreht]. exact: CompTable.preserve_find_et.
@@ -843,7 +843,7 @@ Qed.
 
 Lemma preserve_find_hbt :
   forall c c' e cs l,
-    preserve c c' -> 
+    preserve c c' ->
     find_hbt e c = Some (cs, l) -> find_hbt e c' = Some (cs, l).
 Proof.
   move=> c c' e cs l [Hprect Hpreht]. exact: CompTable.preserve_find_bt.
@@ -851,7 +851,7 @@ Qed.
 
 Lemma preserve_find_cet :
   forall c c' e cs ls,
-    preserve c c' -> 
+    preserve c c' ->
     find_cet e c = Some (cs, ls) -> find_cet e c' = Some (cs, ls).
 Proof.
   move=> c c' e cs ls [Hprect Hpreht]. exact: CompTable.preserve_find_et.
@@ -859,7 +859,7 @@ Qed.
 
 Lemma preserve_find_cbt :
   forall c c' e cs l,
-    preserve c c' -> 
+    preserve c c' ->
     find_cbt e c = Some (cs, l) -> find_cbt e c' = Some (cs, l).
 Proof.
   move=> c c' e cs l [Hprect Hpreht]. exact: CompTable.preserve_find_bt.
@@ -868,8 +868,8 @@ Qed.
 Lemma preserve_add_het :
   forall c1 c2 e cs ls,
     preserve c1 c2 -> find_het e c2 = None -> preserve c1 (add_het e cs ls c2).
-Proof. 
-  move=> c1 c2 e cs ls [Hpct Hpht] Hfe. 
+Proof.
+  move=> c1 c2 e cs ls [Hpct Hpht] Hfe.
   split; rewrite /=; [ done | exact: CompTable.preserve_add_et ].
 Qed.
 
@@ -877,15 +877,15 @@ Lemma preserve_add_hbt :
   forall c1 c2 e cs l,
     preserve c1 c2 -> find_hbt e c2 = None -> preserve c1 (add_hbt e cs l c2).
 Proof.
-  move=> c1 c2 e cs l [Hpct Hpht] Hfe. 
+  move=> c1 c2 e cs l [Hpct Hpht] Hfe.
   split; rewrite /=; [ done | exact: CompTable.preserve_add_bt ].
 Qed.
 
 Lemma preserve_add_cet :
   forall c1 c2 e cs ls,
     preserve c1 c2 -> find_cet e c2 = None -> preserve c1 (add_cet e cs ls c2).
-Proof. 
-  move=> c1 c2 e cs ls [Hpct Hpht] Hfe. 
+Proof.
+  move=> c1 c2 e cs ls [Hpct Hpht] Hfe.
   split; rewrite /=; [ exact: CompTable.preserve_add_et | done ].
 Qed.
 
@@ -893,6 +893,6 @@ Lemma preserve_add_cbt :
   forall c1 c2 e cs l,
     preserve c1 c2 -> find_cbt e c2 = None -> preserve c1 (add_cbt e cs l c2).
 Proof.
-  move=> c1 c2 e cs l [Hpct Hpht] Hfe. 
+  move=> c1 c2 e cs l [Hpct Hpht] Hfe.
   split; rewrite /=; [ exact: CompTable.preserve_add_bt | done ].
 Qed.

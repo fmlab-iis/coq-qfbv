@@ -1,7 +1,7 @@
 
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import Var FMaps.
+From ssrlib Require Import EqVar EqFMaps.
 From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
 From BBCache Require Import QFBVHash CompTableFlatten.
 
@@ -10,8 +10,8 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 
-Module HexpMap <: SsrFMap := FMaps.MakeTreeMap HexpOrder.
-Module HbexpMap <: SsrFMap := FMaps.MakeTreeMap HbexpOrder.
+Module HexpMap <: EqFMap := EqFMaps.MakeTreeMap HexpOrder.
+Module HbexpMap <: EqFMap := EqFMaps.MakeTreeMap HbexpOrder.
 
 Definition expm := HexpMap.t (seq cnf * word).
 Definition bexpm := HbexpMap.t (seq cnf * literal).

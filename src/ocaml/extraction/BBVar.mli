@@ -1,6 +1,6 @@
 open BBCommon
 open CNF
-open Var
+open EqVar
 
 val bit_blast_var' : generator -> int -> generator * word
 

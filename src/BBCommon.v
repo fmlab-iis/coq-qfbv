@@ -2,7 +2,7 @@
 From Coq Require Import List ZArith.
 From mathcomp Require Import ssreflect ssrnat ssrbool eqtype seq tuple.
 From BitBlasting Require Import State QFBV CNF.
-From ssrlib Require Import Var SsrOrder ZAriths Tactics.
+From ssrlib Require Import EqVar EqOrder ZAriths Tactics.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -1,15 +1,15 @@
 open BinNums
 open Bool
 open Datatypes
-open FMaps
-open FSets
+open EqFMaps
+open EqFSets
+open EqVar
 open NBitsDef
 open NBitsOp
 open State
 open String0
 open Strings
 open Typ
-open Var
 open Eqtype
 open Seq
 open Ssrbool
@@ -19,9 +19,9 @@ type __ = Obj.t
 let __ = let rec f _ = Obj.repr f in Obj.repr f
 
 module MakeQFBV =
- functor (V:SsrOrder.SsrOrder) ->
+ functor (V:EqOrder.EqOrder) ->
  functor (VP:Printer with type t = V.t) ->
- functor (VS:SsrFSet with module SE = V) ->
+ functor (VS:EqFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
   type t
@@ -1636,7 +1636,7 @@ module MakeQFBV =
       Obj.magic exp_compare e1 e2
    end
 
-  module ExpOrder = SsrOrder.MakeSsrOrder(ExpOrderMinimal)
+  module ExpOrder = EqOrder.MakeEqOrder(ExpOrderMinimal)
 
   module BexpOrderMinimal =
    struct
@@ -1663,7 +1663,7 @@ module MakeQFBV =
       Obj.magic bexp_compare e1 e2
    end
 
-  module BexpOrder = SsrOrder.MakeSsrOrder(BexpOrderMinimal)
+  module BexpOrder = EqOrder.MakeEqOrder(BexpOrderMinimal)
 
   (** val len_exp : exp -> int **)
 

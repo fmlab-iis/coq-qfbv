@@ -3,9 +3,9 @@ open BinNat
 open BinNums
 open Bool
 open Datatypes
+open EqVar
 open NBitsDef
 open NBitsOp
-open Var
 open ZAriths
 open Eqtype
 open Seq

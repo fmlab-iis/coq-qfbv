@@ -4,7 +4,7 @@ open BinPos
 open Bool
 open Datatypes
 open DecimalString
-open FSets
+open EqFSets
 open Int0
 open NBitsDef
 open String0

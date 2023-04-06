@@ -3,9 +3,9 @@ open BinNat
 open BinNums
 open Bool
 open Datatypes
+open EqVar
 open NBitsDef
 open NBitsOp
-open Var
 open ZAriths
 open Eqtype
 open Seq
@@ -800,6 +800,6 @@ module HbexpOrderMinimal =
     Obj.magic hbexp_compare x y
  end
 
-module HexpOrder = SsrOrder.MakeSsrOrder(HexpOrderMinimal)
+module HexpOrder = EqOrder.MakeEqOrder(HexpOrderMinimal)
 
-module HbexpOrder = SsrOrder.MakeSsrOrder(HbexpOrderMinimal)
+module HbexpOrder = EqOrder.MakeEqOrder(HbexpOrderMinimal)

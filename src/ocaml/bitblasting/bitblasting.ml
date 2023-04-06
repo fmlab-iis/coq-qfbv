@@ -4,7 +4,7 @@ open Extraction.Datatypes
 open Extraction.BinNums
 open Extraction
 open Extraction.QFBV
-open Extraction.Var
+open Extraction.EqVar
 open Extraction.Typ
 open Extraction.TypEnv
 open Extraction.NBitsDef

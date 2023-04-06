@@ -1,6 +1,6 @@
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import FMaps Var Seqs.
+From ssrlib Require Import EqFMaps EqVar Seqs.
 From BitBlasting Require Import QFBV CNF State AdhereConform BBCommon.
 From BBCache Require CompTable.
 

@@ -1,15 +1,15 @@
 open BinNums
 open Bool
 open Datatypes
-open FMaps
-open FSets
+open EqFMaps
+open EqFSets
+open EqVar
 open NBitsDef
 open NBitsOp
 open State
 open String0
 open Strings
 open Typ
-open Var
 open Eqtype
 open Seq
 open Ssrbool
@@ -18,9 +18,9 @@ open Ssrnat
 type __ = Obj.t
 
 module MakeQFBV :
- functor (V:SsrOrder.SsrOrder) ->
+ functor (V:EqOrder.EqOrder) ->
  functor (VP:Printer with type t = V.t) ->
- functor (VS:SsrFSet with module SE = V) ->
+ functor (VS:EqFSet with module SE = V) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  functor (S:sig
   type t

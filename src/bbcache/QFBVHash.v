@@ -2,7 +2,7 @@
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var SsrOrder ZAriths Tactics Seqs.
+From ssrlib Require Import EqVar EqOrder ZAriths Tactics Seqs.
 From BitBlasting Require Import QFBV.
 
 Set Implicit Arguments.
@@ -1096,7 +1096,7 @@ Section HashLtn.
 End HashLtn.
 
 
-Module HexpOrderMinimal <: SsrOrderMinimal.
+Module HexpOrderMinimal <: EqOrderMinimal.
 
   Definition t : eqType := hexp_eqType.
   Definition eqn (e1 e2 : t) : bool := e1 == e2.
@@ -1109,7 +1109,7 @@ Module HexpOrderMinimal <: SsrOrderMinimal.
 
 End HexpOrderMinimal.
 
-Module HbexpOrderMinimal <: SsrOrderMinimal.
+Module HbexpOrderMinimal <: EqOrderMinimal.
 
   Definition t : eqType := hbexp_eqType.
   Definition eqn (e1 e2 : t) : bool := e1 == e2.
@@ -1122,8 +1122,8 @@ Module HbexpOrderMinimal <: SsrOrderMinimal.
 
 End HbexpOrderMinimal.
 
-Module HexpOrder <: SsrOrder := MakeSsrOrder HexpOrderMinimal.
-Module HbexpOrder <: SsrOrder := MakeSsrOrder HbexpOrderMinimal.
+Module HexpOrder <: EqOrder := MakeEqOrder HexpOrderMinimal.
+Module HbexpOrder <: EqOrder := MakeEqOrder HbexpOrderMinimal.
 
 
 Section Vars.

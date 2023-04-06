@@ -1,6 +1,6 @@
 open Bool
 open CNF
-open FMaps
+open EqFMaps
 open Int0
 open QFBVHash
 open Eqtype

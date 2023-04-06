@@ -3,7 +3,6 @@ open BinNat
 open BinNums
 open BinPos
 open Bool
-open Datatypes
 open Eqtype
 
 let __ = let rec f _ = Obj.repr f in Obj.repr f
@@ -58,67 +57,3 @@ let coq_Z_eqMixin =
 
 let coq_Z_eqType =
   Obj.magic coq_Z_eqMixin
-
-module PositiveOrderMinimal =
- struct
-  (** val t : Equality.coq_type **)
-
-  let t =
-    pos_eqType
-
-  (** val eqn : Equality.sort -> Equality.sort -> bool **)
-
-  let eqn x y =
-    eq_op t x y
-
-  (** val ltn : Equality.sort -> Equality.sort -> bool **)
-
-  let ltn x y =
-    Pos.ltb (Obj.magic x) (Obj.magic y)
-
-  (** val compare :
-      Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare **)
-
-  let compare x y =
-    let _evar_0_ = fun _ -> OrderedType.EQ in
-    let _evar_0_0 = fun _ -> OrderedType.LT in
-    let _evar_0_1 = fun _ -> OrderedType.GT in
-    (match Pos.compare (Obj.magic x) (Obj.magic y) with
-     | Eq -> _evar_0_ __
-     | Lt -> _evar_0_0 __
-     | Gt -> _evar_0_1 __)
- end
-
-module PositiveOrder = SsrOrder.MakeSsrOrder(PositiveOrderMinimal)
-
-module NOrderMinimal =
- struct
-  (** val t : Equality.coq_type **)
-
-  let t =
-    coq_N_eqType
-
-  (** val eqn : Equality.sort -> Equality.sort -> bool **)
-
-  let eqn x y =
-    eq_op t x y
-
-  (** val ltn : Equality.sort -> Equality.sort -> bool **)
-
-  let ltn x y =
-    N.ltb (Obj.magic x) (Obj.magic y)
-
-  (** val compare :
-      Equality.sort -> Equality.sort -> Equality.sort OrderedType.coq_Compare **)
-
-  let compare x y =
-    let _evar_0_ = fun _ -> OrderedType.EQ in
-    let _evar_0_0 = fun _ -> OrderedType.LT in
-    let _evar_0_1 = fun _ -> OrderedType.GT in
-    (match N.compare (Obj.magic x) (Obj.magic y) with
-     | Eq -> _evar_0_ __
-     | Lt -> _evar_0_0 __
-     | Gt -> _evar_0_1 __)
- end
-
-module NOrder = SsrOrder.MakeSsrOrder(NOrderMinimal)

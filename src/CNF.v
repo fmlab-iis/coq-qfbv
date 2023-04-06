@@ -7,7 +7,7 @@
 
 From Coq Require Import ZArith OrderedType Bool.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq tuple fintype choice.
-From ssrlib Require Import SsrOrder ZAriths Seqs Lists Bools FSets.
+From ssrlib Require Import EqOrder ZAriths Seqs Lists Bools EqFSets.
 From nbits Require Export NBits.
 
 Set Implicit Arguments.
@@ -1187,7 +1187,7 @@ Proof.
   apply: H1. rewrite H2. exact: eqxx.
 Qed.
 
-Module LiteralOrderMinimal <: SsrOrderMinimal.
+Module LiteralOrderMinimal <: EqOrderMinimal.
   Definition t := lit_eqType.
   Definition eqn (x y : t) := x == y.
   Definition ltn (x y : t) := lit_lt x y.
@@ -1205,9 +1205,9 @@ Module LiteralOrderMinimal <: SsrOrderMinimal.
         apply/Z_ltP. apply: (proj2 (Z.le_neq _ _)). split; assumption.
   Defined.
 End LiteralOrderMinimal.
-Module LiteralOrder <: SsrOrder := MakeSsrOrder LiteralOrderMinimal.
-Module ClauseOrder <: SsrOrder := SeqOrder LiteralOrder.
-Module ClauseSet := FSets.MakeTreeSet ClauseOrder.
+Module LiteralOrder <: EqOrder := MakeEqOrder LiteralOrderMinimal.
+Module ClauseOrder <: EqOrder := SeqOrder LiteralOrder.
+Module ClauseSet := EqFSets.MakeTreeSet ClauseOrder.
 
 Definition cnf_imp_each E (cs1 cs2 : cnf) :=
   forall c2,
@@ -1290,7 +1290,7 @@ Qed.
 From Coq Require Import String DecimalString.
 Open Scope string_scope.
 
-Module PS := FSets.MakeTreeSet(PositiveOrder).
+Module PS := EqFSets.MakeTreeSet(PositiveOrder).
 
 Definition newline : string :=
 "
@@ -1341,7 +1341,7 @@ Definition dimacs_cnf_with_header (cs : cnf) : string :=
 
 (* Variable reordering *)
 
-From ssrlib Require Import FMaps Tactics.
+From ssrlib Require Import EqFMaps Tactics.
 
 Module PM := MakeTreeMap(PositiveOrder).
 

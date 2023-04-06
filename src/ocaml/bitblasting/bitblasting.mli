@@ -1,6 +1,6 @@
 
 open Smtlib.Ast
-open Extraction.Var
+open Extraction.EqVar
 open Extraction.CNF
 open Extraction.TypEnv
 open Extraction.QFBV

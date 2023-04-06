@@ -4,7 +4,7 @@ open BinPos
 open Bool
 open Datatypes
 open DecimalString
-open FSets
+open EqFSets
 open Int0
 open NBitsDef
 open String0
@@ -135,7 +135,7 @@ let msl ls =
 let add_prelude cs =
   (lit_tt :: []) :: cs
 
-module PS = MakeTreeSet(PositiveOrder)
+module PS = MakeTreeSet(EqOrder.PositiveOrder)
 
 (** val newline : char list **)
 

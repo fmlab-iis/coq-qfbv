@@ -2,7 +2,7 @@
 From Coq Require Import ZArith OrderedType.
 From mathcomp Require Import ssreflect ssrbool eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var Types SsrOrder Store ZAriths FMaps.
+From ssrlib Require Import EqVar Types EqOrder EqStore ZAriths EqFMaps.
 From BitBlasting Require Import Typ TypEnv.
 
 Set Implicit Arguments.
@@ -19,7 +19,7 @@ Module ZValueType <: HasDefaultTyp.
   Definition default : t := 0%Z.
 End ZValueType.
 
-Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <: TStore V BitsValueType.
+Module Type BitsStore (V : EqOrder) (TE : TypEnv with Module SE := V) <: TStore V BitsValueType.
 
   Include TStore V BitsValueType.
   Module Lemmas := TypEnvLemmas TE.
@@ -77,7 +77,7 @@ Module Type BitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <: TStore
 End BitsStore.
 
 
-Module MakeBitsStore (V : SsrOrder) (TE : TypEnv with Module SE := V) <:
+Module MakeBitsStore (V : EqOrder) (TE : TypEnv with Module SE := V) <:
   BitsStore V TE.
 
   Include MakeTStoreMap V BitsValueType.

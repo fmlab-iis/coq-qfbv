@@ -2,7 +2,7 @@
 From Coq Require Import Arith ZArith OrderedType String.
 From mathcomp Require Import ssreflect ssrfun ssrbool ssrnat eqtype seq.
 From nbits Require Import NBits.
-From ssrlib Require Import Var Types SsrOrder Nats ZAriths Store FSets Tactics Seqs Strings.
+From ssrlib Require Import EqVar Types EqOrder Nats ZAriths EqStore EqFSets Tactics Seqs Strings.
 From BitBlasting Require Import Typ TypEnv State.
 
 Set Implicit Arguments.
@@ -10,9 +10,9 @@ Unset Strict Implicit.
 Import Prenex Implicits.
 
 Module MakeQFBV
-       (V : SsrOrder)
+       (V : EqOrder)
        (VP : Printer with Definition t := V.t)
-       (VS : SsrFSet with Module SE := V)
+       (VS : EqFSet with Module SE := V)
        (TE : TypEnv with Module SE := V)
        (S : BitsStore V TE).
 
@@ -937,7 +937,7 @@ Module MakeQFBV
   Defined.
 
   (* exp and bexp are ordered *)
-  Module ExpOrderMinimal <: SsrOrderMinimal.
+  Module ExpOrderMinimal <: EqOrderMinimal.
     Definition t := exp_eqType.
     Definition eqn (e1 e2 : t) : bool := e1 == e2.
     Definition ltn (e1 e2 : t) : bool := exp_ltn e1 e2.
@@ -948,9 +948,9 @@ Module MakeQFBV
     Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := exp_compare e1 e2.
   End ExpOrderMinimal.
 
-  Module ExpOrder <: SsrOrder := MakeSsrOrder ExpOrderMinimal.
+  Module ExpOrder <: EqOrder := MakeEqOrder ExpOrderMinimal.
 
-  Module BexpOrderMinimal <: SsrOrderMinimal.
+  Module BexpOrderMinimal <: EqOrderMinimal.
     Definition t := bexp_eqType.
     Definition eqn (e1 e2 : t) : bool := e1 == e2.
     Definition ltn (e1 e2 : t) : bool := bexp_ltn e1 e2.
@@ -961,7 +961,7 @@ Module MakeQFBV
     Definition compare (e1 e2 : t) : Compare ltn eqn e1 e2 := bexp_compare e1 e2.
   End BexpOrderMinimal.
 
-  Module BexpOrder <: SsrOrder := MakeSsrOrder BexpOrderMinimal.
+  Module BexpOrder <: EqOrder := MakeEqOrder BexpOrderMinimal.
 
 
   (* Subexpression *)
@@ -1551,7 +1551,7 @@ Module MakeQFBV
 
   (* Well-formedness *)
 
-  From ssrlib Require Import FMaps.
+  From ssrlib Require Import EqFMaps.
 
   Module TELemmas := FMapLemmas TE.
 

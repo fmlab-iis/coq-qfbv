@@ -1,13 +1,13 @@
 open Bool
 open Datatypes
-open FMaps
+open EqFMaps
+open EqVar
 open Int0
 open List0
 open NBitsDef
 open Nat0
 open OrdersTac
 open Typ
-open Var
 open Eqtype
 
 type __ = Obj.t
@@ -20,7 +20,7 @@ module BitsValueType :
  end
 
 module MakeBitsStore :
- functor (V:SsrOrder.SsrOrder) ->
+ functor (V:EqOrder.EqOrder) ->
  functor (TE:TypEnv.TypEnv with module SE = V) ->
  sig
   module M :
